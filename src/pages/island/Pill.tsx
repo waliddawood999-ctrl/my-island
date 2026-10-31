@@ -24,6 +24,8 @@ import { Palette } from "./Palette";
 import { TabBar } from "./TabBar";
 import { BatteryChip, DownloadsSection } from "./DownloadsSection";
 import { SystemSection } from "./SystemSection";
+import { MeetingsTab } from "./MeetingsTab";
+import { useMeetings } from "../../useMeetings";
 import { usePrivacy } from "../../useSystem";
 
 const PILL = { w: 200, h: 32 };
@@ -45,13 +47,14 @@ function fmtTime(fmt: string): string {
 }
 
 /** التبويبات؛ الرفّ يظهر فقط إن كان moduleShelf مفعّلًا (غياب المفتاح = مفعّل) وعدّاده بجانب الاسم. */
-const tabDefs = (shelfOn: boolean, shelfCount: number, launcherOn: boolean) => [
+const tabDefs = (shelfOn: boolean, shelfCount: number, launcherOn: boolean, meetingsOn: boolean) => [
   { id: "home", label: i("الرئيسية", "Home") },
   { id: "clip", label: i("الحافظة", "Clipboard") },
   ...(shelfOn ? [{ id: "shelf", label: shelfCount > 0 ? `${i("الرفّ", "Shelf")} (${shelfCount})` : i("الرفّ", "Shelf") }] : []),
   ...(launcherOn ? [{ id: "launcher", label: i("اللانشر", "Launcher") }] : []),
   { id: "note", label: i("ملاحظة", "Note") },
   { id: "tools", label: i("الأدوات", "Tools") },
+  ...(meetingsOn ? [{ id: "meetings", label: i("الاجتماعات", "Meetings") }] : []),
   { id: "system", label: i("النظام", "System") },
   { id: "chat", label: i("المحادثة", "Chat") },
 ];
@@ -111,6 +114,8 @@ export function Pill() {
   const dlInPill = !!settings.downloadsInPill;
   const showBat = !!settings.showBattery;
   const privacy = usePrivacy(!!settings.privacyIndicator);
+  const meetingsOn = !!settings.showMeetings;
+  const meetings = useMeetings(meetingsOn);
   const dl = useDownloads(showDl || dlInPill);
   const battery = useBattery(showBat);
   // downloadsInPill: أكبر تنزيل جارٍ (نسبة إن عُرفت وإلا الحجم) تتقدم على عنوان الميديا.
@@ -273,7 +278,7 @@ export function Pill() {
   const opacity = hidden ? 0 : palette ? 1 : open ? opened : settings.autoHide && !hover ? 0 : rest;
 
   const radius = palette ? 24 : open ? 28 : 16;
-  const tabs = tabDefs(shelfOn, shelf.items.length, launcherOn);
+  const tabs = tabDefs(shelfOn, shelf.items.length, launcherOn, meetingsOn);
   const tab = Math.max(0, tabs.findIndex((t) => t.id === tabId));
   const curTab = tabs[tab].id;
   const tabLabels = tabs.map((t) => t.label);
@@ -453,6 +458,11 @@ export function Pill() {
                 {curTab === "tools" && (
                   <div className="min-h-0 flex-1">
                     <ToolsTab />
+                  </div>
+                )}
+                {curTab === "meetings" && (
+                  <div className="min-h-0 flex-1">
+                    <MeetingsTab snap={meetings.snap} refresh={meetings.refresh} loading={meetings.loading} />
                   </div>
                 )}
                 {curTab === "system" && (
