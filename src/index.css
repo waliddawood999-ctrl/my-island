@@ -27,3 +27,14 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 800; }
 .font-medium, .font-semibold { font-weight: 700; } /* التسميات 700 */
 .font-bold { font-weight: 800; } /* العناوين/الأرقام الكبيرة 800 (400/700/800 فقط) */
 .tabular-nums { font-family: var(--font-num); }
+
+/* مستويات الحركة (src/motion.ts يضبط data-motion على <html> في كل نافذة): متوقفة = لا animation ولا transition إطلاقًا؛
+   مخففة = انتقالات CSS قصيرة. حركات motion (JS) تتبع الثوابت الحيّة في motion.ts. */
+:root[data-motion="off"] *, :root[data-motion="off"] *::before, :root[data-motion="off"] *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+:root[data-motion="reduced"] *, :root[data-motion="reduced"] *::before, :root[data-motion="reduced"] *::after {
+  transition-duration: 0.1s !important;
+}

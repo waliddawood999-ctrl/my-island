@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import "../../index.css";
 import { i } from "../../i18n";
 import { saveSettings, useSettings } from "../../useSettings";
+import { EcoIndicator, RamUsage } from "./Perf";
 import { WorkspacesEditor } from "./Workspaces";
 import { LinesField, NumberField, Row, Section, Select, Slider, TextField, Toggle } from "./fields";
 
@@ -185,6 +186,39 @@ function App() {
         <Row label={i("اختصار منتقي الألوان", "Color picker hotkey")}>
           <TextField label={i("اختصار منتقي الألوان", "Color picker hotkey")} value={s.hotkeyColor ?? ""} onCommit={(v) => saveSettings({ hotkeyColor: v })} />
         </Row>
+      </Section>
+
+      <Section title={i("الأداء والتوفير", "Performance & saving")}>
+        <Row label={i("حالة وضع التوفير", "Eco mode status")}>
+          <EcoIndicator />
+        </Row>
+        <Row
+          label={i("وضع التوفير (Eco)", "Eco mode")}
+          hint={i(
+            "يبطّئ رصد الحافظة وتتبّع النافذة النشطة، ويوقف فحص بلوتوث البطارية وطيف الصوت، ويخفض الحركة إلى «مخففة».",
+            "Slows clipboard watching and active-window tracking, stops Bluetooth battery polling and the audio spectrum, and lowers motion to “Reduced”.",
+          )}
+        >
+          <Toggle label={i("وضع التوفير (Eco)", "Eco mode")} value={s.ecoMode ?? false} onChange={(v) => saveSettings({ ecoMode: v })} />
+        </Row>
+        <Row label={i("التوفير تلقائيًا على البطارية", "Auto-eco on battery")} hint={i("يتفعّل عند فصل الشاحن ويتوقف عند توصيله؛ التفعيل اليدوي يبقى في الحالتين", "Turns on when unplugged and off when plugged in; the manual switch stays on either way")}>
+          <Toggle label={i("التوفير تلقائيًا على البطارية", "Auto-eco on battery")} value={s.ecoOnBattery ?? false} onChange={(v) => saveSettings({ ecoOnBattery: v })} />
+        </Row>
+        <Row label={i("مستوى الحركة", "Motion level")} hint={i("كاملة: حركة نابضة · مخففة: انتقالات قصيرة بلا ارتداد · متوقفة: بلا حركة", "Full: springy · Reduced: short, no bounce · Off: no motion")}>
+          <Select
+            label={i("مستوى الحركة", "Motion level")} value={s.motionLevel === "reduced" || s.motionLevel === "off" ? s.motionLevel : "full"}
+            options={[
+              { value: "full", label: i("كاملة", "Full") },
+              { value: "reduced", label: i("مخففة", "Reduced") },
+              { value: "off", label: i("متوقفة", "Off") },
+            ]}
+            onChange={(v) => saveSettings({ motionLevel: v })}
+          />
+        </Row>
+        <div>
+          <div dir="auto" className="mb-2 text-sm">{i("استهلاك الرام الآن", "RAM usage now")}</div>
+          <RamUsage />
+        </div>
       </Section>
 
       <Section title={i("شريط الأوامر", "Command palette")}>

@@ -3,6 +3,8 @@
 /** مساحة عمل لشريط الأوامر: تُفتح كل عناصرها (تطبيق/مجلد/ملف كمسار، أو رابط http(s)) دفعة واحدة. */
 export interface Workspace { id:string, name:string, items:string[] }
 
+export type MotionLevelSetting = 'full'|'reduced'|'off';
+
 export interface Settings {
   autostart:boolean,
   language:string,
@@ -79,6 +81,9 @@ export interface Settings {
   searchEngine:string,
   searchUrl:string,
   liveRates:boolean,
+  ecoMode:boolean,
+  ecoOnBattery:boolean,
+  motionLevel:MotionLevelSetting,
   workspaces:Workspace[],
   weatherCity:string,
   weatherLat:number,
@@ -131,6 +136,9 @@ export const DEFAULTS: Partial<Settings> = {
   breakReminders: false,   // تذكير استراحة بعد استخدام متواصل (صريح من المستخدم)
   breakMinutes: 60,        // مدة الاستخدام المتواصل قبل التذكير (دقائق)
   btBatteries: true,       // قسم البطارية: بطاريات أجهزة البلوتوث (BLE/GATT) المتصلة؛ يعمل فقط مع showBattery
+  ecoMode: false,          // وضع التوفير اليدوي: يبطّئ الحافظة وتتبّع النافذة ويوقف بلوتوث البطارية وطيف الصوت ويخفض الحركة
+  ecoOnBattery: false,     // يفعّل Eco تلقائيًا عند فصل الشاحن ويوقفه عند توصيله (اليدوي يبقى)
+  motionLevel: 'full',     // full = نابضة · reduced = مخففة · off = متوقفة (انظر src/motion.ts)
   liveRates: true,         // شريط الأوامر: أسعار عملات حية (open.er-api.com) تُجلب كسولًا عند تحويل عملة وتُخزَّن 12 ساعة؛ false = المضمّنة فقط بلا شبكة
   batteryTip: true,        // قسم البطارية: نصيحة «افصل الشاحن عند 80%» أثناء الشحن
 };

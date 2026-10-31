@@ -258,7 +258,7 @@ pub fn start(app: &AppHandle) {
         let mut next = std::time::Instant::now();
         loop {
             std::thread::sleep(std::time::Duration::from_secs(2));
-            let on = get(&app, "showBattery", false) && get(&app, "btBatteries", true);
+            let on = get(&app, "showBattery", false) && get(&app, "btBatteries", true) && !crate::perf::eco(); // وضع التوفير يوقف فحص البلوتوث
             if !on {
                 if was_on {
                     was_on = false;

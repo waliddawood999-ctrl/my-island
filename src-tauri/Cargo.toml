@@ -27,6 +27,7 @@ image = { version = "0.25", default-features = false, features = ["png", "jpeg",
 gif = "0.13"
 url = "2"
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+sysinfo = { version = "0.33", default-features = false, features = ["system"] }
 
 [target.'cfg(windows)'.dependencies]
 arboard = "3"

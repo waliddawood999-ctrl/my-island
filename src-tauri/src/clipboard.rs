@@ -316,6 +316,9 @@ fn set_windows_clipboard(c: &Clip) -> Result<(), String> {
     Err(last)
 }
 
+/// وضع التوفير: تأخير معالجة تغيّر الحافظة (ms).
+pub const ECO_CLIP_DELAY_MS: u64 = 1000;
+
 /// يبدأ مستمع الحافظة في خيط مستقل (ويندوز فقط).
 pub fn start(app: &AppHandle) {
     #[cfg(windows)]
@@ -353,6 +356,10 @@ mod win_impl {
 
     impl ClipboardHandler for Handler {
         fn on_clipboard_change(&mut self) -> CallbackResult {
+            // وضع التوفير: رصد أبطأ — نمهل الحدث ثانية فتُقرأ آخر حالة مرة واحدة بدل كل تغيّر متتابع.
+            if crate::perf::eco() {
+                std::thread::sleep(std::time::Duration::from_millis(ECO_CLIP_DELAY_MS));
+            }
             capture(&self.app);
             CallbackResult::Next
         }

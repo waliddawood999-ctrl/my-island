@@ -41,7 +41,10 @@ pub fn defaults() -> Map<String, Value> {
         "breakMinutes": 60,
         "btBatteries": true,
         "batteryTip": true,
-        "liveRates": true
+        "liveRates": true,
+        "ecoMode": false,
+        "ecoOnBattery": false,
+        "motionLevel": "full"
     }) else { unreachable!() };
     m
 }

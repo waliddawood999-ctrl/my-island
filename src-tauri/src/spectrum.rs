@@ -74,7 +74,7 @@ mod win_impl {
         let st = app.state::<crate::state::AppState>();
         let on = st.settings.lock().unwrap().get("liquidSpectrum").and_then(|v| v.as_bool()).unwrap_or(false);
         let hidden = *st.hidden.lock().unwrap();
-        on && !hidden
+        on && !hidden && !crate::perf::eco() // وضع التوفير يوقف الالتقاط كليًا
     }
 
     fn run(app: AppHandle) {

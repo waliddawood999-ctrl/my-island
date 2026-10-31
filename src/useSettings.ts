@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { DEFAULTS, type Settings } from "./settings";
 import { setLang } from "./i18n";
+import { useMotionSync } from "./motion";
 
 /** يعكس إعدادات الخلفية (settings_get) ويتحدّث عند settings:changed. الخلفية مصدر الحقيقة.
  *  اللغة: تُطبَّق على i18n أثناء الرسم نفسه، فكل نافذة تعيد رسم نفسها عند تغيّر language عبر الحدث. */
@@ -19,6 +20,7 @@ export function useSettings(): Partial<Settings> {
     return () => { alive = false; un.then((f) => f()); };
   }, []);
   setLang(s.language === "en" ? "en" : "ar");
+  useMotionSync(s.motionLevel); // مستوى الحركة الفعلي (الإعداد + Eco) لهذه النافذة
   return s;
 }
 

@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { Bell, Coffee, Settings as SettingsIcon, Timer as TimerIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { dur, ease, paletteVariants, sectionVariants, spring, swapVariants, tap } from "../../motion";
+import { alertShake, dur, ease, paletteVariants, useMotionLevel, sectionVariants, spring, swapVariants, tap } from "../../motion";
 import { i } from "../../i18n";
 import { useSettings } from "../../useSettings";
 import { useMedia } from "../../useMedia";
@@ -85,6 +85,7 @@ function PillTitle({ text }: { text: string }) {
 /** الحبة: pill أسود 200×32 بساعة، تتمدد بالهوفر إلى لوحة 720×320 وتنكمش بعد مغادرة المؤشر. */
 export function Pill() {
   const settings = useSettings();
+  const motion_level = useMotionLevel();
   const fmt = settings.clockFormat ?? "auto";
   const [time, setTime] = useState(() => fmtTime(fmt));
   const [hover, setHover] = useState(false);
@@ -297,7 +298,7 @@ export function Pill() {
         className="relative overflow-hidden bg-black text-white"
       >
         <Liquid
-          enabled={moduleMedia && (settings.liquidSpectrum ?? false)}
+          enabled={moduleMedia && (settings.liquidSpectrum ?? false) && motion_level !== "off"}
           width={size.w}
           boxH={64}
           maxH={open ? 30 : 12}
@@ -330,7 +331,7 @@ export function Pill() {
                 </span>
               ) : alert && !open ? (
                 <span dir="auto" className="flex max-w-full items-center gap-2 px-3" role="alert">
-                  <motion.span animate={{ rotate: [0, -16, 14, -10, 0] }} transition={{ duration: dur.alert, repeat: 2 }}>
+                  <motion.span animate={alertShake.animate} transition={alertShake.transition}>
                     {alert.kind === "timer" ? <TimerIcon size={15} /> : alert.kind === "break" ? <Coffee size={15} /> : <Bell size={15} />}
                   </motion.span>
                   <span className="truncate">

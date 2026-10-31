@@ -171,7 +171,8 @@ mod focus {
                         LAST_TARGET.store(h.0 as isize, Ordering::Relaxed);
                     }
                 }
-                std::thread::sleep(std::time::Duration::from_millis(100));
+                // وضع التوفير: تتبّع النافذة الأمامية أبطأ (آخر هدف للصق يتأخر ≤300ms فقط).
+                std::thread::sleep(std::time::Duration::from_millis(if crate::perf::eco() { 300 } else { 100 }));
             }
         });
     }
@@ -196,7 +197,7 @@ mod focus {
             let me = unsafe { GetCurrentProcessId() };
             let mut auto_hidden = false;
             loop {
-                std::thread::sleep(std::time::Duration::from_millis(500));
+                std::thread::sleep(std::time::Duration::from_millis(if crate::perf::eco() { 1500 } else { 500 }));
                 let enabled = app
                     .state::<AppState>()
                     .settings

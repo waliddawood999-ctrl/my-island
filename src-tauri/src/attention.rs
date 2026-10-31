@@ -13,6 +13,8 @@ pub const IDLE_PAUSE_SECS: u64 = 60;
 /// خمول بهذا الطول يُعدّ استراحة فعلية ويصفّر عدّاد الاستخدام المتواصل.
 pub const BREAK_RESET_IDLE_SECS: u64 = 300;
 pub const FLUSH_SECS: u64 = 30;
+/// وضع التوفير: نبضة أبطأ لقراءة النافذة الأمامية والخمول.
+pub const ECO_TICK_SECS: u64 = 10;
 pub const RETENTION_DAYS: i64 = 30;
 pub const TOP_N: usize = 8;
 pub const MIN_BREAK_MIN: u64 = 5;
@@ -225,9 +227,10 @@ pub fn start(app: &tauri::AppHandle) {
         let mut since_flush = 0u64;
         let mut last = std::time::Instant::now();
         loop {
-            std::thread::sleep(std::time::Duration::from_secs(TICK_SECS));
+            let tick = if crate::perf::eco() { ECO_TICK_SECS } else { TICK_SECS };
+            std::thread::sleep(std::time::Duration::from_secs(tick));
             // الزمن الفعلي المنقضي (يُسقَّف كي لا يُحتسب سكون الجهاز/التعليق).
-            let dt = last.elapsed().as_secs().clamp(1, TICK_SECS * 2);
+            let dt = last.elapsed().as_secs().clamp(1, tick * 2);
             last = std::time::Instant::now();
             let cfg = read_cfg(&app);
             if !cfg.track && !cfg.breaks {

@@ -50,6 +50,9 @@ pub fn settings_set(app: AppHandle, state: State<AppState>, patch: Map<String, V
     if applied.keys().any(|k| matches!(k.as_str(), "paletteFiles" | "paletteFolders")) {
         crate::files::files_warm(app.clone());
     }
+    if applied.keys().any(|k| matches!(k.as_str(), "ecoMode" | "ecoOnBattery")) {
+        crate::perf::recompute(&app);
+    }
     if let Some(on) = applied.get("autostart").and_then(Value::as_bool) {
         crate::autostart::apply(on)?;
     }
