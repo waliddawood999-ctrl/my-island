@@ -289,6 +289,13 @@ mod focus {
         }
     }
 
+    /// يعيد NOACTIVATE فقط دون ردّ الفوكس لأحد (عند تشغيل هدف جديد أو حين نقر المستخدم تطبيقًا آخر).
+    pub fn drop_focus(app: &AppHandle) {
+        if let Some(w) = app.get_webview_window(MAIN) {
+            set_noactivate(&w, true);
+        }
+    }
+
     fn elevated(process: HANDLE) -> bool {
         unsafe {
             let mut tok = HANDLE::default();
@@ -371,7 +378,7 @@ mod focus {
 }
 
 #[cfg(windows)]
-pub use focus::{paste_into_previous, release_focus, start_fullscreen_watch, start_tracker, take_focus};
+pub use focus::{drop_focus, paste_into_previous, release_focus, start_fullscreen_watch, start_tracker, take_focus};
 
 #[cfg(not(windows))]
 pub fn start_tracker() {}
@@ -381,6 +388,8 @@ pub fn start_fullscreen_watch(_app: AppHandle) {}
 pub fn take_focus(_app: &AppHandle) {}
 #[cfg(not(windows))]
 pub fn release_focus(_app: &AppHandle) {}
+#[cfg(not(windows))]
+pub fn drop_focus(_app: &AppHandle) {}
 #[cfg(not(windows))]
 pub fn paste_into_previous(_app: &AppHandle) -> bool {
     false

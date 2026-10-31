@@ -29,6 +29,7 @@ pub fn defaults() -> Map<String, Value> {
         "sttModel": "whisper-large-v3-turbo",
         "recordingFps": 30,
         "recordFormat": "mp4",
+        "hotkeyPalette": "Alt+Space",
         "checkUpdates": true
     }) else { unreachable!() };
     m
@@ -75,6 +76,8 @@ impl AppState {
             for (k, v) in rows.flatten() {
                 // ذاكرة كلمات الأغاني المؤقتة (lyrics.rs) ليست إعدادات.
                 if k.starts_with(crate::lyrics::CACHE_PREFIX) { continue; }
+                // الأخيرة في شريط الأوامر (palette.rs) ليست إعدادات.
+                if k == crate::palette::RECENT_KEY { continue; }
                 if let Ok(val) = serde_json::from_str::<Value>(&v) {
                     merged.insert(k, val);
                 }

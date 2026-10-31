@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { Settings as SettingsIcon } from "lucide-react";
@@ -9,10 +9,12 @@ import { fmtBytes, useBattery, useDownloads } from "../../useDownloads";
 import { ClipboardTab } from "./ClipboardTab";
 import { MediaSection } from "./MediaSection";
 import { Liquid } from "./Liquid";
+import { Palette } from "./Palette";
 import { BatteryChip, DownloadsSection } from "./DownloadsSection";
 
 const PILL = { w: 200, h: 32 };
 const PANEL = { w: 720, h: 480 };
+const PALETTE = { w: 640, h: 440 };
 /** مدة انتقال CSS (ms) — تُستعمل أيضًا لتأخير تصغير النافذة بعد الانكماش. */
 const ANIM_MS = 300;
 
@@ -66,6 +68,9 @@ export function Pill() {
   const [hidden, setHidden] = useState(false);
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState(0);
+  // شريط الأوامر: طبقة داخل نافذة main (لا نافذة خامسة) — wasHidden لإعادة الإخفاء عند الإغلاق.
+  const [palette, setPalette] = useState<{ wasHidden: boolean } | null>(null);
+  const paletteRef = useRef<{ wasHidden: boolean } | null>(null);
   const moduleMedia = settings.moduleMedia ?? true;
   const media = useMedia(moduleMedia);
   // mediaPill: "off"/"clock" = تبقى الساعة؛ غير ذلك (الافتراضي) = العنوان المتحرك أثناء التشغيل فقط.
@@ -101,6 +106,36 @@ export function Pill() {
 
   useEffect(() => { report(PILL.w, PILL.h); }, []);
 
+  const openPalette = (wasHidden: boolean) => {
+    window.clearTimeout(hoverT.current);
+    window.clearTimeout(collapseT.current);
+    window.clearTimeout(shrinkT.current);
+    setOpen(false);
+    report(PALETTE.w, PALETTE.h);
+    paletteRef.current = { wasHidden };
+    setPalette({ wasHidden });
+  };
+  /** restore=false: لا نردّ الفوكس للنافذة السابقة (إطلاق هدف جديد أو نقر المستخدم خارجًا). */
+  const closePalette = useCallback((restore: boolean) => {
+    const cur = paletteRef.current;
+    if (!cur) return;
+    paletteRef.current = null;
+    setPalette(null);
+    invoke("release_focus", { restore }).catch(() => {});
+    window.clearTimeout(shrinkT.current);
+    shrinkT.current = window.setTimeout(() => report(PILL.w, PILL.h), ANIM_MS + 30);
+    if (cur.wasHidden) invoke("set_island_hidden", { hidden: true }).catch(() => {});
+  }, []);
+
+  // palette:open يبدّل: مفتوح ⇒ يغلق (يعيد الفوكس) · مغلق ⇒ يفتح.
+  useEffect(() => {
+    const un = listen<{ wasHidden: boolean }>("palette:open", (e) => {
+      if (paletteRef.current) closePalette(true);
+      else openPalette(!!e.payload?.wasHidden);
+    });
+    return () => { un.then((f) => f()); };
+  }, [closePalette]);
+
   const expand = () => {
     window.clearTimeout(shrinkT.current);
     report(PANEL.w, PANEL.h); // النافذة أولًا ثم الأنيميشن
@@ -114,6 +149,7 @@ export function Pill() {
 
   const onEnter = () => {
     setHover(true);
+    if (paletteRef.current) return;
     window.clearTimeout(collapseT.current);
     if (open) return;
     window.clearTimeout(hoverT.current);
@@ -121,17 +157,18 @@ export function Pill() {
   };
   const onLeave = () => {
     setHover(false);
+    if (paletteRef.current) return;
     window.clearTimeout(hoverT.current);
     if (!open) return;
     window.clearTimeout(collapseT.current);
     collapseT.current = window.setTimeout(collapse, settings.collapseDelayMs ?? 350);
   };
 
-  const size = open ? PANEL : PILL;
+  const size = palette ? PALETTE : open ? PANEL : PILL;
   // الشفافية من الإعدادات؛ autoHide يخفي الحبة في الراحة (النافذة تبقى تستقبل المرور فتظهر عند الهوفر).
   const rest = (settings.opacityRest ?? 100) / 100;
   const opened = (settings.opacityOpen ?? 100) / 100;
-  const opacity = hidden ? 0 : open ? opened : settings.autoHide && !hover ? 0 : rest;
+  const opacity = hidden ? 0 : palette ? 1 : open ? opened : settings.autoHide && !hover ? 0 : rest;
 
   return (
     <div className="flex w-full justify-center">
@@ -144,7 +181,7 @@ export function Pill() {
           width: size.w,
           height: size.h,
           transition: `width ${ANIM_MS}ms cubic-bezier(.2,.8,.2,1), height ${ANIM_MS}ms cubic-bezier(.2,.8,.2,1), border-radius ${ANIM_MS}ms cubic-bezier(.2,.8,.2,1)`,
-          borderRadius: open ? 28 : 16,
+          borderRadius: palette ? 24 : open ? 28 : 16,
         }}
         className="relative overflow-hidden bg-black text-white transition-opacity duration-200"
       >
@@ -161,7 +198,7 @@ export function Pill() {
         <div
           aria-label={i("الساعة", "Clock")}
           style={{ height: PILL.h }}
-          className={`absolute inset-x-0 top-0 flex items-center justify-center text-[13px] font-medium tabular-nums transition-opacity duration-200 ${open ? "opacity-0" : "opacity-100"}`}
+          className={`absolute inset-x-0 top-0 flex items-center justify-center text-[13px] font-medium tabular-nums transition-opacity duration-200 ${open || palette ? "opacity-0" : "opacity-100"}`}
         >
           {dlText ? (
             <span dir="ltr" aria-label={i("أكبر تنزيل جارٍ", "Largest active download")}>{dlText}</span>
@@ -174,6 +211,14 @@ export function Pill() {
             <span className="ms-3 text-[11px] text-white/70"><BatteryChip b={battery} size={12} /></span>
           )}
         </div>
+        {palette && (
+          <div
+            style={{ width: PALETTE.w, height: PALETTE.h }}
+            className="absolute left-1/2 top-0 -translate-x-1/2"
+          >
+            <Palette settings={settings} onClose={closePalette} />
+          </div>
+        )}
         <div
           style={{ width: PANEL.w, height: PANEL.h }}
           className={`absolute left-1/2 top-0 flex -translate-x-1/2 flex-col p-4 transition-opacity duration-200 ${open ? "opacity-100 delay-100" : "pointer-events-none opacity-0"}`}

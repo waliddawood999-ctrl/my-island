@@ -20,7 +20,8 @@ pub mod battery;    // GetSystemPowerStatus
 // pub mod dictation;  // Whisper عند المزوّد
 // pub mod agents;     // Claude Code hooks + Codex notify
 // pub mod vpn; pub mod controls; pub mod audio; pub mod privacy;
-// pub mod files;      // فهرس شريط الأوامر (ذاكرة فقط)
+pub mod files;      // فهرس شريط الأوامر (ذاكرة فقط) + تطبيقات + أيقونات
+pub mod palette;    // اختصار شريط الأوامر + الأخيرة + run_shell
 // pub mod linkicon;   // favicon / أيقونة exe
 // pub mod drop_target;
 // pub mod obs;        // WebSocket محلي
@@ -40,12 +41,17 @@ pub fn run() {
         .manage(watchdog::WatchdogState::default())
         .manage(media::MediaState::default())
         .manage(downloads::DownloadsState::default())
+        .manage(files::FilesState::default())
+        .manage(palette::PaletteState::default())
         .plugin(tauri_plugin_single_instance::init(|_, _, _| {}))
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(move |app, sc, ev| {
-                    if sc == &toggle && ev.state() == ShortcutState::Pressed {
+                    if ev.state() != ShortcutState::Pressed { return; }
+                    if sc == &toggle {
                         win::toggle_hidden(app);
+                    } else if palette::is_palette(app, sc) {
+                        palette::open(app);
                     }
                 })
                 .build(),
@@ -67,6 +73,8 @@ pub fn run() {
                     spectrum::start(app.handle());
                     downloads::start(app.handle());
                     battery::start(app.handle());
+                    files::start(app.handle());
+                    palette::rebind(app.handle());
                     // تحديث مسار exe في Run إن كان autostart مفعّلًا (يتتبّع نقل التطبيق).
                     let on = app.state::<state::AppState>().settings.lock().unwrap()
                         .get("autostart").and_then(|v| v.as_bool()).unwrap_or(false);
@@ -116,7 +124,15 @@ pub fn run() {
             media::media_now,
             lyrics::lyrics_get,
             downloads::downloads_list,
-            battery::battery_status
+            battery::battery_status,
+            files::palette_apps,
+            files::palette_icon,
+            files::files_search,
+            files::files_warm,
+            files::files_held,
+            palette::palette_recent,
+            palette::run_shell,
+            palette::open_path
         ])
         .run(tauri::generate_context!())
         .expect("error while running application");

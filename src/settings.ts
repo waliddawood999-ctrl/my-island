@@ -110,5 +110,6 @@ export const DEFAULTS: Partial<Settings> = {
   sttModel: "whisper-large-v3-turbo",
   recordingFps: 30,
   recordFormat: "mp4",
+  hotkeyPalette: "Alt+Space", // فارغ = شريط الأوامر معطّل
   checkUpdates: true,
 };

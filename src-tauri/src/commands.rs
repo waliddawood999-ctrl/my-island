@@ -29,6 +29,12 @@ pub fn settings_set(app: AppHandle, state: State<AppState>, patch: Map<String, V
     if applied.keys().any(|k| matches!(k.as_str(), "monitor" | "offsetX" | "underTaskbar")) {
         win::position_main(&app);
     }
+    if applied.contains_key("hotkeyPalette") {
+        crate::palette::rebind(&app);
+    }
+    if applied.keys().any(|k| matches!(k.as_str(), "paletteFiles" | "paletteFolders")) {
+        crate::files::files_warm(app.clone());
+    }
     if let Some(on) = applied.get("autostart").and_then(Value::as_bool) {
         crate::autostart::apply(on)?;
     }
@@ -43,9 +49,14 @@ pub fn take_focus(app: AppHandle) {
 }
 
 /// تعيد NOACTIVATE وتردّ الفوكس لآخر نافذة تطبيق كانت أمامية.
+/// restore=false (شريط الأوامر عند فقدان الفوكس لتطبيق آخر): NOACTIVATE فقط بلا ردّ فوكس.
 #[tauri::command]
-pub fn release_focus(app: AppHandle) {
-    win::release_focus(&app);
+pub fn release_focus(app: AppHandle, restore: Option<bool>) {
+    if restore == Some(false) {
+        win::drop_focus(&app);
+    } else {
+        win::release_focus(&app);
+    }
 }
 
 /// يفتح نافذة الإعدادات (يُظهرها ويمنحها الفوكس — هي نافذة عادية لا NOACTIVATE).
