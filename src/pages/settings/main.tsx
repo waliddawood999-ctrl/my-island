@@ -233,6 +233,16 @@ function App() {
           <LinesField label={i("تطبيقات مستثناة", "Excluded apps")} value={s.clipExcludedApps ?? []} placeholder="keepassxc.exe" onCommit={(v) => saveSettings({ clipExcludedApps: v })} />
         </Row>
       </Section>
+
+      <Section title={i("النظام والخصوصية", "System & privacy")}>
+        <Row label={i("مؤشر الميكروفون والكاميرا", "Mic & camera indicator")} hint={i("نقطة في الحبة أثناء استخدام أي تطبيق لهما — قراءة محلية لسجلّ ويندوز فقط", "A dot in the pill while any app uses them — local Windows registry read only")}>
+          <Toggle label={i("مؤشر الميكروفون والكاميرا", "Mic & camera indicator")} value={s.privacyIndicator ?? false} onChange={(v) => saveSettings({ privacyIndicator: v })} />
+        </Row>
+        <Row label={i("التحكم بالصوت في قسم النظام", "Volume control in System")}>
+          <Toggle label={i("التحكم بالصوت في قسم النظام", "Volume control in System")} value={s.showVolume ?? true} onChange={(v) => saveSettings({ showVolume: v })} />
+        </Row>
+      </Section>
+
       <Section title={i("الالتقاط والتسجيل", "Capture & recording")}>
         <SubHead>{i("اللقطات", "Screenshots")}</SubHead>
         <Row label={i("إظهار الحبة في اللقطات", "Show the island in captures")} hint={i("مطفأ: الحبة تُستثنى من اللقطات والتسجيل", "Off: the island is excluded from screenshots and recordings")}>

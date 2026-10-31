@@ -39,6 +39,8 @@ import { BatteryChip, DownloadsSection } from "./DownloadsSection";
 import { AttentionSection } from "./AttentionSection";
 import { BatterySection, hasBatteryContent } from "./BatterySection";
 import { useAttention } from "../../useAttention";
+import { SystemSection } from "./SystemSection";
+import { usePrivacy } from "../../useSystem";
 
 /** المقاس الافتراضي للحبة المنكمشة (الفعلي من pillWidth/pillHeight). */
 const PILL_DEFAULT = { w: 220, h: 34 };
@@ -66,6 +68,7 @@ const tabDefs = (shelfOn: boolean, shelfCount: number, launcherOn: boolean) => [
   ...(launcherOn ? [{ id: "launcher", label: i("اللانشر", "Launcher") }] : []),
   { id: "note", label: i("ملاحظة", "Note") },
   { id: "tools", label: i("الأدوات", "Tools") },
+  { id: "system", label: i("النظام", "System") },
   { id: "chat", label: i("المحادثة", "Chat") },
 ];
 
@@ -146,6 +149,7 @@ export function Pill() {
   const showDl = !!settings.showDownloads;
   const dlInPill = !!settings.downloadsInPill;
   const showBat = !!settings.showBattery;
+  const privacy = usePrivacy(!!settings.privacyIndicator);
   const dl = useDownloads(showDl || dlInPill);
   const battery = useBattery(showBat);
   const btOn = settings.btBatteries ?? true;
@@ -442,6 +446,18 @@ export function Pill() {
           hasSession={media.info.session}
           visible={!hidden && opacity > 0}
         />
+        {settings.privacyIndicator && (privacy.mic || privacy.cam) && (
+          <div
+            dir="ltr"
+            role="status"
+            aria-label={[privacy.cam && i("الكاميرا قيد الاستخدام", "Camera in use"), privacy.mic && i("الميكروفون قيد الاستخدام", "Microphone in use")].filter(Boolean).join(" · ")}
+            title={[privacy.cam && i("الكاميرا قيد الاستخدام", "Camera in use"), privacy.mic && i("الميكروفون قيد الاستخدام", "Microphone in use")].filter(Boolean).join(" · ")}
+            className="pointer-events-none absolute left-3 top-3 z-30 flex gap-1"
+          >
+            {privacy.cam && <span className="h-2 w-2 rounded-full bg-green-400 shadow-[0_0_6px_rgb(74_222_128)]" />}
+            {privacy.mic && <span className="h-2 w-2 rounded-full bg-orange-400 shadow-[0_0_6px_rgb(251_146_60)]" />}
+          </div>
+        )}
         <motion.div
           aria-label={i("الساعة", "Clock")}
           initial={false}
@@ -627,6 +643,11 @@ export function Pill() {
                 {curTab === "tools" && (
                   <div className="min-h-0 flex-1">
                     <ToolsTab />
+                  </div>
+                )}
+                {curTab === "system" && (
+                  <div className="min-h-0 flex-1 overflow-y-auto">
+                    <SystemSection showVolume={settings.showVolume ?? true} />
                   </div>
                 )}
                 {curTab === "clip" && (
