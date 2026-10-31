@@ -8,7 +8,15 @@ export type DownloadItem = {
 };
 export type DoneItem = { name: string; path: string; size: number; at: number };
 export type DownloadsSnap = { active: DownloadItem[]; recent: DoneItem[] };
-export type Battery = { has_battery: boolean; percent: number | null; ac: boolean; charging: boolean };
+export type BtBattery = { name: string; percent: number };
+export type Battery = {
+  has_battery: boolean; percent: number | null; ac: boolean; charging: boolean;
+  /** دقائق حتى النفاد (على البطارية) أو الامتلاء (يشحن)؛ null = غير معروف. */
+  remaining_min?: number | null;
+  /** يشحن وفوق/عند 80% */
+  unplug_tip?: boolean;
+  bt?: BtBattery[];
+};
 
 const EMPTY: DownloadsSnap = { active: [], recent: [] };
 

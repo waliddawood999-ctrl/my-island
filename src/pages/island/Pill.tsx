@@ -24,6 +24,7 @@ import { Palette } from "./Palette";
 import { TabBar } from "./TabBar";
 import { BatteryChip, DownloadsSection } from "./DownloadsSection";
 import { AttentionSection } from "./AttentionSection";
+import { BatterySection, hasBatteryContent } from "./BatterySection";
 import { useAttention } from "../../useAttention";
 
 const PILL = { w: 200, h: 32 };
@@ -111,6 +112,7 @@ export function Pill() {
   const showBat = !!settings.showBattery;
   const dl = useDownloads(showDl || dlInPill);
   const battery = useBattery(showBat);
+  const btOn = settings.btBatteries ?? true;
   const attentionOn = settings.attentionTracking ?? true;
   const attention = useAttention(attentionOn);
   // downloadsInPill: أكبر تنزيل جارٍ (نسبة إن عُرفت وإلا الحجم) تتقدم على عنوان الميديا.
@@ -424,13 +426,14 @@ export function Pill() {
                         <MediaSection media={media} showLyrics={!!(settings.lyricsInHome || settings.lyricsInPlayer)} />
                       </motion.div>
                     )}
-                    {(showDl || (showBat && battery?.has_battery) || (attentionOn && attention?.enabled)) && (
-                      <motion.div custom={1} variants={sectionVariants} initial="initial" animate="animate" className="flex min-h-0 w-60 shrink-0 flex-col gap-3 border-s border-white/10 ps-3">
-                        {(showDl || (showBat && battery?.has_battery)) && (
-                          <div className="min-h-0 flex-1">
-                            <DownloadsSection snap={dl} battery={showBat ? battery : null} showDownloads={showDl} />
+                    {(showDl || (showBat && hasBatteryContent(battery, btOn)) || (attentionOn && attention?.enabled)) && (
+                      <motion.div custom={1} variants={sectionVariants} initial="initial" animate="animate" className="flex min-h-0 w-60 shrink-0 flex-col gap-3 overflow-y-auto border-s border-white/10 ps-3">
+                        {showDl && (
+                          <div className="min-h-[56px] flex-1">
+                            <DownloadsSection snap={dl} battery={null} showDownloads />
                           </div>
                         )}
+                        {showBat && <BatterySection b={battery} tip={settings.batteryTip ?? true} btOn={btOn} />}
                         {attentionOn && <AttentionSection snap={attention} />}
                       </motion.div>
                     )}

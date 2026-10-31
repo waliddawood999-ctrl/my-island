@@ -105,6 +105,12 @@ function App() {
         <Row label={i("إظهار البطارية", "Show battery")}>
           <Toggle label={i("إظهار البطارية", "Show battery")} value={s.showBattery ?? false} onChange={(v) => saveSettings({ showBattery: v })} />
         </Row>
+        <Row label={i("نصيحة «افصل الشاحن عند 80%»", "“Unplug at 80%” tip")} hint={i("في قسم البطارية أثناء الشحن", "In the battery section while charging")}>
+          <Toggle label={i("نصيحة «افصل الشاحن عند 80%»", "“Unplug at 80%” tip")} value={s.batteryTip ?? true} onChange={(v) => saveSettings({ batteryTip: v })} />
+        </Row>
+        <Row label={i("بطاريات أجهزة البلوتوث", "Bluetooth device batteries")} hint={i("يقرأ محليًا مستوى الأجهزة المتصلة (BLE) التي تُبلغه، كل 5 دقائق", "Reads, locally, the level of connected (BLE) devices that report it, every 5 min")}>
+          <Toggle label={i("بطاريات أجهزة البلوتوث", "Bluetooth device batteries")} value={s.btBatteries ?? true} onChange={(v) => saveSettings({ btBatteries: v })} />
+        </Row>
       </Section>
 
       <Section title={i("وقتي والاستراحة", "My time & breaks")}>

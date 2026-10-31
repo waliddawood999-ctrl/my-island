@@ -24,6 +24,8 @@ export interface Settings {
   showClock:boolean,
   clockFormat:'auto'|'24'|'12',
   showBattery:boolean,
+  btBatteries:boolean,
+  batteryTip:boolean,
   attentionTracking:boolean,
   breakReminders:boolean,
   breakMinutes:number,
@@ -123,4 +125,6 @@ export const DEFAULTS: Partial<Settings> = {
   attentionTracking: true, // «وقتي»: يعمل افتراضيًا ومحلي فقط؛ false = إيقاف كامل بلا مراقبة ولا كتابة
   breakReminders: false,   // تذكير استراحة بعد استخدام متواصل (صريح من المستخدم)
   breakMinutes: 60,        // مدة الاستخدام المتواصل قبل التذكير (دقائق)
+  btBatteries: true,       // قسم البطارية: بطاريات أجهزة البلوتوث (BLE/GATT) المتصلة؛ يعمل فقط مع showBattery
+  batteryTip: true,        // قسم البطارية: نصيحة «افصل الشاحن عند 80%» أثناء الشحن
 };

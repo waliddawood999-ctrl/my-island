@@ -38,7 +38,9 @@ pub fn defaults() -> Map<String, Value> {
         "checkUpdates": true,
         "attentionTracking": true,
         "breakReminders": false,
-        "breakMinutes": 60
+        "breakMinutes": 60,
+        "btBatteries": true,
+        "batteryTip": true
     }) else { unreachable!() };
     m
 }
