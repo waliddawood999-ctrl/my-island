@@ -30,6 +30,8 @@ pub fn defaults() -> Map<String, Value> {
         "recordingFps": 30,
         "recordFormat": "mp4",
         "hotkeyPalette": "Alt+Space",
+        "hotkeyArea": "Ctrl+Alt+A",
+        "hotkeyScreen": "Ctrl+Alt+S",
         "checkUpdates": true
     }) else { unreachable!() };
     m

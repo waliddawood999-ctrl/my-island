@@ -111,5 +111,7 @@ export const DEFAULTS: Partial<Settings> = {
   recordingFps: 30,
   recordFormat: "mp4",
   hotkeyPalette: "Alt+Space", // فارغ = شريط الأوامر معطّل
+  hotkeyArea: "Ctrl+Alt+A",   // لقطة منطقة؛ فارغ = معطّل؛ "PrintScreen" يعترض زر Print Screen
+  hotkeyScreen: "Ctrl+Alt+S", // لقطة الشاشة كاملة (تحت المؤشر)
   checkUpdates: true,
 };

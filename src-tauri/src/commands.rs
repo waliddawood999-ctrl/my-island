@@ -32,6 +32,12 @@ pub fn settings_set(app: AppHandle, state: State<AppState>, patch: Map<String, V
     if applied.contains_key("hotkeyPalette") {
         crate::palette::rebind(&app);
     }
+    if applied.keys().any(|k| matches!(k.as_str(), "hotkeyArea" | "hotkeyScreen")) {
+        crate::capture::rebind(&app);
+    }
+    if applied.contains_key("captureVisible") {
+        crate::capture::apply_affinity(&app);
+    }
     if applied.keys().any(|k| matches!(k.as_str(), "paletteFiles" | "paletteFolders")) {
         crate::files::files_warm(app.clone());
     }
@@ -76,6 +82,11 @@ pub struct MonitorInfo {
     pub width: u32,
     pub height: u32,
     pub primary: bool,
+    /// موضع الشاشة بالبكسلات الفعلية في سطح المكتب الافتراضي.
+    pub x: i32,
+    pub y: i32,
+    /// معامل DPI لهذه الشاشة (1.0 = 100%).
+    pub scale: f64,
 }
 
 /// الشاشات بترتيب الفهرس نفسه الذي يستعمله monitor في win::position_main.
@@ -92,6 +103,9 @@ pub fn monitors_list(app: AppHandle) -> Vec<MonitorInfo> {
             width: m.size().width,
             height: m.size().height,
             primary: primary == Some((m.position().x, m.position().y)),
+            x: m.position().x,
+            y: m.position().y,
+            scale: m.scale_factor(),
         })
         .collect()
 }

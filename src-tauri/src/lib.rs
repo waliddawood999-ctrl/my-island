@@ -12,7 +12,7 @@ pub mod spectrum;   // WASAPI loopback + FFT
 pub mod lyrics;     // LRCLIB
 pub mod downloads;  // مجلد التنزيلات + Steam (مدمج في الملف نفسه)
 pub mod battery;    // GetSystemPowerStatus
-// pub mod capture;    // لقطات + overlay
+pub mod capture;    // لقطات منطقة/شاشة + overlay
 // pub mod recorder;   // Media Foundation / GIF
 // pub mod ocr;        // Windows.Media.Ocr
 // pub mod ai;         // بث SSE لأي OpenAI-compatible
@@ -43,6 +43,7 @@ pub fn run() {
         .manage(downloads::DownloadsState::default())
         .manage(files::FilesState::default())
         .manage(palette::PaletteState::default())
+        .manage(capture::CaptureState::default())
         .plugin(tauri_plugin_single_instance::init(|_, _, _| {}))
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
@@ -52,6 +53,8 @@ pub fn run() {
                         win::toggle_hidden(app);
                     } else if palette::is_palette(app, sc) {
                         palette::open(app);
+                    } else {
+                        capture::on_shortcut(app, sc);
                     }
                 })
                 .build(),
@@ -75,6 +78,7 @@ pub fn run() {
                     battery::start(app.handle());
                     files::start(app.handle());
                     palette::rebind(app.handle());
+                    capture::rebind(app.handle());
                     // تحديث مسار exe في Run إن كان autostart مفعّلًا (يتتبّع نقل التطبيق).
                     let on = app.state::<state::AppState>().settings.lock().unwrap()
                         .get("autostart").and_then(|v| v.as_bool()).unwrap_or(false);
@@ -87,6 +91,7 @@ pub fn run() {
                 let _ = w.set_skip_taskbar(true);
             }
             win::position_main(app.handle());
+            capture::apply_affinity(app.handle());
             if let Err(e) = app.global_shortcut().register(toggle) {
                 eprintln!("تعذّر تسجيل Ctrl+Alt+I: {e}");
             }
@@ -132,7 +137,14 @@ pub fn run() {
             files::files_held,
             palette::palette_recent,
             palette::run_shell,
-            palette::open_path
+            palette::open_path,
+            capture::capture_start,
+            capture::capture_frame,
+            capture::capture_ready,
+            capture::capture_region,
+            capture::capture_cancel,
+            capture::open_captures,
+            capture::prtsc_taken
         ])
         .run(tauri::generate_context!())
         .expect("error while running application");
