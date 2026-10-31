@@ -4,9 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 import { animate, AnimatePresence, motion, useMotionValue, useTransform } from "motion/react";
 import { dur, ease, eyeBlink, spring, useEco, useMotionLevel } from "../../motion";
 import { i } from "../../i18n";
-import { blinkDelay, eyeGeometry, eyeMode, eyeOffset, eyesHidden, POSES, type EyeMode, type Look } from "../../eyes";
-
-const G = eyeGeometry();
+import { BLINK_X, blinkDelay, eyeMode, eyeOffset, eyesHidden, GAP, GEOM, POSES, type EyeMode, type Look } from "../../eyes";
 
 /** هل الصفحة ظاهرة؟ (مخفية ⇒ لا تتبّع ولا مؤقّتات.) */
 function usePageVisible(): boolean {
@@ -53,13 +51,13 @@ function EyePair({ tracking }: { tracking: boolean }) {
   const root = useRef<HTMLDivElement>(null);
   const [mode, setMode] = useState<EyeMode>("awake");
   const modeRef = useRef<EyeMode>("awake");
-  // قيم الحركة: الإزاحة، وضعية الحالة، والرمشة (مستقلة فتتراكب).
+  // قيم الحركة: الإزاحة، وضعية الحالة (أبعاد/استدارة/ميلان/قصّ)، والرمشة (ضغط العرض) — مستقلة فتتراكب.
   const ox = useMotionValue(0), oy = useMotionValue(0);
-  const sx = useMotionValue(1), sy = useMotionValue(1), rot = useMotionValue(POSES.awake.rot), py = useMotionValue(0), op = useMotionValue(1);
+  const P0 = POSES.awake;
+  const w = useMotionValue(P0.w), h = useMotionValue(P0.h), r = useMotionValue(P0.r), rot = useMotionValue(P0.rot), cut = useMotionValue(P0.cut);
   const blink = useMotionValue(1);
-  const y = useTransform([oy, py], ([a, b]: number[]) => a + b);
-  const scaleY = useTransform([sy, blink], ([a, b]: number[]) => a * b);
-  const rotL = useTransform(rot, (r) => -r);
+  // هوامش سالبة: لا يُقصّ ميلان الكبسولة الممتلئة.
+  const clip = useTransform(cut, (c) => `inset(${c * GEOM.h - 4 * Math.max(0, 1 - 2 * c)}px -6px -6px -6px)`);
 
   // التتبّع: الخلفية تبثّ mascot:look فقط أثناء التفعيل (خيط مركون وإلا). تفعيل/إيقاف حسب `tracking`.
   useEffect(() => {
@@ -85,9 +83,9 @@ function EyePair({ tracking }: { tracking: boolean }) {
   // وضعية الحالة.
   useEffect(() => {
     const p = POSES[mode];
-    const c = [animate(sx, p.sx, spring.eye), animate(sy, p.sy, spring.eye), animate(rot, p.rot, spring.eye), animate(py, p.y, spring.eye), animate(op, p.opacity, spring.eye)];
+    const c = [animate(w, p.w, spring.eye), animate(h, p.h, spring.eye), animate(r, p.r, spring.eye), animate(rot, p.rot, spring.eye), animate(cut, p.cut, spring.eye)];
     return () => c.forEach((a) => a.stop());
-  }, [mode, sx, sy, rot, py, op]);
+  }, [mode, w, h, r, rot, cut]);
 
   // رمشة دورية: مؤقّت واحد ما دامت العيون مستيقظة وظاهرة؛ لا شيء في النوم/السعادة/الإخفاء.
   useEffect(() => {
@@ -96,7 +94,7 @@ function EyePair({ tracking }: { tracking: boolean }) {
     let live = true;
     const arm = () => {
       t = window.setTimeout(async () => {
-        await animate(blink, 0.08, eyeBlink.close);
+        await animate(blink, BLINK_X, eyeBlink.close);
         await animate(blink, 1, eyeBlink.open);
         if (live) arm();
       }, blinkDelay(Math.random(), eyeBlink.minMs, eyeBlink.maxMs));
@@ -105,11 +103,16 @@ function EyePair({ tracking }: { tracking: boolean }) {
     return () => { live = false; window.clearTimeout(t); blink.set(1); };
   }, [tracking, mode, blink]);
 
-  const eye = (rotate: typeof rot) => (
-    <motion.span
-      style={{ width: G.w, height: G.h, scaleX: sx, scaleY, rotate, opacity: op }}
-      className="block rounded-full bg-white"
-    />
+  // خانة ثابتة العرض (المركزان 22px) تحمل غلاف القصّ (بلا دوران: سطح النعاس أفقي) ثم الكبسولة المائلة.
+  const eye = (k: string) => (
+    <span key={k} className="flex items-center justify-center" style={{ width: GEOM.slotW, height: GEOM.h }}>
+      <motion.span style={{ clipPath: clip, width: GEOM.slotW, height: "100%" }} className="flex items-center justify-center">
+        <motion.span
+          style={{ width: w, height: h, borderRadius: r, rotate: rot, scaleX: blink }}
+          className="block shrink-0 bg-current"
+        />
+      </motion.span>
+    </span>
   );
   return (
     <motion.div
@@ -119,12 +122,12 @@ function EyePair({ tracking }: { tracking: boolean }) {
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: 1, transition: spring.content }}
       exit={{ opacity: 0, scale: 0.8, transition: { duration: dur.fast, ease: ease.inOut } }}
-      style={{ x: ox, y, gap: G.gap, height: G.h }}
+      style={{ x: ox, y: oy, gap: GAP, height: GEOM.h }}
       className="flex items-center"
       dir="ltr"
     >
-      {eye(rotL)}
-      {eye(rot)}
+      {eye("l")}
+      {eye("r")}
     </motion.div>
   );
 }

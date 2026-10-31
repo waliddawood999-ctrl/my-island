@@ -1,18 +1,18 @@
 /**
  * منطق عيون التميمة الخالص (بلا React ولا Tauri) — يُختبَر بـ scripts/eyes.test.mjs.
- * الهندسة مأخوذة بنسب islandly الدقيقة ومكيَّفة تناسبيًا لارتفاع حبتنا (32px):
- * في islandly: عينان كبسوليتان 13×26 داخل حبة 138×36، ميلان 11°، مسافة المركزين 22px (فجوة ≈9px).
- * العيون مرسومة بالكود فقط (div كبسولي) — لا Lottie ولا صور.
+ * مطابقة بصرية لورقتي مواصفات islandly (كبسولات سميكة جريئة كعيون روبوت): الأصل 13×26 داخل حبة 138×36،
+ * ميلان 11° (العينان تميلان باتجاه واحد: القمة نحو اليسار «\ \»)، مسافة المركزين 22px، فجوة ≈8.6px.
+ * على حبتنا (32px): كبسولة 13.5×24.5 (≈77% من ارتفاع الحبة)، مركزان 22px، فجوة 8.5px.
+ * العيون مرسومة بالكود فقط (div) — لا Lottie ولا صور. اللون = لون نص الحبة (أبيض على الداكنة، أسود على الفاتحة).
  */
 export const REF = { pillH: 36, w: 13, h: 26, tilt: 11, centers: 22 } as const;
 /** ارتفاع حبتنا المنكمشة. */
 export const PILL_H = 32;
 
-export interface EyeGeometry { w: number; h: number; tilt: number; centers: number; gap: number }
-export function eyeGeometry(pillH: number = PILL_H): EyeGeometry {
-  const k = pillH / REF.pillH;
-  return { w: REF.w * k, h: REF.h * k, tilt: REF.tilt, centers: REF.centers * k, gap: (REF.centers - REF.w) * k };
-}
+/** الأبعاد النهائية على حبتنا (px). slotW = عرض خانة العين (أوسع حالة) والمركزان ثابتان 22px. */
+export const GEOM = { w: 13.5, h: 24.5, tilt: 11, centers: 22, slotW: 13.5 } as const;
+/** الفجوة بين الكبسولتين المفتوحتين = المركزان − العرض. */
+export const GAP = GEOM.centers - GEOM.w;
 
 /** مسافة الاستيقاظ (px) — يطابق mascot::NEAR_PX في الخلفية. */
 export const NEAR_PX = 240;
@@ -29,23 +29,38 @@ export function eyeMode(l: Look | null): EyeMode {
   return l.near ? "awake" : "sleepy";
 }
 
-export interface Pose { sx: number; sy: number; rot: number; y: number; opacity: number }
-/** وضعيات الحالات (كلها نسبة إلى العين المفتوحة). rot = الميلان بالدرجات (يُعكس للعين الأخرى). */
+/**
+ * وضعية العين: w/h/radius بالـpx (تُحرَّك فعليًا فتبقى الحواف مستديرة تمامًا)، rot درجات (سالب = القمة لليسار)،
+ * cut = نسبة القصّ من الأعلى (0 = كاملة · 0.5 = نصف سفلي بسطح علوي مستوٍ أفقيًا بعد الدوران).
+ */
+export interface Pose { w: number; h: number; r: number; rot: number; cut: number; y: number }
 export const POSES: Record<EyeMode, Pose> = {
-  awake: { sx: 1, sy: 1, rot: REF.tilt, y: 0, opacity: 1 },
-  sleepy: { sx: 1.18, sy: 0.24, rot: 4, y: 1, opacity: 0.72 },
-  happy: { sx: 1.2, sy: 0.44, rot: 18, y: -1, opacity: 1 },
+  /** كبسولتان ممتلئتان (stadium). */
+  awake: { w: GEOM.w, h: GEOM.h, r: GEOM.w / 2, rot: -GEOM.tilt, cut: 0, y: 0 },
+  /** نصف مغلقة من الأعلى: نصف سفلي ممتلئ بسطح علوي مستوٍ، بلا ميلان. */
+  sleepy: { w: GEOM.w, h: GEOM.h, r: GEOM.w / 2, rot: 0, cut: 0.5, y: 0 },
+  /** انضغاط سعيد: كتلتان مضغوطتان بحواف مستديرة. */
+  happy: { w: 12.5, h: 12, r: 4.5, rot: -8, cut: 0, y: 0 },
 };
+/** عرض العين عند منتصف الرمشة: خط رفيع مائل (يُضغط العرض لا الارتفاع) — نسبة من العرض. */
+export const BLINK_X = 0.12;
 
 /**
  * إزاحة انزلاق المجموعة نحو المؤشر: dx/dy = المؤشر − مركز العينين (px، فيزيائي).
  * منحنى tanh ناعم: يتناسب مع المسافة قرب المركز ثم يشبع عند حدّ الحبة — لا اتجاهات ثابتة.
+ * الحدّ الرأسي صغير كي تبقى الكبسولة المائلة (≈26.6px) داخل الحبة 32px.
  */
 export function eyeOffset(dx: number, dy: number, pillH: number = PILL_H): { x: number; y: number } {
   const maxX = pillH * 0.16;
-  const maxY = pillH * 0.09;
+  const maxY = pillH * 0.06;
   return { x: maxX * Math.tanh(dx / 110), y: maxY * Math.tanh(dy / 60) };
 }
+
+/** الامتداد الرأسي للكبسولة المائلة (px). */
+export const tiltedExtent = (w = GEOM.w, h = GEOM.h, deg = GEOM.tilt): number => {
+  const a = (deg * Math.PI) / 180;
+  return h * Math.cos(a) + w * Math.sin(a);
+};
 
 /** ترتيب العينين/الساعة ينعكس بالعربية فقط (التتبّع لا يتأثر). */
 export const rowReversed = (lang: "ar" | "en"): boolean => lang === "ar";
