@@ -1,5 +1,7 @@
 // هيكل الوحدات — يعكس شجرة الأصل المستعادة من الباينري (27 وحدة)
 // فعّل الوحدات مرحلةً مرحلة حسب خطة المخطط (BLUEPRINT.md §11)
+pub mod migrate;    // ترحيلات island.db المرقّمة
+pub mod attention;  // وقتي: زمن تركيز التطبيقات + تذكير الاستراحة
 pub mod state;      // AppState: إعدادات + جلسات + حالة النوافذ
 pub mod commands;   // طبقة الأوامر العامة (settings_get/set ...)
 pub mod win;        // موضع/إخفاء/فوكس النافذة الرئيسية
@@ -90,6 +92,7 @@ pub fn run() {
                     spectrum::start(app.handle());
                     downloads::start(app.handle());
                     battery::start(app.handle());
+                    attention::start(app.handle());
                     files::start(app.handle());
                     palette::rebind(app.handle());
                     capture::rebind(app.handle());
@@ -148,6 +151,8 @@ pub fn run() {
             lyrics::lyrics_get,
             downloads::downloads_list,
             battery::battery_status,
+            attention::attention_today,
+            attention::attention_clear,
             files::palette_apps,
             files::palette_icon,
             files::files_search,

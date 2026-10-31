@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { Bell, Settings as SettingsIcon, Timer as TimerIcon } from "lucide-react";
+import { Bell, Coffee, Settings as SettingsIcon, Timer as TimerIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { dur, ease, paletteVariants, sectionVariants, spring, swapVariants, tap } from "../../motion";
 import { i } from "../../i18n";
@@ -23,6 +23,8 @@ import { Liquid } from "./Liquid";
 import { Palette } from "./Palette";
 import { TabBar } from "./TabBar";
 import { BatteryChip, DownloadsSection } from "./DownloadsSection";
+import { AttentionSection } from "./AttentionSection";
+import { useAttention } from "../../useAttention";
 
 const PILL = { w: 200, h: 32 };
 /** تنبيه تذكير/مؤقّت: حبة أعرض قليلًا تعرض النص حتى يُنقر عليها أو تنتهي المهلة. */
@@ -109,6 +111,8 @@ export function Pill() {
   const showBat = !!settings.showBattery;
   const dl = useDownloads(showDl || dlInPill);
   const battery = useBattery(showBat);
+  const attentionOn = settings.attentionTracking ?? true;
+  const attention = useAttention(attentionOn);
   // downloadsInPill: أكبر تنزيل جارٍ (نسبة إن عُرفت وإلا الحجم) تتقدم على عنوان الميديا.
   const biggest = dlInPill ? [...dl.active].sort((a, b) => b.size - a.size)[0] : undefined;
   const dlText = biggest ? (biggest.percent != null ? `⬇ ${Math.round(biggest.percent)}%` : `⬇ ${fmtBytes(biggest.size)}`) : null;
@@ -325,7 +329,7 @@ export function Pill() {
               ) : alert && !open ? (
                 <span dir="auto" className="flex max-w-full items-center gap-2 px-3" role="alert">
                   <motion.span animate={{ rotate: [0, -16, 14, -10, 0] }} transition={{ duration: dur.alert, repeat: 2 }}>
-                    {alert.kind === "timer" ? <TimerIcon size={15} /> : <Bell size={15} />}
+                    {alert.kind === "timer" ? <TimerIcon size={15} /> : alert.kind === "break" ? <Coffee size={15} /> : <Bell size={15} />}
                   </motion.span>
                   <span className="truncate">
                     {alert.text || (alert.kind === "timer" ? i("انتهى المؤقّت", "Timer finished") : i("تذكير", "Reminder"))}
@@ -398,7 +402,7 @@ export function Pill() {
                 dir="auto"
                 className="absolute bottom-3 left-1/2 z-20 flex max-w-[80%] -translate-x-1/2 items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-[13px] backdrop-blur"
               >
-                {alert.kind === "timer" ? <TimerIcon size={15} /> : <Bell size={15} />}
+                {alert.kind === "timer" ? <TimerIcon size={15} /> : alert.kind === "break" ? <Coffee size={15} /> : <Bell size={15} />}
                 <span className="truncate">{alert.text || (alert.kind === "timer" ? i("انتهى المؤقّت", "Timer finished") : i("تذكير", "Reminder"))}</span>
               </motion.button>
             )}
@@ -420,9 +424,14 @@ export function Pill() {
                         <MediaSection media={media} showLyrics={!!(settings.lyricsInHome || settings.lyricsInPlayer)} />
                       </motion.div>
                     )}
-                    {(showDl || (showBat && battery?.has_battery)) && (
-                      <motion.div custom={1} variants={sectionVariants} initial="initial" animate="animate" className="min-h-0 w-60 shrink-0 border-s border-white/10 ps-3">
-                        <DownloadsSection snap={dl} battery={showBat ? battery : null} showDownloads={showDl} />
+                    {(showDl || (showBat && battery?.has_battery) || (attentionOn && attention?.enabled)) && (
+                      <motion.div custom={1} variants={sectionVariants} initial="initial" animate="animate" className="flex min-h-0 w-60 shrink-0 flex-col gap-3 border-s border-white/10 ps-3">
+                        {(showDl || (showBat && battery?.has_battery)) && (
+                          <div className="min-h-0 flex-1">
+                            <DownloadsSection snap={dl} battery={showBat ? battery : null} showDownloads={showDl} />
+                          </div>
+                        )}
+                        {attentionOn && <AttentionSection snap={attention} />}
                       </motion.div>
                     )}
                   </div>

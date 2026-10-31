@@ -107,6 +107,30 @@ function App() {
         </Row>
       </Section>
 
+      <Section title={i("وقتي والاستراحة", "My time & breaks")}>
+        <Row
+          label={i("تتبّع زمن التركيز (وقتي)", "Focus-time tracking")}
+          hint={i(
+            "يعمل افتراضيًا. يسجّل اسم التطبيق الأمامي فقط (بلا عناوين نوافذ أو محتوى) أثناء نشاطك، ويتوقف عند الخمول أكثر من 60 ثانية. يُحفظ على جهازك فقط 30 يومًا ولا يُرسل لأي مكان.",
+            "On by default. Records only the foreground app name (no window titles or content) while you're active; pauses after 60 s idle. Stored on this device only for 30 days, never sent anywhere.",
+          )}
+        >
+          <Toggle label={i("تتبّع زمن التركيز (وقتي)", "Focus-time tracking")} value={s.attentionTracking ?? true} onChange={(v) => saveSettings({ attentionTracking: v })} />
+        </Row>
+        <Row label={i("تذكير الاستراحة", "Break reminders")} hint={i("إشعار داخل التطبيق بعد استخدام متواصل (استراحة 5 دقائق تصفّر العدّ)", "In-app notice after continuous use (a 5-minute pause resets the count)")}>
+          <Toggle label={i("تذكير الاستراحة", "Break reminders")} value={s.breakReminders ?? false} onChange={(v) => saveSettings({ breakReminders: v })} />
+        </Row>
+        <Row label={i("مدة الاستخدام المتواصل (دقيقة)", "Continuous use before a break (min)")}>
+          <NumberField label={i("مدة الاستخدام المتواصل (دقيقة)", "Continuous use before a break (min)")} value={s.breakMinutes ?? 60} min={5} max={240} onCommit={(v) => saveSettings({ breakMinutes: v })} />
+        </Row>
+        <Row label={i("مسح بيانات وقتي", "Clear My-time data")} hint={i("يحذف كل ما سُجّل محليًا", "Deletes everything recorded locally")}>
+          <button
+            onClick={() => invoke("attention_clear").catch(() => {})}
+            className="rounded-lg bg-white/10 px-3 py-1 text-sm hover:bg-white/20"
+          >{i("مسح", "Clear")}</button>
+        </Row>
+      </Section>
+
       <Section title={i("الالتقاط والتسجيل", "Capture & recording")}>
         <Row label={i("إظهار الحبة في اللقطات", "Show the island in captures")} hint={i("مطفأ: الحبة تُستثنى من اللقطات والتسجيل", "Off: the island is excluded from screenshots and recordings")}>
           <Toggle label={i("إظهار الحبة في اللقطات", "Show the island in captures")} value={s.captureVisible ?? false} onChange={(v) => saveSettings({ captureVisible: v })} />

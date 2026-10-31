@@ -35,7 +35,10 @@ pub fn defaults() -> Map<String, Value> {
         "hotkeyRecord": "Ctrl+Alt+R",
         "hotkeyColor": "Ctrl+Alt+C",
         "recordingQuality": "medium",
-        "checkUpdates": true
+        "checkUpdates": true,
+        "attentionTracking": true,
+        "breakReminders": false,
+        "breakMinutes": 60
     }) else { unreachable!() };
     m
 }
@@ -70,8 +73,9 @@ impl AppState {
     /// يفتح island.db في dir، ينفّذ schema.sql، ويدمج kv فوق الافتراضيات.
     pub fn init_db(&self, dir: PathBuf) -> Result<(), String> {
         std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-        let conn = Connection::open(dir.join("island.db")).map_err(|e| e.to_string())?;
+        let mut conn = Connection::open(dir.join("island.db")).map_err(|e| e.to_string())?;
         conn.execute_batch(include_str!("../schema.sql")).map_err(|e| e.to_string())?;
+        crate::migrate::run(&mut conn, crate::migrate::MIGRATIONS).map_err(|e| e.to_string())?;
         let mut merged = defaults();
         {
             let mut st = conn.prepare("SELECT key, value FROM kv").map_err(|e| e.to_string())?;

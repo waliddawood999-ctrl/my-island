@@ -24,6 +24,9 @@ export interface Settings {
   showClock:boolean,
   clockFormat:'auto'|'24'|'12',
   showBattery:boolean,
+  attentionTracking:boolean,
+  breakReminders:boolean,
+  breakMinutes:number,
   mediaPill:string,
   lyricsInPlayer:boolean,
   lyricsInHome:boolean,
@@ -117,4 +120,7 @@ export const DEFAULTS: Partial<Settings> = {
   hotkeyColor: "Ctrl+Alt+C",  // منتقي الألوان؛ فارغ = معطّل
   recordingQuality: "medium", // low | medium | high
   checkUpdates: true,
+  attentionTracking: true, // «وقتي»: يعمل افتراضيًا ومحلي فقط؛ false = إيقاف كامل بلا مراقبة ولا كتابة
+  breakReminders: false,   // تذكير استراحة بعد استخدام متواصل (صريح من المستخدم)
+  breakMinutes: 60,        // مدة الاستخدام المتواصل قبل التذكير (دقائق)
 };

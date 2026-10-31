@@ -2,10 +2,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { RepeatKind } from "./reminderParse";
+import { i } from "./i18n";
 
 export interface Reminder { id: string; text: string; at: number; repeat: RepeatKind; done: boolean }
 export interface TimerState { endsAt: number; totalMs: number; label: string }
-export interface NoteAlert { kind: "reminder" | "timer"; id: string; text: string; at: number; late: boolean }
+export interface NoteAlert { kind: "reminder" | "timer" | "break"; id: string; text: string; at: number; late: boolean }
 export interface Folder { id: string; name: string }
 
 /** يظهر المؤقّت في الحبة المنكمشة حين يتبقى هذا الزمن (ms) أو أقل. */
@@ -71,7 +72,17 @@ export function useNoteAlert() {
       window.clearTimeout(t.current);
       t.current = window.setTimeout(() => setAlert(null), ALERT_MS);
     });
-    return () => { un.then((f) => f()); window.clearTimeout(t.current); };
+    // تذكير الاستراحة (attention.rs) يمرّ بنفس شريط التنبيه.
+    const unBreak = listen<number>("attention:break", (e) => {
+      const min = Number(e.payload) || 60;
+      setAlert({
+        kind: "break", id: `break-${Date.now()}`, at: Date.now(), late: false,
+        text: i(`خذ استراحة — ${min} دقيقة متواصلة`, `Take a break — ${min} min straight`),
+      });
+      window.clearTimeout(t.current);
+      t.current = window.setTimeout(() => setAlert(null), ALERT_MS);
+    });
+    return () => { un.then((f) => f()); unBreak.then((f) => f()); window.clearTimeout(t.current); };
   }, []);
   return { alert, dismiss };
 }
