@@ -1,0 +1,23 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "MyIsland",
+  "version": "0.1.0",
+  "identifier": "app.myisland.desktop",
+  "build": { "frontendDist": "../dist", "devUrl": "http://localhost:1420", "beforeDevCommand": "npm run dev", "beforeBuildCommand": "npm run build" },
+  "app": {
+    "windows": [
+      { "label": "main", "url": "index.html", "width": 760, "height": 560, "decorations": false, "transparent": true, "alwaysOnTop": true, "skipTaskbar": true, "shadow": false, "focus": false, "x": 0, "y": 0 },
+      { "label": "overlay", "url": "overlay.html", "decorations": false, "transparent": true, "alwaysOnTop": true, "skipTaskbar": true, "visible": false },
+      { "label": "settings", "url": "settings.html", "title": "Settings", "width": 880, "height": 620, "visible": false },
+      { "label": "editor", "url": "editor.html", "title": "Editor", "width": 900, "height": 640, "visible": false }
+    ],
+    "security": { "csp": null }
+  },
+  "bundle": { "active": true, "targets": ["nsis"], "category": "Productivity" },
+  "plugins": {
+    "updater": {
+      "endpoints": ["https://github.com/YOU/REPO/releases/latest/download/latest.json"],
+      "pubkey": "PUT_YOUR_MINISIGN_PUBLIC_KEY_HERE"
+    }
+  }
+}
