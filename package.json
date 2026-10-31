@@ -12,7 +12,8 @@
     "test:motion": "node scripts/motion.test.mjs",
     "test:tabs": "node scripts/tabs.regression.cjs",
     "test:eyes": "node scripts/eyes.test.mjs",
-    "test:wow": "node scripts/wow.test.mjs"
+    "test:wow": "node scripts/wow.test.mjs",
+    "test:clip": "node scripts/clipActions.test.mjs"
   },
   "dependencies": {
     "@fontsource/almarai": "^5.3.0",

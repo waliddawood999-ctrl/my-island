@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Pin, PinOff, Search, Trash2, X } from "lucide-react";
 import { i } from "../../i18n";
+import { ClipActions } from "./ClipActions";
 
 type Clip = {
   id: number;
@@ -129,6 +130,7 @@ export function ClipboardTab() {
                   {c.text}
                 </p>
               )}
+              {c.kind === "text" && <ClipActions text={c.text} onDone={flash} />}
               {c.kind === "image" && c.width && (
                 <span dir="ltr" className="text-[11px] text-white/40">{c.width}×{c.height}</span>
               )}
