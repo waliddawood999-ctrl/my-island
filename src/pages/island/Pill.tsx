@@ -40,6 +40,8 @@ import { AttentionSection } from "./AttentionSection";
 import { BatterySection, hasBatteryContent } from "./BatterySection";
 import { useAttention } from "../../useAttention";
 import { SystemSection } from "./SystemSection";
+import { MeetingsTab } from "./MeetingsTab";
+import { useMeetings } from "../../useMeetings";
 import { usePrivacy } from "../../useSystem";
 
 /** المقاس الافتراضي للحبة المنكمشة (الفعلي من pillWidth/pillHeight). */
@@ -61,13 +63,14 @@ function fmtTime(fmt: string): string {
 }
 
 /** التبويبات؛ الرفّ يظهر فقط إن كان moduleShelf مفعّلًا (غياب المفتاح = مفعّل) وعدّاده بجانب الاسم. */
-const tabDefs = (shelfOn: boolean, shelfCount: number, launcherOn: boolean) => [
+const tabDefs = (shelfOn: boolean, shelfCount: number, launcherOn: boolean, meetingsOn: boolean) => [
   { id: "home", label: i("الرئيسية", "Home") },
   { id: "clip", label: i("الحافظة", "Clipboard") },
   ...(shelfOn ? [{ id: "shelf", label: shelfCount > 0 ? `${i("الرفّ", "Shelf")} (${shelfCount})` : i("الرفّ", "Shelf") }] : []),
   ...(launcherOn ? [{ id: "launcher", label: i("اللانشر", "Launcher") }] : []),
   { id: "note", label: i("ملاحظة", "Note") },
   { id: "tools", label: i("الأدوات", "Tools") },
+  ...(meetingsOn ? [{ id: "meetings", label: i("الاجتماعات", "Meetings") }] : []),
   { id: "system", label: i("النظام", "System") },
   { id: "chat", label: i("المحادثة", "Chat") },
 ];
@@ -150,6 +153,8 @@ export function Pill() {
   const dlInPill = !!settings.downloadsInPill;
   const showBat = !!settings.showBattery;
   const privacy = usePrivacy(!!settings.privacyIndicator);
+  const meetingsOn = !!settings.showMeetings;
+  const meetings = useMeetings(meetingsOn);
   const dl = useDownloads(showDl || dlInPill);
   const battery = useBattery(showBat);
   const btOn = settings.btBatteries ?? true;
@@ -386,7 +391,7 @@ export function Pill() {
     radius,
     tint: clampTint(settings.glassTint),
   });
-  const tabs = tabDefs(shelfOn, shelf.items.length, launcherOn);
+  const tabs = tabDefs(shelfOn, shelf.items.length, launcherOn, meetingsOn);
   const tab = Math.max(0, tabs.findIndex((t) => t.id === tabId));
   const curTab = tabs[tab].id;
   // حارس التبديل: AnimatePresence(mode="wait") لا يركّب التبويب الجديد إلا بعد اكتمال حركة خروج القديم؛ إن لم تكتمل (إطارات متوقفة/نافذة
@@ -643,6 +648,11 @@ export function Pill() {
                 {curTab === "tools" && (
                   <div className="min-h-0 flex-1">
                     <ToolsTab />
+                  </div>
+                )}
+                {curTab === "meetings" && (
+                  <div className="min-h-0 flex-1">
+                    <MeetingsTab snap={meetings.snap} refresh={meetings.refresh} loading={meetings.loading} />
                   </div>
                 )}
                 {curTab === "system" && (

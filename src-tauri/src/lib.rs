@@ -25,6 +25,9 @@ pub mod sysinfo;    // استخدام المعالج/الذاكرة عند ال�
 pub mod audio;      // مستوى الصوت والكتم (IAudioEndpointVolume)
 pub mod brightness; // سطوع الابتوب (WMI) عند الطلب
 pub mod privacy;    // مؤشر مايك/كاميرا من ConsentStore
+pub mod secrets;    // مخزن الأسرار المشفّر بـ DPAPI
+pub mod ical;       // محلّل ICS + RRULE + روابط الانضمام (منطق خالص)
+pub mod meetings;   // الاجتماعات القادمة من رابط iCal + تنبيهات
 pub mod note;       // الملاحظة + التذكيرات + المؤقّت (kv `note:*` + خيط جدولة)
 // pub mod ocr;        // Windows.Media.Ocr
 // pub mod ai;         // بث SSE لأي OpenAI-compatible
@@ -69,6 +72,7 @@ pub fn run() {
         .manage(launcher::LauncherState::default())
         .manage(note::NoteState::default())
         .manage(sysinfo::SysState::default())
+        .manage(meetings::MeetingsState::default())
         .plugin(tauri_plugin_single_instance::init(|_, _, _| {}))
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
@@ -117,6 +121,7 @@ pub fn run() {
                     note::start(app.handle());
                     today::start(app.handle());
                     privacy::start(app.handle());
+                    meetings::start(app.handle());
                     // تحديث مسار exe في Run إن كان autostart مفعّلًا (يتتبّع نقل التطبيق).
                     let on = app.state::<state::AppState>().settings.lock().unwrap()
                         .get("autostart").and_then(|v| v.as_bool()).unwrap_or(false);
@@ -231,7 +236,12 @@ pub fn run() {
             audio::volume_mute_toggle,
             brightness::brightness_get,
             brightness::brightness_set,
-            privacy::privacy_status
+            privacy::privacy_status,
+            meetings::meetings_key_set,
+            meetings::meetings_key_status,
+            meetings::meetings_list,
+            meetings::meetings_refresh,
+            meetings::meetings_join
         ])
         .run(tauri::generate_context!())
         .expect("error while running application");

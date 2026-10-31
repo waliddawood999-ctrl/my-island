@@ -11,6 +11,40 @@ import { Group, LinesField, Nav, NumberField, Row, Section, Select, Slider, SubH
 interface CityOpt { id: string; ar: string; en: string }
 interface MonitorInfo { index: number; name: string; width: number; height: number; primary: boolean }
 
+/** رابط iCal الخاص: سرّ يُحفظ مشفّرًا (DPAPI) في الخلفية؛ الحقل لا يعرض القيمة المحفوظة أبدًا. */
+function MeetingsKey() {
+  const [isSet, setIsSet] = useState(false);
+  const [val, setVal] = useState("");
+  const [msg, setMsg] = useState<string | null>(null);
+  useEffect(() => { invoke<{ set: boolean }>("meetings_key_status").then((r) => setIsSet(r.set)).catch(() => {}); }, []);
+  const save = (url: string) =>
+    invoke<{ set: boolean }>("meetings_key_set", { url })
+      .then((r) => {
+        setIsSet(r.set); setVal("");
+        setMsg(r.set ? i("حُفظ الرابط مشفّرًا", "Link saved (encrypted)") : i("حُذف الرابط", "Link removed"));
+        if (r.set) invoke("meetings_refresh").catch(() => {});
+      })
+      .catch((e) => setMsg(String(e) === "https_only" ? i("يجب أن يبدأ الرابط بـ https أو webcal", "The link must start with https or webcal") : i("رابط غير صالح", "Invalid link")));
+  return (
+    <div className="flex flex-col gap-2">
+      <Row label={i("رابط iCal الخاص بالتقويم", "Private iCal link")} hint={isSet ? i("محفوظ ومشفّر — الصق رابطًا جديدًا لاستبداله", "Saved & encrypted — paste a new link to replace it") : i("من إعدادات التقويم: «العنوان السرّي بصيغة iCal»", "From your calendar settings: “Secret address in iCal format”")}>
+        <div className="flex items-center gap-2">
+          <input
+            type="password" dir="ltr" autoComplete="off" spellCheck={false}
+            aria-label={i("رابط iCal الخاص بالتقويم", "Private iCal link")}
+            value={val} onChange={(e) => setVal(e.target.value)}
+            placeholder={isSet ? "••••••••••••" : "https://…/basic.ics"}
+            className="w-56 rounded-md border border-white/15 bg-white/5 px-2 py-1 text-xs outline-none focus:border-[#6f86ff]"
+          />
+          <button disabled={!val.trim()} onClick={() => save(val)} className="rounded-md bg-[#6f86ff] px-3 py-1 text-xs font-semibold text-white disabled:opacity-40">{i("حفظ", "Save")}</button>
+          {isSet && <button onClick={() => save("")} className="rounded-md bg-white/10 px-3 py-1 text-xs hover:bg-white/20">{i("حذف", "Remove")}</button>}
+        </div>
+      </Row>
+      {msg && <div role="status" dir="auto" className="text-xs text-white/60">{msg}</div>}
+    </div>
+  );
+}
+
 function App() {
   const s = useSettings();
   const [monitors, setMonitors] = useState<MonitorInfo[]>([]);
@@ -241,6 +275,13 @@ function App() {
         <Row label={i("التحكم بالصوت في قسم النظام", "Volume control in System")}>
           <Toggle label={i("التحكم بالصوت في قسم النظام", "Volume control in System")} value={s.showVolume ?? true} onChange={(v) => saveSettings({ showVolume: v })} />
         </Row>
+      </Section>
+
+      <Section title={i("الاجتماعات", "Meetings")}>
+        <Row label={i("عرض الاجتماعات القادمة", "Show upcoming meetings")} hint={i("ميزة شبكية اختيارية: تجلب تقويمك من الرابط أدناه فقط", "Optional network feature: fetches your calendar from the link below only")}>
+          <Toggle label={i("عرض الاجتماعات القادمة", "Show upcoming meetings")} value={s.showMeetings ?? false} onChange={(v) => saveSettings({ showMeetings: v })} />
+        </Row>
+        <MeetingsKey />
       </Section>
 
       <Section title={i("الالتقاط والتسجيل", "Capture & recording")}>
