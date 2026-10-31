@@ -16,6 +16,7 @@ pub mod capture;    // لقطات منطقة/شاشة + overlay
 pub mod recorder;   // Media Foundation (H.264) / GIF
 pub mod color;      // منتقي الألوان + السجل
 pub mod editor;     // نافذة محرّر اللقطات
+pub mod shelf;      // الرفّ: ملفات/نص/صور مؤقتة + سحب أصلي للخارج
 // pub mod ocr;        // Windows.Media.Ocr
 // pub mod ai;         // بث SSE لأي OpenAI-compatible
 // pub mod attach;     // استخراج نصوص المرفقات محليًا
@@ -49,6 +50,7 @@ pub fn run() {
         .manage(recorder::RecorderState::default())
         .manage(color::ColorState::default())
         .manage(editor::EditorState::default())
+        .manage(shelf::ShelfState::default())
         .plugin(tauri_plugin_single_instance::init(|_, _, _| {}))
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
@@ -163,7 +165,13 @@ pub fn run() {
             color::color_history,
             editor::editor_open,
             editor::editor_image,
-            editor::editor_save
+            editor::editor_save,
+            shelf::shelf_list,
+            shelf::shelf_add,
+            shelf::shelf_remove,
+            shelf::shelf_clear,
+            shelf::shelf_copy,
+            shelf::shelf_drag
         ])
         .run(tauri::generate_context!())
         .expect("error while running application");

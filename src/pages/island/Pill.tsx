@@ -11,6 +11,8 @@ import { fmtBytes, useBattery, useDownloads } from "../../useDownloads";
 import { fmtElapsed, useRecording } from "../../useRecording";
 import { ClipboardTab } from "./ClipboardTab";
 import { ToolsTab } from "./ToolsTab";
+import { ShelfTab } from "./ShelfTab";
+import { useShelf } from "../../useShelf";
 import { MediaSection } from "./MediaSection";
 import { Liquid } from "./Liquid";
 import { Palette } from "./Palette";
@@ -33,11 +35,13 @@ function fmtTime(fmt: string): string {
   });
 }
 
-const TABS = () => [
-  i("الرئيسية", "Home"),
-  i("الحافظة", "Clipboard"),
-  i("الأدوات", "Tools"),
-  i("المحادثة", "Chat"),
+/** التبويبات؛ الرفّ يظهر فقط إن كان moduleShelf مفعّلًا (غياب المفتاح = مفعّل) وعدّاده بجانب الاسم. */
+const tabDefs = (shelfOn: boolean, shelfCount: number) => [
+  { id: "home", label: i("الرئيسية", "Home") },
+  { id: "clip", label: i("الحافظة", "Clipboard") },
+  ...(shelfOn ? [{ id: "shelf", label: shelfCount > 0 ? `${i("الرفّ", "Shelf")} (${shelfCount})` : i("الرفّ", "Shelf") }] : []),
+  { id: "tools", label: i("الأدوات", "Tools") },
+  { id: "chat", label: i("المحادثة", "Chat") },
 ];
 
 /** عنوان متحرك داخل الحبة المنكمشة؛ يتحرك فقط إن زاد النص عن العرض. */
@@ -74,7 +78,9 @@ export function Pill() {
   const [hover, setHover] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState(0);
+  const [tabId, setTabId] = useState("home");
+  // سحب ملفات من المستكشف فوق النافذة (أحداث tauri://drag-*).
+  const [dragging, setDragging] = useState(false);
   // شريط الأوامر: طبقة داخل نافذة main (لا نافذة خامسة) — wasHidden لإعادة الإخفاء عند الإغلاق.
   const [palette, setPalette] = useState<{ wasHidden: boolean } | null>(null);
   const paletteRef = useRef<{ wasHidden: boolean } | null>(null);
@@ -85,6 +91,8 @@ export function Pill() {
     moduleMedia && !["off", "clock"].includes(settings.mediaPill ?? "") && media.info.session && media.info.playing && media.info.title
       ? [media.info.title, media.info.artist].filter(Boolean).join(" — ")
       : null;
+  const shelfOn = settings.moduleShelf ?? true;
+  const shelf = useShelf(shelfOn);
   const showDl = !!settings.showDownloads;
   const dlInPill = !!settings.downloadsInPill;
   const showBat = !!settings.showBattery;
@@ -180,6 +188,38 @@ export function Pill() {
     scheduleShrink();
   };
 
+  // إفلات ملفات من المستكشف: الدخول يفتح اللوحة على تبويب الرفّ، الإفلات يضيف فورًا، المغادرة تنكمش.
+  const dnd = useRef({ enter: () => {}, leave: () => {}, drop: (_p: string[]) => {} });
+  dnd.current.enter = () => {
+    if (!shelfOn || paletteRef.current) return;
+    window.clearTimeout(collapseT.current);
+    window.clearTimeout(hoverT.current);
+    setTabId("shelf");
+    setDragging(true);
+    if (!open) expand();
+  };
+  dnd.current.leave = () => {
+    setDragging(false);
+    if (paletteRef.current || !open) return;
+    window.clearTimeout(collapseT.current);
+    collapseT.current = window.setTimeout(collapse, settings.collapseDelayMs ?? 350);
+  };
+  dnd.current.drop = (paths) => {
+    setDragging(false);
+    if (!shelfOn || paletteRef.current || paths.length === 0) return;
+    invoke("shelf_add", { paths }).catch(() => {});
+    window.clearTimeout(collapseT.current);
+    collapseT.current = window.setTimeout(collapse, 2500); // يلغيه دخول المؤشر (onEnter)
+  };
+  useEffect(() => {
+    const subs = [
+      listen("tauri://drag-enter", () => dnd.current.enter()),
+      listen("tauri://drag-leave", () => dnd.current.leave()),
+      listen<{ paths: string[] }>("tauri://drag-drop", (e) => dnd.current.drop(e.payload?.paths ?? [])),
+    ];
+    return () => { subs.forEach((u) => u.then((f) => f())); };
+  }, []);
+
   const onEnter = () => {
     setHover(true);
     if (paletteRef.current) return;
@@ -204,7 +244,10 @@ export function Pill() {
   const opacity = hidden ? 0 : palette ? 1 : open ? opened : settings.autoHide && !hover ? 0 : rest;
 
   const radius = palette ? 24 : open ? 28 : 16;
-  const tabLabels = TABS();
+  const tabs = tabDefs(shelfOn, shelf.items.length);
+  const tab = Math.max(0, tabs.findIndex((t) => t.id === tabId));
+  const curTab = tabs[tab].id;
+  const tabLabels = tabs.map((t) => t.label);
   /** ما يُعرض في الحبة المنكمشة: واحد فقط، يتبدّل بتمويه قصير. */
   const pillKey = rec.recording ? "rec" : dlText ? "dl" : pillTitle ? "title" : "clock";
 
@@ -290,7 +333,7 @@ export function Pill() {
           className="absolute left-1/2 top-0 flex -translate-x-1/2 flex-col"
         >
           <div className="flex shrink-0 items-center gap-2">
-            <TabBar labels={tabLabels} active={tab} onSelect={setTab} />
+            <TabBar labels={tabLabels} active={tab} onSelect={(n) => setTabId(tabs[n]?.id ?? "home")} />
             <motion.button
               aria-label={i("الإعدادات", "Settings")}
               title={i("الإعدادات", "Settings")}
@@ -306,14 +349,14 @@ export function Pill() {
           <AnimatePresence mode="wait" initial={false}>
             {open && (
               <motion.div
-                key={tab}
+                key={curTab}
                 variants={swapVariants}
                 initial="initial"
                 animate="animate"
                 exit="exit"
                 className="flex min-h-0 flex-1 flex-col pt-3"
               >
-                {tab === 0 && (
+                {curTab === "home" && (
                   <div className="flex min-h-0 flex-1 flex-row" style={{ gap: "var(--island-section-gap)" }}>
                     {moduleMedia && (
                       <motion.div custom={0} variants={sectionVariants} initial="initial" animate="animate" className="min-h-0 flex-1">
@@ -327,14 +370,19 @@ export function Pill() {
                     )}
                   </div>
                 )}
-                {tab === 2 && (
+                {curTab === "tools" && (
                   <div className="min-h-0 flex-1">
                     <ToolsTab />
                   </div>
                 )}
-                {tab === 1 && (
+                {curTab === "clip" && (
                   <div className="min-h-0 flex-1">
                     <ClipboardTab />
+                  </div>
+                )}
+                {curTab === "shelf" && (
+                  <div className="min-h-0 flex-1">
+                    <ShelfTab items={shelf.items} dragging={dragging} reload={shelf.reload} />
                   </div>
                 )}
               </motion.div>
