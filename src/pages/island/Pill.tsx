@@ -16,12 +16,9 @@ import { TabBar } from "./TabBar";
 import { BatteryChip, DownloadsSection } from "./DownloadsSection";
 
 const PILL = { w: 200, h: 32 };
-/** اللوحة عمودية: عرض 380–440 وارتفاع سخي حتى ~70% من ارتفاع الشاشة (يُحسب عند الفتح). */
-const PANEL_W = 420;
-const panelSize = () => {
-  const sh = typeof window !== "undefined" && window.screen?.height ? window.screen.height : 1080;
-  return { w: PANEL_W, h: Math.max(480, Math.min(Math.round(sh * 0.7), 780)) };
-};
+/** اللوحة عرضية (أعرض من ارتفاعها): 720×480 ثابتة. */
+const PANEL = { w: 720, h: 480 };
+const panelSize = () => PANEL;
 const PALETTE = { w: 640, h: 440 };
 /** احتياط (ms): لو لم يصل رد اكتمال الحركة تُصغَّر النافذة بعد هذه المدة. */
 const SHRINK_GUARD_MS = dur.windowShrinkGuard * 1000;
@@ -307,14 +304,14 @@ export function Pill() {
                 className="flex min-h-0 flex-1 flex-col pt-3"
               >
                 {tab === 0 && (
-                  <div className="flex min-h-0 flex-1 flex-col" style={{ gap: "var(--island-section-gap)" }}>
+                  <div className="flex min-h-0 flex-1 flex-row" style={{ gap: "var(--island-section-gap)" }}>
                     {moduleMedia && (
                       <motion.div custom={0} variants={sectionVariants} initial="initial" animate="animate" className="min-h-0 flex-1">
                         <MediaSection media={media} showLyrics={!!(settings.lyricsInHome || settings.lyricsInPlayer)} />
                       </motion.div>
                     )}
                     {(showDl || (showBat && battery?.has_battery)) && (
-                      <motion.div custom={1} variants={sectionVariants} initial="initial" animate="animate" className="shrink-0">
+                      <motion.div custom={1} variants={sectionVariants} initial="initial" animate="animate" className="w-60 shrink-0 border-s border-white/10 ps-3">
                         <DownloadsSection snap={dl} battery={showBat ? battery : null} showDownloads={showDl} />
                       </motion.div>
                     )}

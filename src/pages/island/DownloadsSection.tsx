@@ -23,7 +23,7 @@ export function BatteryChip({ b, size = 14 }: { b: Battery | null; size?: number
 export function DownloadsSection({ snap, battery, showDownloads }: { snap: DownloadsSnap; battery: Battery | null; showDownloads: boolean }) {
   const { active, recent } = snap;
   return (
-    <div className="flex shrink-0 flex-col gap-2 border-t border-white/10 pt-3 text-[12px]">
+    <div className="flex h-full flex-col gap-2 text-[12px]">
       <div className="flex items-center gap-2 text-white/60">
         {showDownloads && (
           <>
@@ -34,7 +34,7 @@ export function DownloadsSection({ snap, battery, showDownloads }: { snap: Downl
         <span className="ms-auto"><BatteryChip b={battery} /></span>
       </div>
       {showDownloads && (
-        <div className="flex max-h-40 flex-col gap-2 overflow-y-auto">
+        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
           {active.length === 0 && recent.length === 0 && (
             <span className="text-white/40">{i("لا تنزيلات حاليًا", "No downloads right now")}</span>
           )}

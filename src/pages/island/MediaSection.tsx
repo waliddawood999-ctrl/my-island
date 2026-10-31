@@ -66,12 +66,12 @@ export function MediaSection({ media, showLyrics = false }: { media: MediaView; 
 
   return (
     <div className={`flex h-full flex-col items-stretch ${showLyrics ? "gap-3" : "justify-center gap-5"}`}>
-      <div className="flex shrink-0 flex-col items-center gap-3 text-center">
+      <div className="flex shrink-0 items-center gap-4">
         <motion.div
           initial={false}
           animate={{ scale: info.playing ? 1 : 0.94 }}
           transition={spring.content}
-          className={`${showLyrics ? "h-24 w-24" : "h-52 w-52"} shrink-0 overflow-hidden rounded-2xl bg-white/10`}
+          className={`${showLyrics ? "h-16 w-16" : "h-28 w-28"} shrink-0 overflow-hidden rounded-2xl bg-white/10`}
         >
           {cover ? (
             <img src={cover} alt={i("غلاف الألبوم", "Album cover")} className="h-full w-full object-cover" />
@@ -79,7 +79,7 @@ export function MediaSection({ media, showLyrics = false }: { media: MediaView; 
             <div className="flex h-full w-full items-center justify-center text-white/40"><Music size={32} /></div>
           )}
         </motion.div>
-        <div className="w-full min-w-0">
+        <div className="min-w-0 flex-1">
           {/* العنوان والفنان والألبوم: تبديل بتمويه قصير وتوقيت دخول مستقل لكل سطر فلا يتداخل */}
           <AnimatePresence mode="wait" initial={false}>
             <motion.div key={`t-${info.title}`} {...line(0)} dir="auto" className="truncate text-[18px] font-semibold">{info.title || i("بدون عنوان", "Untitled")}</motion.div>
