@@ -11,5 +11,8 @@
 - 0.3: `watchdog.rs` (خيط يفحص كل ثانية؛ صمت page_pong > 6s ⇒ `reload()` لـ webview نافذة main + سطر في `crash-log.txt` بمجلد البيانات «وقت UTC | سبب»؛ بعد إعادتي تحميل فاشلتين متتاليتين بلا pong ⇒ `app.restart()`؛ pong يصفّر العدّاد)، أمر `page_pong`، `lib.rs` (تسجيل الوحدة والأمر وبدء المراقب)، `src/usePagePulse.ts` (نبض كل 2s + `debugFreeze`) و`src/pages/island/main.tsx` (زر debug_freeze في وضع DEV فقط). مسجّل في docs/IPC.md.
 - تحقق 0.3: `npm run build` ناجح؛ `cargo check --target x86_64-pc-windows-gnu` ناجح بلا تحذيرات؛ صيغة الطابع الزمني في crash-log اختُبرت منفصلة وتطابق `date -u`.
 - لم يُتحقق منه (يحتاج ويندوز): في `npm run tauri dev` اضغط debug_freeze ⇒ إعادة تحميل الصفحة خلال ~8s وسطر جديد في crash-log.txt؛ والتشغيل الطبيعي ساعتين بلا سطور كاذبة في السجل.
-- التالي: المرحلة 1 (برومبت 1.1) بعد القبول البصري لإغلاق المرحلة 0
+- 1.1: `clipboard.rs` (مستمع clipboard-master + arboard؛ نص/صورة PNG في `clips/` + مصغّر؛ sha256 UNIQUE يرفع المكرّر للأعلى؛ استثناء أعلام ويندوز وclipExcludedApps بمصدر = عملية النافذة الأمامية؛ clipLimit)، أوامر `clip_list/clip_delete/clip_clear/clip_pin/clip_current_text`، `state.rs` (حقل data_dir)، `lib.rs`، `Cargo.toml` (arboard, clipboard-master, sha2, base64, image[png]). مسجّل في docs/IPC.md.
+- تحقق 1.1: `cargo check --target x86_64-pc-windows-gnu` ناجح بلا تحذيرات؛ اختبار وحدة منفصل لمنطق التخزين (تكرار، ترتيب، تثبيت، مسح، حدّ، حذف ملفات الصور، الاستثناء) نجح على Linux.
+- لم يُتحقق منه (يحتاج ويندوز): قبول 1.1 — بعد نسخ نص وصورة من تطبيقين مختلفين، من وحدة تحكم webview: `__TAURI_INTERNALS__.invoke('clip_list')` يُظهر العناصر بالترتيب والمصدر الصحيحين، ونسخ نفس النص مرتين لا يكرّره؛ ونسخ من مدير كلمات مرور لا يُخزَّن.
+- التالي: القبول البصري للمرحلة 0 ثم 1.2 (تبويب الحافظة + clip_paste)
 - آخر خطأ معروف: لا شيء

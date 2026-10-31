@@ -4,6 +4,7 @@ pub mod state;      // AppState: إعدادات + جلسات + حالة النو
 pub mod commands;   // طبقة الأوامر العامة (settings_get/set ...)
 pub mod win;        // موضع/إخفاء/فوكس النافذة الرئيسية
 pub mod watchdog;   // نبض page_pong وإعادة تحميل الصفحة الصامتة
+pub mod clipboard;  // مستمع الحافظة + جدول clips
 // pub mod media;   // SMTC
 // pub mod spectrum;   // WASAPI loopback + FFT
 // pub mod player_audio;
@@ -55,6 +56,8 @@ pub fn run() {
             if let Some(dir) = dir {
                 if let Err(e) = app.state::<state::AppState>().init_db(dir) {
                     eprintln!("تعذّر فتح island.db: {e}");
+                } else {
+                    clipboard::start(app.handle());
                 }
             }
             if let Some(w) = app.get_webview_window(win::MAIN) {
@@ -73,7 +76,12 @@ pub fn run() {
             commands::report_island_rect,
             commands::settings_get,
             commands::settings_set,
-            watchdog::page_pong
+            watchdog::page_pong,
+            clipboard::clip_list,
+            clipboard::clip_delete,
+            clipboard::clip_clear,
+            clipboard::clip_pin,
+            clipboard::clip_current_text
         ])
         .run(tauri::generate_context!())
         .expect("error while running application");

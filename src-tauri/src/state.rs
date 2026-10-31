@@ -43,6 +43,8 @@ pub struct AppState {
     pub db: Mutex<Option<Connection>>,
     /// الإعدادات المدموجة: DEFAULTS ثم kv.
     pub settings: Mutex<Map<String, Value>>,
+    /// مجلد بيانات التطبيق (island.db وclips/ فيه) — يُضبط في init_db.
+    pub data_dir: Mutex<Option<PathBuf>>,
 }
 
 impl Default for AppState {
@@ -53,6 +55,7 @@ impl Default for AppState {
             island_size: Mutex::default(),
             db: Mutex::new(None),
             settings: Mutex::new(defaults()),
+            data_dir: Mutex::new(None),
         }
     }
 }
@@ -78,6 +81,7 @@ impl AppState {
         self.sync_placement(&merged);
         *self.settings.lock().unwrap() = merged;
         *self.db.lock().unwrap() = Some(conn);
+        *self.data_dir.lock().unwrap() = Some(dir);
         Ok(())
     }
 
