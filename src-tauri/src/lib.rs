@@ -10,8 +10,8 @@ pub mod media;      // SMTC: ما يُشغَّل الآن + التحكم
 pub mod spectrum;   // WASAPI loopback + FFT
 // pub mod player_audio;
 pub mod lyrics;     // LRCLIB
-// pub mod downloads;  // + steam.rs لتنزيلات Steam
-// pub mod steam;
+pub mod downloads;  // مجلد التنزيلات + Steam (مدمج في الملف نفسه)
+pub mod battery;    // GetSystemPowerStatus
 // pub mod capture;    // لقطات + overlay
 // pub mod recorder;   // Media Foundation / GIF
 // pub mod ocr;        // Windows.Media.Ocr
@@ -39,6 +39,7 @@ pub fn run() {
         .manage(state::AppState::default())
         .manage(watchdog::WatchdogState::default())
         .manage(media::MediaState::default())
+        .manage(downloads::DownloadsState::default())
         .plugin(tauri_plugin_single_instance::init(|_, _, _| {}))
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
@@ -64,6 +65,8 @@ pub fn run() {
                     clipboard::start(app.handle());
                     media::start(app.handle());
                     spectrum::start(app.handle());
+                    downloads::start(app.handle());
+                    battery::start(app.handle());
                     // تحديث مسار exe في Run إن كان autostart مفعّلًا (يتتبّع نقل التطبيق).
                     let on = app.state::<state::AppState>().settings.lock().unwrap()
                         .get("autostart").and_then(|v| v.as_bool()).unwrap_or(false);
@@ -111,7 +114,9 @@ pub fn run() {
             media::media_pick,
             media::media_sources,
             media::media_now,
-            lyrics::lyrics_get
+            lyrics::lyrics_get,
+            downloads::downloads_list,
+            battery::battery_status
         ])
         .run(tauri::generate_context!())
         .expect("error while running application");

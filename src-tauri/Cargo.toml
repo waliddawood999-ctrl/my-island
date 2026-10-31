@@ -22,10 +22,11 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 sha2 = "0.10"
 base64 = "0.22"
 ureq = { version = "2", features = ["json"] }
+notify = "6"
 image = { version = "0.25", default-features = false, features = ["png"] }
 
 [target.'cfg(windows)'.dependencies]
 arboard = "3"
 clipboard-master = "4"
-windows = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_System_DataExchange", "Win32_System_Memory", "Win32_System_Threading", "Win32_Security", "Win32_UI_Input_KeyboardAndMouse", "Win32_System_Registry", "Win32_System_WinRT", "Media_Control", "Foundation", "Foundation_Collections", "Storage_Streams", "Win32_Media_Audio", "Win32_System_Com", "Win32_System_Com_StructuredStorage", "Win32_System_Variant"] }
+windows = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_System_DataExchange", "Win32_System_Memory", "Win32_System_Threading", "Win32_Security", "Win32_UI_Input_KeyboardAndMouse", "Win32_System_Registry", "Win32_System_WinRT", "Media_Control", "Foundation", "Foundation_Collections", "Storage_Streams", "Win32_Media_Audio", "Win32_System_Com", "Win32_System_Com_StructuredStorage", "Win32_System_Variant", "Win32_System_Power"] }
 rustfft = "6"

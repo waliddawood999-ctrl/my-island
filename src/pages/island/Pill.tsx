@@ -5,9 +5,11 @@ import { Settings as SettingsIcon } from "lucide-react";
 import { i } from "../../i18n";
 import { useSettings } from "../../useSettings";
 import { useMedia } from "../../useMedia";
+import { fmtBytes, useBattery, useDownloads } from "../../useDownloads";
 import { ClipboardTab } from "./ClipboardTab";
 import { MediaSection } from "./MediaSection";
 import { Liquid } from "./Liquid";
+import { BatteryChip, DownloadsSection } from "./DownloadsSection";
 
 const PILL = { w: 200, h: 32 };
 const PANEL = { w: 720, h: 480 };
@@ -71,6 +73,14 @@ export function Pill() {
     moduleMedia && !["off", "clock"].includes(settings.mediaPill ?? "") && media.info.session && media.info.playing && media.info.title
       ? [media.info.title, media.info.artist].filter(Boolean).join(" — ")
       : null;
+  const showDl = !!settings.showDownloads;
+  const dlInPill = !!settings.downloadsInPill;
+  const showBat = !!settings.showBattery;
+  const dl = useDownloads(showDl || dlInPill);
+  const battery = useBattery(showBat);
+  // downloadsInPill: أكبر تنزيل جارٍ (نسبة إن عُرفت وإلا الحجم) تتقدم على عنوان الميديا.
+  const biggest = dlInPill ? [...dl.active].sort((a, b) => b.size - a.size)[0] : undefined;
+  const dlText = biggest ? (biggest.percent != null ? `⬇ ${Math.round(biggest.percent)}%` : `⬇ ${fmtBytes(biggest.size)}`) : null;
   const hoverT = useRef<number | undefined>(undefined);
   const collapseT = useRef<number | undefined>(undefined);
   const shrinkT = useRef<number | undefined>(undefined);
@@ -153,10 +163,15 @@ export function Pill() {
           style={{ height: PILL.h }}
           className={`absolute inset-x-0 top-0 flex items-center justify-center text-[13px] font-medium tabular-nums transition-opacity duration-200 ${open ? "opacity-0" : "opacity-100"}`}
         >
-          {pillTitle ? (
+          {dlText ? (
+            <span dir="ltr" aria-label={i("أكبر تنزيل جارٍ", "Largest active download")}>{dlText}</span>
+          ) : pillTitle ? (
             <PillTitle text={pillTitle} />
           ) : (
             (settings.showClock ?? true) && <span dir="ltr">{time}</span>
+          )}
+          {showBat && !pillTitle && !dlText && battery?.has_battery && (
+            <span className="ms-3 text-[11px] text-white/70"><BatteryChip b={battery} size={12} /></span>
           )}
         </div>
         <div
@@ -184,9 +199,16 @@ export function Pill() {
               <SettingsIcon size={16} />
             </button>
           </div>
-          {tab === 0 && open && moduleMedia && (
-            <div className="min-h-0 flex-1 pt-3">
-              <MediaSection media={media} showLyrics={!!(settings.lyricsInHome || settings.lyricsInPlayer)} />
+          {tab === 0 && open && (
+            <div className="flex min-h-0 flex-1 flex-col gap-3 pt-3">
+              {moduleMedia && (
+                <div className="min-h-0 flex-1">
+                  <MediaSection media={media} showLyrics={!!(settings.lyricsInHome || settings.lyricsInPlayer)} />
+                </div>
+              )}
+              {(showDl || (showBat && battery?.has_battery)) && (
+                <DownloadsSection snap={dl} battery={showBat ? battery : null} showDownloads={showDl} />
+              )}
             </div>
           )}
           {tab === 1 && open && (
