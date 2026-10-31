@@ -86,6 +86,27 @@ function App() {
         </Row>
       </Section>
 
+      <Section title={i("الميديا والمظهر", "Media & appearance")}>
+        <Row label={i("طيف الصوت والحبة السائلة", "Audio spectrum & liquid pill")} hint={i("يلتقط صوت الجهاز محليًا أثناء تشغيل الميديا فقط", "Captures system audio locally, only while media plays")}>
+          <Toggle label={i("طيف الصوت والحبة السائلة", "Audio spectrum & liquid pill")} value={s.liquidSpectrum ?? false} onChange={(v) => saveSettings({ liquidSpectrum: v })} />
+        </Row>
+        <Row label={i("كلمات الأغاني في الرئيسية", "Lyrics in Home")} hint={i("تُجلب من الإنترنت (LRCLIB)", "Fetched online (LRCLIB)")}>
+          <Toggle label={i("كلمات الأغاني في الرئيسية", "Lyrics in Home")} value={s.lyricsInHome ?? false} onChange={(v) => saveSettings({ lyricsInHome: v })} />
+        </Row>
+        <Row label={i("كلمات الأغاني في المشغّل", "Lyrics in player")} hint={i("تُجلب من الإنترنت (LRCLIB)", "Fetched online (LRCLIB)")}>
+          <Toggle label={i("كلمات الأغاني في المشغّل", "Lyrics in player")} value={s.lyricsInPlayer ?? false} onChange={(v) => saveSettings({ lyricsInPlayer: v })} />
+        </Row>
+        <Row label={i("إظهار التنزيلات", "Show downloads")}>
+          <Toggle label={i("إظهار التنزيلات", "Show downloads")} value={s.showDownloads ?? false} onChange={(v) => saveSettings({ showDownloads: v })} />
+        </Row>
+        <Row label={i("التنزيلات في الحبة", "Downloads in pill")}>
+          <Toggle label={i("التنزيلات في الحبة", "Downloads in pill")} value={s.downloadsInPill ?? false} onChange={(v) => saveSettings({ downloadsInPill: v })} />
+        </Row>
+        <Row label={i("إظهار البطارية", "Show battery")}>
+          <Toggle label={i("إظهار البطارية", "Show battery")} value={s.showBattery ?? false} onChange={(v) => saveSettings({ showBattery: v })} />
+        </Row>
+      </Section>
+
       <Section title={i("الحافظة", "Clipboard")}>
         <Row label={i("الحد الأقصى للعناصر", "Item limit")} hint={i("غير المثبّتة تُحذف الأقدم أولًا", "Oldest unpinned items are dropped first")}>
           <NumberField label={i("الحد الأقصى للعناصر", "Item limit")} value={s.clipLimit ?? 200} min={10} max={5000} onCommit={(v) => saveSettings({ clipLimit: v })} />
