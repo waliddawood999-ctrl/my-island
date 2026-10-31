@@ -40,7 +40,8 @@ pub fn defaults() -> Map<String, Value> {
         "breakReminders": false,
         "breakMinutes": 60,
         "btBatteries": true,
-        "batteryTip": true
+        "batteryTip": true,
+        "liveRates": true
     }) else { unreachable!() };
     m
 }
@@ -95,6 +96,8 @@ impl AppState {
                 if k.starts_with(crate::launcher::KV_PREFIX) { continue; }
                 // الملاحظة والتذكيرات والمؤقّت (note.rs) ليست إعدادات.
                 if k.starts_with(crate::note::KV_PREFIX) { continue; }
+                // كاش أسعار العملات (rates.rs) ليس إعدادًا.
+                if k == crate::rates::KV_KEY { continue; }
                 if let Ok(val) = serde_json::from_str::<Value>(&v) {
                     merged.insert(k, val);
                 }

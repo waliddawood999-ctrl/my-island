@@ -204,6 +204,87 @@ pub fn open_path(app: AppHandle, path: String) -> Result<(), String> {
     run_shell(app, path, Some("open".into()), None)
 }
 
+// ───────────────────────── مساحات العمل ─────────────────────────
+
+const WS_MAX: usize = 20;
+const WS_ITEMS_MAX: usize = 20;
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct Workspace {
+    pub id: String,
+    pub name: String,
+    /// تطبيق/مجلد/ملف (مسار) أو رابط http(s) — النوع يُستنتج من النص.
+    pub items: Vec<String>,
+}
+
+/// يستنتج النوع: "url" · "path". رابط بمخطط غير http(s) (file:, javascript:, …) ⇒ None (مرفوض).
+pub fn classify_item(t: &str) -> Option<&'static str> {
+    let t = t.trim();
+    if t.is_empty() || t.contains('\0') || t.contains('\n') {
+        return None;
+    }
+    let lower = t.to_ascii_lowercase();
+    if lower.starts_with("http://") || lower.starts_with("https://") {
+        return Some("url");
+    }
+    if t.contains("://") || lower.starts_with("javascript:") || lower.starts_with("data:") || lower.starts_with("file:") {
+        return None;
+    }
+    Some("path")
+}
+
+/// ينظّف مجموعات الإعدادات: اسم غير فارغ، id فريد، عناصر صالحة فقط، وسقوف الأعداد.
+pub fn sanitize_workspaces(raw: &serde_json::Value) -> Vec<Workspace> {
+    let Some(arr) = raw.as_array() else { return vec![] };
+    let mut seen = std::collections::HashSet::new();
+    let mut out = Vec::new();
+    for v in arr {
+        let Ok(mut w) = serde_json::from_value::<Workspace>(v.clone()) else { continue };
+        w.name = w.name.trim().chars().take(60).collect();
+        w.items = w.items.iter().map(|s| s.trim().to_string()).filter(|s| classify_item(s).is_some()).take(WS_ITEMS_MAX).collect();
+        if w.name.is_empty() || w.id.is_empty() || w.items.is_empty() || !seen.insert(w.id.clone()) {
+            continue;
+        }
+        out.push(w);
+        if out.len() >= WS_MAX {
+            break;
+        }
+    }
+    out
+}
+
+#[derive(Serialize, Debug, PartialEq)]
+pub struct WorkspaceOpened {
+    pub opened: usize,
+    pub failed: Vec<String>,
+}
+
+/// يفتح كل عناصر مساحة العمل دفعة واحدة (بترتيبها، بفاصل قصير كي لا تتزاحم النوافذ).
+#[tauri::command]
+pub async fn workspace_open(app: AppHandle, id: String) -> Result<WorkspaceOpened, String> {
+    let ws = {
+        let st = app.state::<AppState>();
+        let raw = st.settings.lock().unwrap().get("workspaces").cloned().unwrap_or_default();
+        sanitize_workspaces(&raw).into_iter().find(|w| w.id == id).ok_or_else(|| "مساحة العمل غير موجودة".to_string())?
+    };
+    tauri::async_runtime::spawn_blocking(move || {
+        win::drop_focus(&app); // الحبة تعود NOACTIVATE كي يظفر التطبيق المفتوح بالفوكس
+        let mut res = WorkspaceOpened { opened: 0, failed: vec![] };
+        for (n, t) in ws.items.iter().enumerate() {
+            if n > 0 {
+                std::thread::sleep(std::time::Duration::from_millis(150));
+            }
+            match shell_execute("open", t, None) {
+                Ok(()) => res.opened += 1,
+                Err(_) => res.failed.push(t.clone()),
+            }
+        }
+        res
+    })
+    .await
+    .map_err(|e| e.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -242,5 +323,33 @@ mod tests {
         assert_eq!(folder_args("C:\\x", true), "\"C:\\x\"");
         assert!(!open_target_ok("  "));
         assert!(open_target_ok("shell:Downloads"));
+    }
+
+    #[test]
+    fn classify_allows_paths_and_http_only() {
+        assert_eq!(classify_item("https://example.com/a"), Some("url"));
+        assert_eq!(classify_item("HTTP://x.y"), Some("url"));
+        assert_eq!(classify_item("C:\\Program Files\\App\\a.exe"), Some("path"));
+        assert_eq!(classify_item("shell:Downloads"), Some("path"));
+        assert_eq!(classify_item("file:///C:/x"), None);
+        assert_eq!(classify_item("javascript:alert(1)"), None);
+        assert_eq!(classify_item("ftp://h/x"), None);
+        assert_eq!(classify_item("  "), None);
+    }
+
+    #[test]
+    fn sanitize_workspaces_cleans() {
+        let raw = serde_json::json!([
+            {"id":"a","name":" Work ","items":["https://x.com","file:///etc/passwd","C:\\Docs"]},
+            {"id":"a","name":"dup","items":["C:\\x"]},
+            {"id":"b","name":"","items":["C:\\x"]},
+            {"id":"c","name":"empty","items":["javascript:1"]},
+            {"bad":1}
+        ]);
+        let w = sanitize_workspaces(&raw);
+        assert_eq!(w.len(), 1);
+        assert_eq!(w[0].name, "Work");
+        assert_eq!(w[0].items, vec!["https://x.com", "C:\\Docs"]);
+        assert!(sanitize_workspaces(&serde_json::json!("x")).is_empty());
     }
 }

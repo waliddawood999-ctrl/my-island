@@ -1,20 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
-  AppWindow, Calculator, ArrowRightLeft, File as FileIcon, Folder, Globe, Search, Settings as SettingsIcon, Terminal,
+  AppWindow, Calculator, ArrowRightLeft, File as FileIcon, Folder, Globe, Layers, Search, Settings as SettingsIcon, Terminal, Timer as TimerIcon,
 } from "lucide-react";
 import { i } from "../../i18n";
 import type { Settings } from "../../settings";
 import { calc } from "./palette/calc";
-import { convert } from "./palette/convert";
+import { convert, isCurrencyQuery, setLiveRates, type ConvResult, type LiveRates } from "./palette/convert";
 import { initials, score } from "./palette/match";
+import { fmtDuration, parseQuickTimer } from "./palette/timer";
 import { searchUrlFor } from "./palette/web";
+import { matchWorkspaces } from "./palette/workspaces";
 
 interface AppEntry { id: string; name: string; path: string }
 interface FileHit { name: string; path: string; is_dir: boolean }
 interface Recent { path: string; name: string; count: number; last: number }
 
-type Kind = "calc" | "conv" | "app" | "file" | "folder" | "cmd" | "web" | "shell" | "settings";
+type Kind = "calc" | "conv" | "app" | "file" | "folder" | "cmd" | "web" | "shell" | "settings" | "timer" | "ws";
 interface Item {
   key: string;
   kind: Kind;
@@ -58,8 +60,21 @@ function AppIcon({ path, kind }: { path?: string; kind: Kind }) {
     return () => { alive = false; };
   }, [path]);
   if (src) return <img src={src} alt="" width={28} height={28} className="h-7 w-7 shrink-0 object-contain" draggable={false} />;
-  const C = { calc: Calculator, conv: ArrowRightLeft, app: AppWindow, file: FileIcon, folder: Folder, cmd: SettingsIcon, web: Globe, shell: Terminal, settings: SettingsIcon }[kind];
+  const C = { calc: Calculator, conv: ArrowRightLeft, app: AppWindow, file: FileIcon, folder: Folder, cmd: SettingsIcon, web: Globe, shell: Terminal, settings: SettingsIcon, timer: TimerIcon, ws: Layers }[kind];
   return <C size={22} className="shrink-0 text-white/70" />;
+}
+
+/** وصف مصدر أسعار العملة لسطر التحويل الفرعي. */
+function ratesNote(note?: string): string {
+  if (!note) return "";
+  const [kind, a, b] = note.split(":");
+  if (kind === "live") {
+    const d = new Date(Number(b)).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    return a === "stale"
+      ? i(` · أسعار محفوظة (${d}) — لا اتصال`, ` · saved rates (${d}) — offline`)
+      : i(` · أسعار حية (${d})`, ` · live rates (${d})`);
+  }
+  return i(` · أسعار تقريبية (${a})`, ` · approx. rates (${a})`);
 }
 
 const isAppPath = (p: string) => /\.(lnk|exe|url|appref-ms)$/i.test(p);
@@ -71,6 +86,8 @@ export function Palette({ settings, onClose }: { settings: Partial<Settings>; on
   const [recent, setRecent] = useState<Recent[]>([]);
   const [files, setFiles] = useState<FileHit[]>([]);
   const [note, setNote] = useState<string | null>(null);
+  const [ratesTick, setRatesTick] = useState(0);
+  const ratesTried = useRef(false);
   const input = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLDivElement>(null);
 
@@ -130,6 +147,15 @@ export function Palette({ settings, onClose }: { settings: Partial<Settings>; on
     return () => { alive = false; window.clearTimeout(t); };
   }, [body, mode]);
 
+  // أسعار العملات الحية: كسولًا وبطلب المستخدم فقط (كتابة تحويل عملة)، مرة لكل فتحة؛ الفشل ⇒ تبقى المضمّنة.
+  useEffect(() => {
+    if (mode !== "normal" || ratesTried.current || settings.liveRates === false || !isCurrencyQuery(body)) return;
+    ratesTried.current = true;
+    invoke<LiveRates | null>("rates_get")
+      .then((r) => { setLiveRates(r); setRatesTick((t) => t + 1); })
+      .catch(() => {});
+  }, [body, mode, settings.liveRates]);
+
   const items = useMemo<Item[]>(() => {
     const out: Item[] = [];
     const webItem = (text: string): Item | null => {
@@ -168,11 +194,31 @@ export function Palette({ settings, onClose }: { settings: Partial<Settings>; on
       });
     }
     if (mode === "normal") {
-      const cv = convert(body);
+      const qt = parseQuickTimer(body);
+      if (qt) {
+        const dur = fmtDuration(qt.seconds);
+        out.push({
+          key: "timer", kind: "timer", title: i(`مؤقّت ${dur}`, `Timer ${dur}`),
+          sub: qt.label ? `${qt.label} · ${i("Enter للبدء", "Enter to start")}` : i("Enter لبدء المؤقّت", "Enter to start the timer"),
+          run: () => {
+            invoke("timer_set", { seconds: qt.seconds, label: qt.label }).catch(() => {});
+            onClose(true);
+          },
+        });
+      }
+      const cv: ConvResult | null = convert(body);
       if (cv) {
         out.push({
-          key: "conv", kind: "conv", title: cv.text, sub: `${cv.from} → ${cv.to} · ${i("Enter لنسخ النتيجة", "Enter to copy")}`,
+          key: "conv", kind: "conv", title: cv.text,
+          sub: `${cv.from} → ${cv.to} · ${i("Enter لنسخ النتيجة", "Enter to copy")}${ratesNote(cv.note)}`,
           run: () => copy(cv.text),
+        });
+      }
+      for (const w of matchWorkspaces(settings.workspaces, body)) {
+        out.push({
+          key: "ws:" + w.id, kind: "ws", title: i(`مساحة عمل: ${w.name}`, `Workspace: ${w.name}`),
+          sub: i(`فتح ${w.items.length} عنصر دفعة واحدة`, `Open ${w.items.length} items at once`),
+          run: () => { invoke("workspace_open", { id: w.id }).catch(() => {}); onClose(false); },
         });
       }
       // تطبيقات (الأخيرة/الأكثر استخدامًا تتقدّم قليلًا)
@@ -220,7 +266,7 @@ export function Palette({ settings, onClose }: { settings: Partial<Settings>; on
       }
     }
     return out; // mode "=" : حاسبة فقط
-  }, [raw, mode, body, apps, recent, files, settings.searchEngine, settings.searchUrl, launch, copy, onClose]);
+  }, [raw, mode, body, apps, recent, files, settings.searchEngine, settings.searchUrl, settings.workspaces, ratesTick, launch, copy, onClose]);
 
   useEffect(() => { setSel(0); }, [q]);
   useEffect(() => {

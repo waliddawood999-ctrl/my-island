@@ -1,4 +1,5 @@
-// محوّل وحدات وعملات. المعدلات الثابتة أدناه محلية ومحدّثة يدويًا (لا شبكة) — راجعها دوريًا.
+// محوّل وحدات وعملات. المعدلات المضمّنة أدناه احتياطية (محدّثة يدويًا)؛ الأسعار الحية (rates_get ⇒ setLiveRates)
+// تتقدّم عليها متى وُجدت، وإلا يسقط التحويل تلقائيًا على المضمّنة.
 import { fmtNum, normDigits } from "./norm";
 
 /** وحدات العملة لكل 1 دولار أمريكي. آخر تحديث يدوي: 2025-06 (تقريبية؛ المربوطة بالدولار دقيقة). */
@@ -9,6 +10,17 @@ export const RATES_PER_USD: Record<string, number> = {
   lbp: 89500, syp: 13000, mad: 9.3, dzd: 131, tnd: 2.95, sdg: 600, yer: 250, ils: 3.5, pkr: 280, idr: 16300,
   myr: 4.25, sgd: 1.29, krw: 1370, brl: 5.6, mxn: 19.5, zar: 18, ngn: 1550, sek: 9.6, nok: 10.1, dkk: 6.9, pln: 3.7,
 };
+
+export interface LiveRates { rates: Record<string, number>; updated: number; source: "live" | "cache" | "stale" }
+let live: LiveRates | null = null;
+
+/** أسعار حية من rates_get؛ null يعيد المضمّنة. العملات الجديدة تُضاف للجدول فتصير قابلة للتحويل. */
+export function setLiveRates(r: LiveRates | null) {
+  live = r && r.rates && r.rates.usd === 1 ? r : null;
+  if (live) for (const c of Object.keys(live.rates)) if (!U[c]) U[c] = { cat: "currency", to: 1, label: c.toUpperCase() };
+}
+export const liveRatesState = () => live;
+const rateOf = (code: string): number | undefined => live?.rates[code] ?? RATES_PER_USD[code];
 
 type Cat = "length" | "mass" | "volume" | "time" | "data" | "speed" | "temp" | "currency";
 interface Unit { cat: Cat; to: number; label: string } // to = كم من الوحدة الأساس (م، كغ، ل، ث، بايت، م/ث)
@@ -52,10 +64,9 @@ function tempConv(v: number, from: string, to: string): number {
   return to === "°C" ? c : to === "°F" ? (c * 9) / 5 + 32 : c + 273.15;
 }
 
-export interface ConvResult { text: string; from: string; to: string }
+export interface ConvResult { text: string; from: string; to: string; /** عملة فقط: مصدر الأسعار (live:<source>:<ms> أو builtin:<YYYY-MM>) */ note?: string }
 
-/** «100 usd sar» · «5 km to mi» · «30c f» · «2 gb mb». null إن لم يكن تحويلًا صالحًا. */
-export function convert(input: string): ConvResult | null {
+function parse(input: string): { num: number; a: Unit; b: Unit } | null {
   const s = normDigits(input).trim().toLowerCase().replace(/(\d)([^\d\s.,])/, "$1 $2");
   const toks = s.split(/\s+/).filter(Boolean);
   if (toks.length < 3 || toks.length > 4) return null;
@@ -66,11 +77,29 @@ export function convert(input: string): ConvResult | null {
   if (rest.length !== 2) return null;
   const a = U[rest[0]], b = U[rest[1]];
   if (!a || !b || a.cat !== b.cat || a.label === b.label) return null;
+  return { num, a, b };
+}
+
+/** هل الإدخال تحويل عملة؟ (يُستعمل لجلب الأسعار الحية كسولًا عند الحاجة فقط.) */
+export function isCurrencyQuery(input: string): boolean {
+  return parse(input)?.a.cat === "currency";
+}
+
+/** «100 usd sar» · «5 km to mi» · «30c f» · «2 gb mb». null إن لم يكن تحويلًا صالحًا. */
+export function convert(input: string): ConvResult | null {
+  const p = parse(input);
+  if (!p) return null;
+  const { num, a, b } = p;
   let out: number;
+  let note: string | undefined;
   if (a.cat === "temp") out = tempConv(num, a.label, b.label);
-  else if (a.cat === "currency") out = (num / RATES_PER_USD[a.label.toLowerCase()]) * RATES_PER_USD[b.label.toLowerCase()];
-  else out = (num * a.to) / b.to;
+  else if (a.cat === "currency") {
+    const ra = rateOf(a.label.toLowerCase()), rb = rateOf(b.label.toLowerCase());
+    if (!ra || !rb) return null;
+    out = (num / ra) * rb;
+    note = live ? `live:${live.source}:${live.updated}` : `builtin:${RATES_UPDATED}`;
+  } else out = (num * a.to) / b.to;
   if (!Number.isFinite(out)) return null;
   const txt = a.cat === "currency" ? out.toLocaleString("en-US", { maximumFractionDigits: 2 }) : fmtNum(out, 6);
-  return { text: `${txt} ${b.label}`, from: `${fmtNum(num)} ${a.label}`, to: b.label };
+  return { text: `${txt} ${b.label}`, from: `${fmtNum(num)} ${a.label}`, to: b.label, note };
 }

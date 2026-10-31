@@ -1,5 +1,8 @@
 // مخطط الإعدادات الكامل — مستعاد من بنية Settings في Island v1.2.8
 // المفاتيح (ai/stt) ليست هنا: تُحفظ مشفّرة DPAPI عبر ai_key_set / stt_key_set
+/** مساحة عمل لشريط الأوامر: تُفتح كل عناصرها (تطبيق/مجلد/ملف كمسار، أو رابط http(s)) دفعة واحدة. */
+export interface Workspace { id:string, name:string, items:string[] }
+
 export interface Settings {
   autostart:boolean,
   language:string,
@@ -75,6 +78,8 @@ export interface Settings {
   paletteFolders:boolean,
   searchEngine:string,
   searchUrl:string,
+  liveRates:boolean,
+  workspaces:Workspace[],
   weatherCity:string,
   weatherLat:number,
   weatherLon:number,
@@ -126,5 +131,6 @@ export const DEFAULTS: Partial<Settings> = {
   breakReminders: false,   // تذكير استراحة بعد استخدام متواصل (صريح من المستخدم)
   breakMinutes: 60,        // مدة الاستخدام المتواصل قبل التذكير (دقائق)
   btBatteries: true,       // قسم البطارية: بطاريات أجهزة البلوتوث (BLE/GATT) المتصلة؛ يعمل فقط مع showBattery
+  liveRates: true,         // شريط الأوامر: أسعار عملات حية (open.er-api.com) تُجلب كسولًا عند تحويل عملة وتُخزَّن 12 ساعة؛ false = المضمّنة فقط بلا شبكة
   batteryTip: true,        // قسم البطارية: نصيحة «افصل الشاحن عند 80%» أثناء الشحن
 };

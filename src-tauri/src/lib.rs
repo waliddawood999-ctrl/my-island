@@ -28,6 +28,7 @@ pub mod note;       // الملاحظة + التذكيرات + المؤقّت (k
 // pub mod agents;     // Claude Code hooks + Codex notify
 // pub mod vpn; pub mod controls; pub mod audio; pub mod privacy;
 pub mod files;      // فهرس شريط الأوامر (ذاكرة فقط) + تطبيقات + أيقونات
+pub mod rates;      // أسعار العملات الحية لشريط الأوامر (open.er-api.com، كاش 12 ساعة)
 pub mod palette;    // اختصار شريط الأوامر + الأخيرة + run_shell
 // linkicon: مدمج في launcher.rs (favicon الروابط)
 // pub mod drop_target;
@@ -161,6 +162,8 @@ pub fn run() {
             palette::palette_recent,
             palette::run_shell,
             palette::open_path,
+            palette::workspace_open,
+            rates::rates_get,
             capture::capture_start,
             capture::capture_frame,
             capture::capture_ready,

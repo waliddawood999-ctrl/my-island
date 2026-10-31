@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import "../../index.css";
 import { i } from "../../i18n";
 import { saveSettings, useSettings } from "../../useSettings";
+import { WorkspacesEditor } from "./Workspaces";
 import { LinesField, NumberField, Row, Section, Select, Slider, TextField, Toggle } from "./fields";
 
 interface MonitorInfo { index: number; name: string; width: number; height: number; primary: boolean }
@@ -184,6 +185,25 @@ function App() {
         <Row label={i("اختصار منتقي الألوان", "Color picker hotkey")}>
           <TextField label={i("اختصار منتقي الألوان", "Color picker hotkey")} value={s.hotkeyColor ?? ""} onCommit={(v) => saveSettings({ hotkeyColor: v })} />
         </Row>
+      </Section>
+
+      <Section title={i("شريط الأوامر", "Command palette")}>
+        <Row
+          label={i("أسعار العملات الحية", "Live currency rates")}
+          hint={i(
+            "عند تحويل عملة في الشريط تُجلب الأسعار من open.er-api.com وتُخزَّن 12 ساعة؛ بلا اتصال أو مطفأ تُستعمل الأسعار المضمّنة التقريبية.",
+            "When you convert a currency in the palette, rates are fetched from open.er-api.com and cached for 12 h; offline or off, the built-in approximate rates are used.",
+          )}
+        >
+          <Toggle label={i("أسعار العملات الحية", "Live currency rates")} value={s.liveRates ?? true} onChange={(v) => saveSettings({ liveRates: v })} />
+        </Row>
+        <div>
+          <div dir="auto" className="text-sm">{i("مساحات العمل", "Workspaces")}</div>
+          <div dir="auto" className="mb-2 text-xs text-white/50">
+            {i("مجموعات تُفتح دفعة واحدة من الشريط: اكتب اسمها أو «ws اسم». كل سطر: مسار تطبيق أو مجلد أو ملف، أو رابط http(s).", "Groups opened at once from the palette: type the name or “ws name”. One item per line: an app, folder or file path, or an http(s) link.")}
+          </div>
+          <WorkspacesEditor value={Array.isArray(s.workspaces) ? s.workspaces : []} />
+        </div>
       </Section>
 
       <Section title={i("الحافظة", "Clipboard")}>
