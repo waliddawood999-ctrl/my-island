@@ -7,6 +7,7 @@ import { useSettings } from "../../useSettings";
 import { useMedia } from "../../useMedia";
 import { ClipboardTab } from "./ClipboardTab";
 import { MediaSection } from "./MediaSection";
+import { Liquid } from "./Liquid";
 
 const PILL = { w: 200, h: 32 };
 const PANEL = { w: 720, h: 480 };
@@ -137,6 +138,16 @@ export function Pill() {
         }}
         className="relative overflow-hidden bg-black text-white transition-opacity duration-200"
       >
+        <Liquid
+          enabled={moduleMedia && (settings.liquidSpectrum ?? false)}
+          width={size.w}
+          boxH={64}
+          maxH={open ? 30 : 12}
+          cover={media.cover}
+          playing={media.info.session && media.info.playing}
+          hasSession={media.info.session}
+          visible={!hidden && opacity > 0}
+        />
         <div
           aria-label={i("الساعة", "Clock")}
           style={{ height: PILL.h }}
