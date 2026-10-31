@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { Settings as SettingsIcon } from "lucide-react";
 import { i } from "../../i18n";
 import { useSettings } from "../../useSettings";
+import { useMedia } from "../../useMedia";
 import { ClipboardTab } from "./ClipboardTab";
+import { MediaSection } from "./MediaSection";
 
 const PILL = { w: 200, h: 32 };
 const PANEL = { w: 720, h: 480 };
@@ -26,6 +28,32 @@ const TABS = () => [
   i("المحادثة", "Chat"),
 ];
 
+/** عنوان متحرك داخل الحبة المنكمشة؛ يتحرك فقط إن زاد النص عن العرض. */
+function PillTitle({ text }: { text: string }) {
+  const wrap = useRef<HTMLDivElement>(null);
+  const span = useRef<HTMLSpanElement>(null);
+  const [scroll, setScroll] = useState(false);
+  const [w, setW] = useState(0);
+  useLayoutEffect(() => {
+    const tw = span.current?.scrollWidth ?? 0;
+    setW(tw);
+    setScroll(tw > (wrap.current?.clientWidth ?? 0));
+  }, [text]);
+  return (
+    <div ref={wrap} className="w-full overflow-hidden px-4 text-center">
+      {scroll ? (
+        <div className="island-marquee" style={{ ["--marquee-dur" as string]: `${Math.max(6, w / 35)}s` }}>
+          <span dir="auto" className="pe-10">{text}</span>
+          <span dir="auto" className="pe-10">{text}</span>
+        </div>
+      ) : (
+        <span ref={span} dir="auto" className="whitespace-nowrap">{text}</span>
+      )}
+      {scroll && <span ref={span} dir="auto" className="invisible absolute whitespace-nowrap">{text}</span>}
+    </div>
+  );
+}
+
 /** الحبة: pill أسود 200×32 بساعة، تتمدد بالهوفر إلى لوحة 720×480 وتنكمش بعد مغادرة المؤشر. */
 export function Pill() {
   const settings = useSettings();
@@ -35,6 +63,13 @@ export function Pill() {
   const [hidden, setHidden] = useState(false);
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState(0);
+  const moduleMedia = settings.moduleMedia ?? true;
+  const media = useMedia(moduleMedia);
+  // mediaPill: "off"/"clock" = تبقى الساعة؛ غير ذلك (الافتراضي) = العنوان المتحرك أثناء التشغيل فقط.
+  const pillTitle =
+    moduleMedia && !["off", "clock"].includes(settings.mediaPill ?? "") && media.info.session && media.info.playing && media.info.title
+      ? [media.info.title, media.info.artist].filter(Boolean).join(" — ")
+      : null;
   const hoverT = useRef<number | undefined>(undefined);
   const collapseT = useRef<number | undefined>(undefined);
   const shrinkT = useRef<number | undefined>(undefined);
@@ -107,7 +142,11 @@ export function Pill() {
           style={{ height: PILL.h }}
           className={`absolute inset-x-0 top-0 flex items-center justify-center text-[13px] font-medium tabular-nums transition-opacity duration-200 ${open ? "opacity-0" : "opacity-100"}`}
         >
-          {(settings.showClock ?? true) && <span dir="ltr">{time}</span>}
+          {pillTitle ? (
+            <PillTitle text={pillTitle} />
+          ) : (
+            (settings.showClock ?? true) && <span dir="ltr">{time}</span>
+          )}
         </div>
         <div
           style={{ width: PANEL.w, height: PANEL.h }}
@@ -134,6 +173,11 @@ export function Pill() {
               <SettingsIcon size={16} />
             </button>
           </div>
+          {tab === 0 && open && moduleMedia && (
+            <div className="min-h-0 flex-1 pt-3">
+              <MediaSection media={media} />
+            </div>
+          )}
           {tab === 1 && open && (
             <div className="min-h-0 flex-1">
               <ClipboardTab />

@@ -7,3 +7,14 @@ html, body, #root {
   user-select: none;
   font-family: "Segoe UI", system-ui, sans-serif;
 }
+
+/* عنوان الأغنية المتحرك في الحبة المنكمشة */
+@keyframes island-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.island-marquee {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: island-marquee var(--marquee-dur, 10s) linear infinite;
+}

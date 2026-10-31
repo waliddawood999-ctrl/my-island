@@ -71,3 +71,10 @@ take_focus() · release_focus() — تعطيل/إعادة WS_EX_NOACTIVATE؛ ت�
 ### مضاف في الجلسة 1.3
 open_settings() — يُظهر نافذة settings ويمنحها الفوكس (نافذة عادية)؛ إغلاقها يخفيها فقط (CloseRequested ⇒ hide) · monitors_list() → [{index, name, width, height, primary}] بنفس فهرس `monitor` في win::position_main.
 settings_set لمفتاح `autostart` يكتب/يحذف قيمة MyIsland في HKCU\...\Run (autostart.rs). لا أحداث جديدة: تبديل `language` يصل كل النوافذ عبر settings:changed ويعيد رسمها.
+
+### مضاف في الجلسة 2.1 (media.rs — حسب المخطط §7/media)
+- `media_control(action: "play"|"pause"|"toggle"|"next"|"prev")` → bool (قبِلها التطبيق) · `media_seek(seconds: f64)` → bool · `media_sources()` → `[{id(AUMID), name}]` · `media_pick(id: string|null)` — اختيار المصدر؛ null = جلسة النظام الحالية (يرجع تلقائيًا للحالية إن اختفى المصدر المختار).
+- **أمر جديد غير مذكور في العقد الأصلي:** `media_now()` → `{info: MediaInfo, cover: string|null}` — لقطة فورية تستعملها الواجهة عند التركيب قبل أول حدث. (`media_rename` مؤجَّل.)
+- `media:update` (payload: `MediaInfo` = `{session, source, source_name, title, artist, album, duration(ث), position(ث), playing, can_prev, can_next, can_seek}`) — عند أي تغيير، والموضع كل ثانية أثناء التشغيل؛ `session:false` = لا جلسة (الحبة تبقى على شكلها).
+- `media:cover` (payload: data-URL للغلاف أو `null` عند تغيّر المسار قبل وصول الغلاف الجديد).
+- الإعدادات: `moduleMedia` (الافتراضي مفعّل عند غياب المفتاح؛ إطفاؤه يوقف النشر ويعيد `session:false`)، `mediaPill`: `"off"`/`"clock"` = تبقى الساعة في الحبة، أي قيمة أخرى أو غياب المفتاح = عنوان متحرك (عنوان — فنان) أثناء التشغيل فقط.

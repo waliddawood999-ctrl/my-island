@@ -6,7 +6,7 @@ pub mod win;        // موضع/إخفاء/فوكس النافذة الرئيس�
 pub mod watchdog;   // نبض page_pong وإعادة تحميل الصفحة الصامتة
 pub mod clipboard;  // مستمع الحافظة + جدول clips
 pub mod autostart;  // مفتاح Run في ريجيستري ويندوز
-// pub mod media;   // SMTC
+pub mod media;      // SMTC: ما يُشغَّل الآن + التحكم
 // pub mod spectrum;   // WASAPI loopback + FFT
 // pub mod player_audio;
 // pub mod lyrics;     // LRCLIB
@@ -38,6 +38,7 @@ pub fn run() {
     tauri::Builder::default()
         .manage(state::AppState::default())
         .manage(watchdog::WatchdogState::default())
+        .manage(media::MediaState::default())
         .plugin(tauri_plugin_single_instance::init(|_, _, _| {}))
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
@@ -61,6 +62,7 @@ pub fn run() {
                     eprintln!("تعذّر فتح island.db: {e}");
                 } else {
                     clipboard::start(app.handle());
+                    media::start(app.handle());
                     // تحديث مسار exe في Run إن كان autostart مفعّلًا (يتتبّع نقل التطبيق).
                     let on = app.state::<state::AppState>().settings.lock().unwrap()
                         .get("autostart").and_then(|v| v.as_bool()).unwrap_or(false);
@@ -102,7 +104,12 @@ pub fn run() {
             clipboard::clip_clear,
             clipboard::clip_pin,
             clipboard::clip_current_text,
-            clipboard::clip_paste
+            clipboard::clip_paste,
+            media::media_control,
+            media::media_seek,
+            media::media_pick,
+            media::media_sources,
+            media::media_now
         ])
         .run(tauri::generate_context!())
         .expect("error while running application");
