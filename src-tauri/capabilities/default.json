@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "صلاحيات النوافذ الأربع",
+  "windows": ["main", "overlay", "settings", "editor"],
+  "permissions": ["core:default", "global-shortcut:default"]
+}
