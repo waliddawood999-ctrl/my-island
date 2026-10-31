@@ -5,6 +5,16 @@ import { DEFAULTS, type Settings } from "./settings";
 import { setLang } from "./i18n";
 import { useMotionSync } from "./motion";
 
+/** يضبط data-theme/data-material على <html> (CSS في index.css/island.css يتكفّل بالباقي). */
+function useThemeAttrs(mode: unknown, material: unknown) {
+  const m = mode === "light" ? "light" : "dark";
+  const t = material === "glass" ? "glass" : "solid";
+  useEffect(() => {
+    document.documentElement.dataset.theme = m;
+    document.documentElement.dataset.material = t;
+  }, [m, t]);
+}
+
 /** يعكس إعدادات الخلفية (settings_get) ويتحدّث عند settings:changed. الخلفية مصدر الحقيقة.
  *  اللغة: تُطبَّق على i18n أثناء الرسم نفسه، فكل نافذة تعيد رسم نفسها عند تغيّر language عبر الحدث. */
 export function useSettings(): Partial<Settings> {
@@ -20,6 +30,7 @@ export function useSettings(): Partial<Settings> {
     return () => { alive = false; un.then((f) => f()); };
   }, []);
   setLang(s.language === "en" ? "en" : "ar");
+  useThemeAttrs(s.themeMode, s.themeMaterial);
   useMotionSync(s.motionLevel); // مستوى الحركة الفعلي (الإعداد + Eco) لهذه النافذة
   return s;
 }

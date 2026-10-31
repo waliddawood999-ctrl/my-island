@@ -85,6 +85,10 @@ export interface Settings {
   ecoOnBattery:boolean,
   motionLevel:MotionLevelSetting,
   eyesEnabled:boolean,
+  pillWidth:number,
+  pillHeight:number,
+  themeMode:'dark'|'light',
+  themeMaterial:'solid'|'glass',
   workspaces:Workspace[],
   weatherCity:string,
   weatherLat:number,
@@ -139,6 +143,10 @@ export const DEFAULTS: Partial<Settings> = {
   btBatteries: true,       // قسم البطارية: بطاريات أجهزة البلوتوث (BLE/GATT) المتصلة؛ يعمل فقط مع showBattery
   ecoMode: false,          // وضع التوفير اليدوي: يبطّئ الحافظة وتتبّع النافذة ويوقف بلوتوث البطارية وطيف الصوت ويخفض الحركة
   ecoOnBattery: false,     // يفعّل Eco تلقائيًا عند فصل الشاحن ويوقفه عند توصيله (اليدوي يبقى)
+  pillWidth: 220,          // عرض الحبة المنكمشة (160..280)
+  pillHeight: 34,          // ارتفاعها (28..44)؛ المحتوى (خط/عيون/أيقونات) يتدرج k=ارتفاع/32
+  themeMode: 'dark',       // dark = أسود كالمرجع · light = فاتح كالمرجع (كل النوافذ)
+  themeMaterial: 'solid',  // solid = مصمت · glass = شفافية مع blur
   eyesEnabled: true,       // عيون التميمة بجانب الساعة في الحبة المنكمشة (تُخفى تلقائيًا مع الميديا/التوفير/الحركة المتوقفة)
   motionLevel: 'full',     // full = نابضة · reduced = مخففة · off = متوقفة (انظر src/motion.ts)
   liveRates: true,         // شريط الأوامر: أسعار عملات حية (open.er-api.com) تُجلب كسولًا عند تحويل عملة وتُخزَّن 12 ساعة؛ false = المضمّنة فقط بلا شبكة

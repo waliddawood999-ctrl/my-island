@@ -45,7 +45,11 @@ pub fn defaults() -> Map<String, Value> {
         "ecoMode": false,
         "ecoOnBattery": false,
         "motionLevel": "full",
-        "eyesEnabled": true
+        "eyesEnabled": true,
+        "pillWidth": 220,
+        "pillHeight": 34,
+        "themeMode": "dark",
+        "themeMaterial": "solid"
     }) else { unreachable!() };
     m
 }

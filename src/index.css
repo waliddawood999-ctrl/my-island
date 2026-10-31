@@ -38,3 +38,19 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 800; }
 :root[data-motion="reduced"] *, :root[data-motion="reduced"] *::before, :root[data-motion="reduced"] *::after {
   transition-duration: 0.1s !important;
 }
+
+/*
+ * الثيمات (الإعدادان themeMode/themeMaterial؛ useSettings يضبط data-theme وdata-material على <html> في النوافذ الأربع).
+ * الداكن = الافتراضي. الفاتح يعيد ربط --color-white/--color-black (Tailwind) فتنعكس كل فئات text-white/bg-white/10… تلقائيًا
+ * بلا لمس المكوّنات، وتتبعها أسطح النوافذ عبر --app-*.
+ */
+:root { --app-bg: #12131a; --app-editor-bg: #14151c; --app-field: #1b1d27; --app-accent: #8ea2ff; }
+:root[data-theme="light"] {
+  --color-white: #0d1017;
+  --color-black: #f2f4f8;
+  --app-bg: #eceff4;
+  --app-editor-bg: #e4e8ef;
+  --app-field: #ffffff;
+  --app-accent: #4a5fd6;
+  color-scheme: light;
+}

@@ -29,9 +29,9 @@ import { AttentionSection } from "./AttentionSection";
 import { BatterySection, hasBatteryContent } from "./BatterySection";
 import { useAttention } from "../../useAttention";
 
-const PILL = { w: 200, h: 32 };
-/** تنبيه تذكير/مؤقّت: حبة أعرض قليلًا تعرض النص حتى يُنقر عليها أو تنتهي المهلة. */
-const ALERT = { w: 340, h: 36 };
+/** المقاس الافتراضي للحبة المنكمشة (الفعلي من pillWidth/pillHeight). */
+const PILL_DEFAULT = { w: 220, h: 34 };
+const clampN = (v: unknown, lo: number, hi: number, d: number) => Math.min(hi, Math.max(lo, typeof v === "number" && Number.isFinite(v) ? v : d));
 /** اللوحة عرضية (أعرض من ارتفاعها): 720×320 ثابتة (قرار وليد: تقصير بعد لقطة فعلية)؛ أي محتوى أطول يمرّر داخليًا في منطقة المحتوى فقط. */
 const PANEL = { w: 720, h: 320 };
 const panelSize = () => PANEL;
@@ -58,8 +58,12 @@ const tabDefs = (shelfOn: boolean, shelfCount: number, launcherOn: boolean) => [
   { id: "chat", label: i("المحادثة", "Chat") },
 ];
 
-/** عنوان متحرك داخل الحبة المنكمشة؛ يتحرك فقط إن زاد النص عن العرض. */
-function PillTitle({ text }: { text: string }) {
+/**
+ * عنوان متحرك داخل الحبة المنكمشة. حشوة داخلية ثابتة = نصف الارتفاع + هامش (تتجاوز انحناء الكبسولة)، والقصّ (overflow)
+ * على الصندوق الداخلي فقط؛ فلا يلمس النص حدود الحبة أبدًا في أي مقاس. يتحرك (marquee) فقط إن زاد النص عن العرض،
+ * مع تلاشٍ ناعم على الحافتين.
+ */
+function PillTitle({ text, inset }: { text: string; inset: number }) {
   const wrap = useRef<HTMLDivElement>(null);
   const span = useRef<HTMLSpanElement>(null);
   const [scroll, setScroll] = useState(false);
@@ -68,27 +72,40 @@ function PillTitle({ text }: { text: string }) {
     const tw = span.current?.scrollWidth ?? 0;
     setW(tw);
     setScroll(tw > (wrap.current?.clientWidth ?? 0));
-  }, [text]);
+  }, [text, inset]);
+  const fade = "linear-gradient(90deg, transparent 0, #000 10px, #000 calc(100% - 10px), transparent 100%)";
   return (
-    <div ref={wrap} className="w-full overflow-hidden px-4 text-center">
-      {scroll ? (
-        <div className="island-marquee" style={{ ["--marquee-dur" as string]: `${Math.max(6, w / 35)}s` }}>
-          <span dir="auto" className="pe-10">{text}</span>
-          <span dir="auto" className="pe-10">{text}</span>
-        </div>
-      ) : (
-        <span ref={span} dir="auto" className="whitespace-nowrap">{text}</span>
-      )}
-      {scroll && <span ref={span} dir="auto" className="invisible absolute whitespace-nowrap">{text}</span>}
+    <div className="w-full" style={{ paddingInline: inset }}>
+      <div
+        ref={wrap}
+        data-pill-title
+        className="overflow-hidden text-center"
+        style={scroll ? { WebkitMaskImage: fade, maskImage: fade } : undefined}
+      >
+        {scroll ? (
+          <div className="island-marquee" style={{ ["--marquee-dur" as string]: `${Math.max(6, w / 35)}s` }}>
+            <span dir="auto" className="pe-10">{text}</span>
+            <span dir="auto" className="pe-10">{text}</span>
+          </div>
+        ) : (
+          <span ref={span} dir="auto" className="whitespace-nowrap">{text}</span>
+        )}
+        {scroll && <span ref={span} dir="auto" className="invisible absolute whitespace-nowrap">{text}</span>}
+      </div>
     </div>
   );
 }
 
-/** الحبة: pill أسود 200×32 بساعة، تتمدد بالهوفر إلى لوحة 720×320 وتنكمش بعد مغادرة المؤشر. */
+/** الحبة: كبسولة (الافتراضي 220×34، قابلة للضبط) بساعة، تتمدد بالهوفر إلى لوحة 720×320 وتنكمش بعد مغادرة المؤشر. */
 export function Pill() {
   const settings = useSettings();
   const motion_level = useMotionLevel();
   const fmt = settings.clockFormat ?? "auto";
+  // مقاس الحبة المنكمشة من الإعدادات؛ k = الارتفاع/32 يقيس الخط والعيون والأيقونات معًا (بلا تشوّه).
+  const pill = { w: clampN(settings.pillWidth, 160, 280, PILL_DEFAULT.w), h: clampN(settings.pillHeight, 28, 44, PILL_DEFAULT.h) };
+  const k = pill.h / 32;
+  const alertSz = { w: Math.max(340, Math.round(pill.w * 1.55)), h: pill.h + 4 };
+  const ic = (n: number) => Math.round(n * k);
   const [time, setTime] = useState(() => fmtTime(fmt));
   const [hover, setHover] = useState(false);
   const [hidden, setHidden] = useState(false);
@@ -154,14 +171,18 @@ export function Pill() {
   const report = (w: number, h: number) =>
     invoke("report_island_rect", { width: w, height: h }).catch(() => {});
 
-  useEffect(() => { report(PILL.w, PILL.h); }, []);
+  // المقاس تغيّر من الإعدادات والحبة منكمشة ⇒ تُعاد قياس النافذة (لا أثر أثناء الفتح/الشريط/التنبيه).
+  useEffect(() => {
+    if (open || paletteRef.current || alertRef.current) return;
+    report(pill.w, pill.h);
+  }, [pill.w, pill.h]);
 
   /** تصغير النافذة بعد انتهاء حركة الانكماش (رد onAnimationComplete) مع مؤقّت احتياطي واحد. */
   const flushShrink = () => {
     if (!shrinkPending.current) return;
     shrinkPending.current = false;
     window.clearTimeout(shrinkT.current);
-    const rest = alertRef.current ? ALERT : PILL;
+    const rest = alertRef.current ? alertSz : pill;
     report(rest.w, rest.h);
   };
   const scheduleShrink = () => {
@@ -267,17 +288,17 @@ export function Pill() {
   // وصول تنبيه أثناء الانكماش: تكبير النافذة قبل الحركة؛ زواله: تصغيرها بعد الحركة.
   useEffect(() => {
     if (paletteRef.current || open) return;
-    if (alert) { cancelShrink(); report(ALERT.w, ALERT.h); }
+    if (alert) { cancelShrink(); report(alertSz.w, alertSz.h); }
     else scheduleShrink();
   }, [alert?.id, alert?.at]);
 
-  const size = palette ? PALETTE : open ? panel : alert ? ALERT : PILL;
+  const size = palette ? PALETTE : open ? panel : alert ? alertSz : pill;
   // الشفافية من الإعدادات؛ autoHide يخفي الحبة في الراحة (النافذة تبقى تستقبل المرور فتظهر عند الهوفر).
   const rest = (settings.opacityRest ?? 100) / 100;
   const opened = (settings.opacityOpen ?? 100) / 100;
   const opacity = hidden ? 0 : palette ? 1 : open ? opened : settings.autoHide && !hover ? 0 : rest;
 
-  const radius = palette ? 24 : open ? 28 : 16;
+  const radius = palette ? 24 : open ? 28 : (alert ? alertSz.h : pill.h) / 2; // كبسولة كاملة الاستدارة
   const tabs = tabDefs(shelfOn, shelf.items.length, launcherOn);
   const tab = Math.max(0, tabs.findIndex((t) => t.id === tabId));
   const curTab = tabs[tab].id;
@@ -297,7 +318,7 @@ export function Pill() {
         transition={{ default: spring.island, opacity: { duration: dur.base, ease: ease.out } }}
         onAnimationComplete={flushShrink}
         style={{ boxShadow: open || palette ? "var(--island-ring-open)" : "var(--island-ring)" }}
-        className="relative overflow-hidden bg-black text-white"
+        className="island-body relative overflow-hidden"
       >
         <Liquid
           enabled={moduleMedia && (settings.liquidSpectrum ?? false) && motion_level !== "off"}
@@ -314,8 +335,8 @@ export function Pill() {
           initial={false}
           animate={{ opacity: open || palette ? 0 : 1 }}
           transition={{ duration: dur.base, ease: ease.out }}
-          style={{ height: alert && !open ? ALERT.h : PILL.h }}
-          className="absolute inset-x-0 top-0 flex items-center justify-center text-[13px] font-medium tabular-nums"
+          style={{ height: alert && !open ? alertSz.h : pill.h, fontSize: 13 * k }}
+          className="absolute inset-x-0 top-0 flex items-center justify-center font-medium tabular-nums"
         >
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
@@ -328,13 +349,13 @@ export function Pill() {
             >
               {rec.recording ? (
                 <span dir="ltr" className="flex items-center gap-2" aria-label={i("جارٍ التسجيل — انقر للإيقاف", "Recording — click to stop")}>
-                  <span className="island-rec-dot h-2.5 w-2.5 rounded-full bg-red-500" />
+                  <span className="island-rec-dot rounded-full bg-red-500" style={{ width: ic(10), height: ic(10) }} />
                   <span className="tabular-nums">{fmtElapsed(rec.elapsed)}</span>
                 </span>
               ) : alert && !open ? (
                 <span dir="auto" className="flex max-w-full items-center gap-2 px-3" role="alert">
                   <motion.span animate={alertShake.animate} transition={alertShake.transition}>
-                    {alert.kind === "timer" ? <TimerIcon size={15} /> : alert.kind === "break" ? <Coffee size={15} /> : <Bell size={15} />}
+                    {alert.kind === "timer" ? <TimerIcon size={ic(15)} /> : alert.kind === "break" ? <Coffee size={ic(15)} /> : <Bell size={ic(15)} />}
                   </motion.span>
                   <span className="truncate">
                     {alert.text || (alert.kind === "timer" ? i("انتهى المؤقّت", "Timer finished") : i("تذكير", "Reminder"))}
@@ -342,13 +363,13 @@ export function Pill() {
                 </span>
               ) : timerNear && remaining !== null ? (
                 <span dir="ltr" className="flex items-center gap-1.5" aria-label={i("المؤقّت", "Timer")}>
-                  <TimerIcon size={13} />
+                  <TimerIcon size={ic(13)} />
                   <span className="tabular-nums">{fmtCountdown(remaining)}</span>
                 </span>
               ) : dlText ? (
                 <span dir="ltr" aria-label={i("أكبر تنزيل جارٍ", "Largest active download")}>{dlText}</span>
               ) : pillTitle ? (
-                <PillTitle text={pillTitle} />
+                <PillTitle text={pillTitle} inset={Math.ceil(pill.h / 2 + 4 * k)} />
               ) : (
                 (settings.eyesEnabled ?? true) ? (
                   // عيون التميمة بجانب الساعة؛ ينعكس الترتيب بالعربية فقط (التتبّع فيزيائي لا يتأثر).
@@ -356,7 +377,7 @@ export function Pill() {
                     className="flex items-center gap-2.5"
                     style={{ flexDirection: rowReversed(settings.language === "en" ? "en" : "ar") ? "row-reverse" : "row" }}
                   >
-                    <Eyes islandHidden={hidden} />
+                    <Eyes islandHidden={hidden} k={k} />
                     {(settings.showClock ?? true) && <span dir="ltr">{time}</span>}
                   </span>
                 ) : (
@@ -364,7 +385,7 @@ export function Pill() {
                 )
               )}
               {showBat && !pillTitle && !dlText && battery?.has_battery && (
-                <span className="ms-3 text-[11px] text-white/70"><BatteryChip b={battery} size={12} /></span>
+                <span className="ms-3 text-white/70" style={{ fontSize: 11 * k }}><BatteryChip b={battery} size={ic(12)} /></span>
               )}
             </motion.div>
           </AnimatePresence>

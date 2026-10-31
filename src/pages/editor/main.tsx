@@ -159,7 +159,7 @@ function App() {
   const btn = "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm transition-colors";
 
   return (
-    <div dir="auto" className="flex h-screen flex-col bg-[#14151c] text-white">
+    <div dir="auto" className="flex h-screen flex-col bg-[var(--app-editor-bg)] text-white">
       <div dir="ltr" className="flex flex-wrap items-center gap-1.5 border-b border-white/10 px-3 py-2">
         {tools.map((t) => (
           <button

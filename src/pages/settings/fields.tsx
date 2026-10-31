@@ -3,7 +3,7 @@ import { useEffect, useState, type ReactNode } from "react";
 export function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="mb-6 rounded-xl border border-white/10 bg-white/[0.03] p-4">
-      <h2 className="mb-3 text-base font-bold text-[#8ea2ff]">{title}</h2>
+      <h2 className="mb-3 text-base font-bold text-[var(--app-accent)]">{title}</h2>
       <div className="flex flex-col gap-3">{children}</div>
     </section>
   );
@@ -72,7 +72,7 @@ export function Select<T extends string | number>(p: {
         const o = p.options.find((x) => String(x.value) === e.target.value);
         if (o) p.onChange(o.value);
       }}
-      className="rounded-md border border-white/15 bg-[#1b1d27] px-2 py-1 text-sm"
+      className="rounded-md border border-white/15 bg-[var(--app-field)] px-2 py-1 text-sm"
     >
       {p.options.map((o) => <option key={String(o.value)} value={String(o.value)}>{o.label}</option>)}
     </select>
@@ -92,7 +92,7 @@ export function NumberField(p: { value: number; min: number; max: number; onComm
       type="number" aria-label={p.label} dir="ltr" min={p.min} max={p.max} value={t}
       onChange={(e) => setT(e.target.value)} onBlur={commit}
       onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-      className="w-24 rounded-md border border-white/15 bg-[#1b1d27] px-2 py-1 text-sm"
+      className="w-24 rounded-md border border-white/15 bg-[var(--app-field)] px-2 py-1 text-sm"
     />
   );
 }
@@ -109,7 +109,7 @@ export function LinesField(p: { value: string[]; onCommit: (v: string[]) => void
         const next = t.split("\n").map((x) => x.trim()).filter(Boolean);
         if (next.join("\n") !== p.value.join("\n")) p.onCommit(next);
       }}
-      className="w-64 rounded-md border border-white/15 bg-[#1b1d27] px-2 py-1 text-sm"
+      className="w-64 rounded-md border border-white/15 bg-[var(--app-field)] px-2 py-1 text-sm"
     />
   );
 }
@@ -124,7 +124,7 @@ export function TextField(p: { value: string; onCommit: (v: string) => void; lab
       type="text" aria-label={p.label} dir="ltr" value={t} placeholder={p.placeholder}
       onChange={(e) => setT(e.target.value)} onBlur={commit}
       onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-      className="w-64 rounded-md border border-white/15 bg-[#1b1d27] px-2 py-1 text-sm"
+      className="w-64 rounded-md border border-white/15 bg-[var(--app-field)] px-2 py-1 text-sm"
     />
   );
 }

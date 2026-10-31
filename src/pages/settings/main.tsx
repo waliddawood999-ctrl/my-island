@@ -89,6 +89,32 @@ function App() {
       </Section>
 
       <Section title={i("الميديا والمظهر", "Media & appearance")}>
+        <Row label={i("عرض الحبة", "Pill width")} hint={i("المحتوى يتدرج مع المقاس تلقائيًا", "Content scales with the size automatically")}>
+          <Slider label={i("عرض الحبة", "Pill width")} value={s.pillWidth ?? 220} min={160} max={280} step={5} format={px} onCommit={(v) => saveSettings({ pillWidth: v })} />
+        </Row>
+        <Row label={i("ارتفاع الحبة", "Pill height")}>
+          <Slider label={i("ارتفاع الحبة", "Pill height")} value={s.pillHeight ?? 34} min={28} max={44} step={1} format={px} onCommit={(v) => saveSettings({ pillHeight: v })} />
+        </Row>
+        <Row label={i("النمط", "Theme")} hint={i("يُطبَّق على الحبة واللوحة ونوافذ البرنامج", "Applies to the island, the panel and app windows")}>
+          <Select
+            label={i("النمط", "Theme")} value={s.themeMode ?? "dark"}
+            options={[
+              { value: "dark", label: i("داكن", "Dark") },
+              { value: "light", label: i("فاتح", "Light") },
+            ]}
+            onChange={(v) => saveSettings({ themeMode: v === "light" ? "light" : "dark" })}
+          />
+        </Row>
+        <Row label={i("المادة", "Material")} hint={i("الزجاجية: شفافية مع blur", "Glass: transparency with blur")}>
+          <Select
+            label={i("المادة", "Material")} value={s.themeMaterial ?? "solid"}
+            options={[
+              { value: "solid", label: i("عادية (مصمتة)", "Solid") },
+              { value: "glass", label: i("زجاجية", "Glass") },
+            ]}
+            onChange={(v) => saveSettings({ themeMaterial: v === "glass" ? "glass" : "solid" })}
+          />
+        </Row>
         <Row label={i("عيون التميمة", "Mascot eyes")} hint={i("عينان بجانب الساعة تتبعان المؤشر؛ تُخفى أثناء الميديا والتوفير", "Eyes beside the clock follow the cursor; hidden during media and eco mode")}>
           <Toggle label={i("عيون التميمة", "Mascot eyes")} value={s.eyesEnabled ?? true} onChange={(v) => saveSettings({ eyesEnabled: v })} />
         </Row>
