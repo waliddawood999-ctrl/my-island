@@ -7,7 +7,7 @@ pub mod watchdog;   // نبض page_pong وإعادة تحميل الصفحة ا�
 pub mod clipboard;  // مستمع الحافظة + جدول clips
 pub mod autostart;  // مفتاح Run في ريجيستري ويندوز
 pub mod media;      // SMTC: ما يُشغَّل الآن + التحكم
-// pub mod spectrum;   // WASAPI loopback + FFT
+pub mod spectrum;   // WASAPI loopback + FFT
 // pub mod player_audio;
 // pub mod lyrics;     // LRCLIB
 // pub mod downloads;  // + steam.rs لتنزيلات Steam
@@ -63,6 +63,7 @@ pub fn run() {
                 } else {
                     clipboard::start(app.handle());
                     media::start(app.handle());
+                    spectrum::start(app.handle());
                     // تحديث مسار exe في Run إن كان autostart مفعّلًا (يتتبّع نقل التطبيق).
                     let on = app.state::<state::AppState>().settings.lock().unwrap()
                         .get("autostart").and_then(|v| v.as_bool()).unwrap_or(false);
