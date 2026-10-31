@@ -32,6 +32,9 @@ pub fn defaults() -> Map<String, Value> {
         "hotkeyPalette": "Alt+Space",
         "hotkeyArea": "Ctrl+Alt+A",
         "hotkeyScreen": "Ctrl+Alt+S",
+        "hotkeyRecord": "Ctrl+Alt+R",
+        "hotkeyColor": "Ctrl+Alt+C",
+        "recordingQuality": "medium",
         "checkUpdates": true
     }) else { unreachable!() };
     m
@@ -80,6 +83,8 @@ impl AppState {
                 if k.starts_with(crate::lyrics::CACHE_PREFIX) { continue; }
                 // الأخيرة في شريط الأوامر (palette.rs) ليست إعدادات.
                 if k == crate::palette::RECENT_KEY { continue; }
+                // سجل الألوان (color.rs) ليس إعدادًا.
+                if k == crate::color::HISTORY_KEY { continue; }
                 if let Ok(val) = serde_json::from_str::<Value>(&v) {
                     merged.insert(k, val);
                 }

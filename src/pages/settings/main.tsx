@@ -4,7 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import "../../index.css";
 import { i } from "../../i18n";
 import { saveSettings, useSettings } from "../../useSettings";
-import { LinesField, NumberField, Row, Section, Select, Slider, Toggle } from "./fields";
+import { LinesField, NumberField, Row, Section, Select, Slider, TextField, Toggle } from "./fields";
 
 interface MonitorInfo { index: number; name: string; width: number; height: number; primary: boolean }
 
@@ -104,6 +104,55 @@ function App() {
         </Row>
         <Row label={i("إظهار البطارية", "Show battery")}>
           <Toggle label={i("إظهار البطارية", "Show battery")} value={s.showBattery ?? false} onChange={(v) => saveSettings({ showBattery: v })} />
+        </Row>
+      </Section>
+
+      <Section title={i("الالتقاط والتسجيل", "Capture & recording")}>
+        <Row label={i("إظهار الحبة في اللقطات", "Show the island in captures")} hint={i("مطفأ: الحبة تُستثنى من اللقطات والتسجيل", "Off: the island is excluded from screenshots and recordings")}>
+          <Toggle label={i("إظهار الحبة في اللقطات", "Show the island in captures")} value={s.captureVisible ?? false} onChange={(v) => saveSettings({ captureVisible: v })} />
+        </Row>
+        <Row label={i("صيغة التسجيل", "Recording format")}>
+          <Select
+            label={i("صيغة التسجيل", "Recording format")} value={s.recordFormat ?? "mp4"}
+            options={[{ value: "mp4", label: "MP4" }, { value: "gif", label: "GIF" }]}
+            onChange={(v) => saveSettings({ recordFormat: v })}
+          />
+        </Row>
+        <Row label={i("إطارات التسجيل في الثانية", "Recording FPS")} hint={i("GIF يُسقَّف عند 20", "GIF is capped at 20")}>
+          <Select
+            label={i("إطارات التسجيل في الثانية", "Recording FPS")} value={s.recordingFps ?? 30}
+            options={[{ value: 30, label: "30" }, { value: 60, label: "60" }]}
+            onChange={(v) => saveSettings({ recordingFps: v })}
+          />
+        </Row>
+        <Row label={i("جودة التسجيل", "Recording quality")}>
+          <Select
+            label={i("جودة التسجيل", "Recording quality")} value={s.recordingQuality ?? "medium"}
+            options={[
+              { value: "low", label: i("منخفضة", "Low") },
+              { value: "medium", label: i("متوسطة", "Medium") },
+              { value: "high", label: i("عالية", "High") },
+            ]}
+            onChange={(v) => saveSettings({ recordingQuality: v })}
+          />
+        </Row>
+        <Row label={i("مجلد اللقطات", "Screenshots folder")} hint={i("فارغ = Pictures\\MyIsland", "Empty = Pictures\\MyIsland")}>
+          <TextField label={i("مجلد اللقطات", "Screenshots folder")} value={s.screenshotDir ?? ""} onCommit={(v) => saveSettings({ screenshotDir: v })} />
+        </Row>
+        <Row label={i("مجلد التسجيلات", "Recordings folder")} hint={i("فارغ = Videos\\MyIsland", "Empty = Videos\\MyIsland")}>
+          <TextField label={i("مجلد التسجيلات", "Recordings folder")} value={s.recordingDir ?? ""} onCommit={(v) => saveSettings({ recordingDir: v })} />
+        </Row>
+        <Row label={i("اختصار لقطة منطقة", "Area screenshot hotkey")} hint={i("فارغ = معطّل · PrintScreen يعترض الزر", "Empty = off · PrintScreen intercepts the key")}>
+          <TextField label={i("اختصار لقطة منطقة", "Area screenshot hotkey")} value={s.hotkeyArea ?? ""} onCommit={(v) => saveSettings({ hotkeyArea: v })} />
+        </Row>
+        <Row label={i("اختصار لقطة الشاشة", "Full-screen screenshot hotkey")}>
+          <TextField label={i("اختصار لقطة الشاشة", "Full-screen screenshot hotkey")} value={s.hotkeyScreen ?? ""} onCommit={(v) => saveSettings({ hotkeyScreen: v })} />
+        </Row>
+        <Row label={i("اختصار التسجيل", "Recording hotkey")} hint={i("يبدّل بدء/إيقاف · فارغ = معطّل", "Toggles start/stop · empty = off")}>
+          <TextField label={i("اختصار التسجيل", "Recording hotkey")} value={s.hotkeyRecord ?? ""} onCommit={(v) => saveSettings({ hotkeyRecord: v })} />
+        </Row>
+        <Row label={i("اختصار منتقي الألوان", "Color picker hotkey")}>
+          <TextField label={i("اختصار منتقي الألوان", "Color picker hotkey")} value={s.hotkeyColor ?? ""} onCommit={(v) => saveSettings({ hotkeyColor: v })} />
         </Row>
       </Section>
 

@@ -13,7 +13,9 @@ pub mod lyrics;     // LRCLIB
 pub mod downloads;  // مجلد التنزيلات + Steam (مدمج في الملف نفسه)
 pub mod battery;    // GetSystemPowerStatus
 pub mod capture;    // لقطات منطقة/شاشة + overlay
-// pub mod recorder;   // Media Foundation / GIF
+pub mod recorder;   // Media Foundation (H.264) / GIF
+pub mod color;      // منتقي الألوان + السجل
+pub mod editor;     // نافذة محرّر اللقطات
 // pub mod ocr;        // Windows.Media.Ocr
 // pub mod ai;         // بث SSE لأي OpenAI-compatible
 // pub mod attach;     // استخراج نصوص المرفقات محليًا
@@ -44,6 +46,9 @@ pub fn run() {
         .manage(files::FilesState::default())
         .manage(palette::PaletteState::default())
         .manage(capture::CaptureState::default())
+        .manage(recorder::RecorderState::default())
+        .manage(color::ColorState::default())
+        .manage(editor::EditorState::default())
         .plugin(tauri_plugin_single_instance::init(|_, _, _| {}))
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
@@ -53,8 +58,10 @@ pub fn run() {
                         win::toggle_hidden(app);
                     } else if palette::is_palette(app, sc) {
                         palette::open(app);
+                    } else if capture::on_shortcut(app, sc) {
+                    } else if recorder::on_shortcut(app, sc) {
                     } else {
-                        capture::on_shortcut(app, sc);
+                        color::on_shortcut(app, sc);
                     }
                 })
                 .build(),
@@ -79,6 +86,8 @@ pub fn run() {
                     files::start(app.handle());
                     palette::rebind(app.handle());
                     capture::rebind(app.handle());
+                    recorder::rebind(app.handle());
+                    color::rebind(app.handle());
                     // تحديث مسار exe في Run إن كان autostart مفعّلًا (يتتبّع نقل التطبيق).
                     let on = app.state::<state::AppState>().settings.lock().unwrap()
                         .get("autostart").and_then(|v| v.as_bool()).unwrap_or(false);
@@ -99,7 +108,7 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             // نافذة الإعدادات تُخفى عند الإغلاق (لا تُدمَّر) كي يعيد open_settings فتحها.
-            if window.label() == "settings" {
+            if window.label() == "settings" || window.label() == editor::EDITOR {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();
                     let _ = window.hide();
@@ -144,7 +153,17 @@ pub fn run() {
             capture::capture_region,
             capture::capture_cancel,
             capture::open_captures,
-            capture::prtsc_taken
+            capture::prtsc_taken,
+            recorder::record_begin,
+            recorder::record_start,
+            recorder::record_stop,
+            recorder::record_status,
+            color::color_pick,
+            color::color_patch,
+            color::color_history,
+            editor::editor_open,
+            editor::editor_image,
+            editor::editor_save
         ])
         .run(tauri::generate_context!())
         .expect("error while running application");

@@ -113,3 +113,18 @@ export function LinesField(p: { value: string[]; onCommit: (v: string[]) => void
     />
   );
 }
+
+/** حقل نص يحفظ عند الخروج/Enter (مسارات واختصارات). */
+export function TextField(p: { value: string; onCommit: (v: string) => void; label: string; placeholder?: string }) {
+  const [t, setT] = useState(p.value);
+  useEffect(() => setT(p.value), [p.value]);
+  const commit = () => { const n = t.trim(); if (n !== p.value) p.onCommit(n); };
+  return (
+    <input
+      type="text" aria-label={p.label} dir="ltr" value={t} placeholder={p.placeholder}
+      onChange={(e) => setT(e.target.value)} onBlur={commit}
+      onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+      className="w-64 rounded-md border border-white/15 bg-[#1b1d27] px-2 py-1 text-sm"
+    />
+  );
+}

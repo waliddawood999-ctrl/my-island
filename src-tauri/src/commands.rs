@@ -35,6 +35,12 @@ pub fn settings_set(app: AppHandle, state: State<AppState>, patch: Map<String, V
     if applied.keys().any(|k| matches!(k.as_str(), "hotkeyArea" | "hotkeyScreen")) {
         crate::capture::rebind(&app);
     }
+    if applied.contains_key("hotkeyRecord") {
+        crate::recorder::rebind(&app);
+    }
+    if applied.contains_key("hotkeyColor") {
+        crate::color::rebind(&app);
+    }
     if applied.contains_key("captureVisible") {
         crate::capture::apply_affinity(&app);
     }

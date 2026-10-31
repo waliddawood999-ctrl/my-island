@@ -8,7 +8,9 @@ import { i } from "../../i18n";
 import { useSettings } from "../../useSettings";
 import { useMedia } from "../../useMedia";
 import { fmtBytes, useBattery, useDownloads } from "../../useDownloads";
+import { fmtElapsed, useRecording } from "../../useRecording";
 import { ClipboardTab } from "./ClipboardTab";
+import { ToolsTab } from "./ToolsTab";
 import { MediaSection } from "./MediaSection";
 import { Liquid } from "./Liquid";
 import { Palette } from "./Palette";
@@ -91,6 +93,8 @@ export function Pill() {
   // downloadsInPill: أكبر تنزيل جارٍ (نسبة إن عُرفت وإلا الحجم) تتقدم على عنوان الميديا.
   const biggest = dlInPill ? [...dl.active].sort((a, b) => b.size - a.size)[0] : undefined;
   const dlText = biggest ? (biggest.percent != null ? `⬇ ${Math.round(biggest.percent)}%` : `⬇ ${fmtBytes(biggest.size)}`) : null;
+  // التسجيل: نقطة حمراء + مؤقّت في الحبة المنكمشة؛ النقر عليها (منكمشة) يوقف التسجيل.
+  const rec = useRecording();
   const hoverT = useRef<number | undefined>(undefined);
   const collapseT = useRef<number | undefined>(undefined);
   const shrinkT = useRef<number | undefined>(undefined);
@@ -202,13 +206,14 @@ export function Pill() {
   const radius = palette ? 24 : open ? 28 : 16;
   const tabLabels = TABS();
   /** ما يُعرض في الحبة المنكمشة: واحد فقط، يتبدّل بتمويه قصير. */
-  const pillKey = dlText ? "dl" : pillTitle ? "title" : "clock";
+  const pillKey = rec.recording ? "rec" : dlText ? "dl" : pillTitle ? "title" : "clock";
 
   return (
     <div className="flex w-full justify-center">
       <motion.div
         onMouseEnter={onEnter}
         onMouseLeave={onLeave}
+        onClick={() => { if (rec.recording && !open && !palette) invoke("record_stop").catch(() => {}); }}
         onContextMenu={(e) => { e.preventDefault(); invoke("open_settings").catch(() => {}); }}
         initial={false}
         animate={{ opacity, width: size.w, height: size.h, borderRadius: radius }}
@@ -244,7 +249,12 @@ export function Pill() {
               exit="exit"
               className="flex w-full items-center justify-center"
             >
-              {dlText ? (
+              {rec.recording ? (
+                <span dir="ltr" className="flex items-center gap-2" aria-label={i("جارٍ التسجيل — انقر للإيقاف", "Recording — click to stop")}>
+                  <span className="island-rec-dot h-2.5 w-2.5 rounded-full bg-red-500" />
+                  <span className="tabular-nums">{fmtElapsed(rec.elapsed)}</span>
+                </span>
+              ) : dlText ? (
                 <span dir="ltr" aria-label={i("أكبر تنزيل جارٍ", "Largest active download")}>{dlText}</span>
               ) : pillTitle ? (
                 <PillTitle text={pillTitle} />
@@ -315,6 +325,11 @@ export function Pill() {
                         <DownloadsSection snap={dl} battery={showBat ? battery : null} showDownloads={showDl} />
                       </motion.div>
                     )}
+                  </div>
+                )}
+                {tab === 2 && (
+                  <div className="min-h-0 flex-1">
+                    <ToolsTab />
                   </div>
                 )}
                 {tab === 1 && (

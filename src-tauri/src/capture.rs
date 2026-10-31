@@ -59,12 +59,13 @@ pub fn bgra_to_rgb(src: &[u8]) -> Vec<u8> {
 // ───────────────────────── الحالة ─────────────────────────
 
 /// لقطة شاشة مجمّدة (RGB) مع هندسة الشاشة الفعلية.
-struct Frame {
-    rgb: Vec<u8>,
-    w: u32,
-    h: u32,
-    x: i32,
-    y: i32,
+pub(crate) struct Frame {
+    pub(crate) rgb: Vec<u8>,
+    pub(crate) w: u32,
+    pub(crate) h: u32,
+    /// موضع الشاشة الملتقطة على سطح المكتب الافتراضي (بكسلات فعلية).
+    pub(crate) x: i32,
+    pub(crate) y: i32,
     scale: f64,
     index: usize,
     /// data-URL لـPNG سريع الضغط تعرضه الطبقة.
@@ -72,6 +73,8 @@ struct Frame {
     /// هل طلبت الواجهة الإظهار (capture_ready)؟
     shown: bool,
     id: u64,
+    /// غرض الطبقة: "area" (لقطة) · "record" (منطقة تسجيل — 3.3) · "color" (منتقي ألوان — 3.3).
+    mode: &'static str,
 }
 
 #[derive(Default)]
@@ -93,6 +96,8 @@ pub struct FrameInfo {
     pub y: i32,
     pub scale: f64,
     pub index: usize,
+    /// "area" | "record" | "color" — الطبقة تغيّر سلوكها حسبه.
+    pub mode: &'static str,
 }
 
 #[derive(Serialize, Clone)]
@@ -105,7 +110,7 @@ pub struct Saved {
 
 // ───────────────────────── الاختصارات ─────────────────────────
 
-fn setting_str(app: &AppHandle, key: &str) -> String {
+pub(crate) fn setting_str(app: &AppHandle, key: &str) -> String {
     app.state::<AppState>()
         .settings
         .lock()
@@ -115,7 +120,7 @@ fn setting_str(app: &AppHandle, key: &str) -> String {
         .unwrap_or_default()
 }
 
-fn bind(app: &AppHandle, slot: &Mutex<Option<Shortcut>>, key: &str, other: Option<Shortcut>) {
+pub(crate) fn bind(app: &AppHandle, slot: &Mutex<Option<Shortcut>>, key: &str, other: Option<Shortcut>) {
     let want = setting_str(app, key);
     let gs = app.global_shortcut();
     let mut cur = slot.lock().unwrap();
@@ -178,7 +183,7 @@ fn pictures_dir() -> Option<std::path::PathBuf> {
 }
 
 /// screenshotDir أو Pictures\MyIsland.
-fn screenshot_dir(app: &AppHandle) -> std::path::PathBuf {
+pub(crate) fn screenshot_dir(app: &AppHandle) -> std::path::PathBuf {
     let s = setting_str(app, "screenshotDir");
     if !s.is_empty() {
         return s.into();
@@ -222,7 +227,7 @@ pub fn apply_affinity(app: &AppHandle) {
 
 /// يلتقط مستطيلًا بالبكسلات الفعلية من سطح المكتب الافتراضي ⇒ RGB.
 #[cfg(windows)]
-fn grab(x: i32, y: i32, w: u32, h: u32) -> Result<Vec<u8>, String> {
+pub(crate) fn grab_bgra(x: i32, y: i32, w: u32, h: u32) -> Result<Vec<u8>, String> {
     use windows::Win32::Graphics::Gdi::{
         BitBlt, CreateCompatibleBitmap, CreateCompatibleDC, DeleteDC, DeleteObject, GetDC, GetDIBits,
         ReleaseDC, SelectObject, BITMAPINFO, BITMAPINFOHEADER, BI_RGB, CAPTUREBLT, DIB_RGB_COLORS, SRCCOPY,
@@ -266,12 +271,17 @@ fn grab(x: i32, y: i32, w: u32, h: u32) -> Result<Vec<u8>, String> {
         if lines == 0 {
             return Err("GetDIBits فشل".into());
         }
-        Ok(bgra_to_rgb(&buf))
+        Ok(buf)
     }
 }
 #[cfg(not(windows))]
-fn grab(_x: i32, _y: i32, _w: u32, _h: u32) -> Result<Vec<u8>, String> {
+pub(crate) fn grab_bgra(_x: i32, _y: i32, _w: u32, _h: u32) -> Result<Vec<u8>, String> {
     Err("الالتقاط يتطلب ويندوز".into())
+}
+
+/// كما grab_bgra لكن RGB.
+fn grab(x: i32, y: i32, w: u32, h: u32) -> Result<Vec<u8>, String> {
+    grab_bgra(x, y, w, h).map(|b| bgra_to_rgb(&b))
 }
 
 #[cfg(windows)]
@@ -287,6 +297,12 @@ fn cursor_pos() -> (i32, i32) {
 #[cfg(not(windows))]
 fn cursor_pos() -> (i32, i32) {
     (0, 0)
+}
+
+/// طابع الوقت لأسماء الملفات بامتداد مختلف (التسجيل: mp4/gif).
+pub(crate) fn stamp_ext(ext: &str) -> String {
+    let s = stamp();
+    format!("{}.{ext}", s.trim_end_matches(".png"))
 }
 
 #[cfg(windows)]
@@ -329,7 +345,7 @@ fn grab_monitor(app: &AppHandle) -> Result<Shot, String> {
     Ok(Shot { rgb, w, h, x, y, scale: mons[index].scale_factor(), index })
 }
 
-fn encode_png(rgb: &[u8], w: u32, h: u32, fast: bool) -> Result<Vec<u8>, String> {
+pub(crate) fn encode_png(rgb: &[u8], w: u32, h: u32, fast: bool) -> Result<Vec<u8>, String> {
     use image::codecs::png::{CompressionType, FilterType, PngEncoder};
     use image::{ExtendedColorType, ImageEncoder};
     let mut out = Vec::new();
@@ -355,7 +371,7 @@ fn save_and_copy(app: &AppHandle, rgb: &[u8], w: u32, h: u32) -> Result<String, 
 }
 
 #[cfg(windows)]
-fn copy_to_clipboard(rgb: &[u8], w: u32, h: u32) {
+pub(crate) fn copy_to_clipboard(rgb: &[u8], w: u32, h: u32) {
     let mut rgba = Vec::with_capacity(rgb.len() / 3 * 4);
     for p in rgb.chunks_exact(3) {
         rgba.extend_from_slice(&[p[0], p[1], p[2], 255]);
@@ -374,15 +390,19 @@ fn copy_to_clipboard(rgb: &[u8], w: u32, h: u32) {
     }
 }
 #[cfg(not(windows))]
-fn copy_to_clipboard(_rgb: &[u8], _w: u32, _h: u32) {}
+pub(crate) fn copy_to_clipboard(_rgb: &[u8], _w: u32, _h: u32) {}
 
 // ───────────────────────── التدفق ─────────────────────────
 
-fn hide_overlay(app: &AppHandle) {
+pub(crate) fn hide_overlay(app: &AppHandle) {
     if let Some(w) = app.get_webview_window(OVERLAY) {
         let _ = w.hide();
     }
     let _ = app.emit_to(OVERLAY, "capture:end", ());
+}
+
+pub(crate) fn cancel(app: &AppHandle) {
+    finish(app);
 }
 
 fn finish(app: &AppHandle) {
@@ -393,7 +413,7 @@ fn finish(app: &AppHandle) {
 }
 
 /// يبدأ الالتقاط: mode = "area" (طبقة تحديد) أو "screen" (حفظ فوري لكامل الشاشة تحت المؤشر).
-pub fn start(app: &AppHandle, mode: &'static str) {
+pub(crate) fn start(app: &AppHandle, mode: &'static str) {
     {
         let st = app.state::<CaptureState>();
         let mut busy = st.busy.lock().unwrap();
@@ -436,6 +456,7 @@ pub fn start(app: &AppHandle, mode: &'static str) {
                 data_url,
                 shown: false,
                 id,
+                mode,
             });
             // الطبقة تُوضع على الشاشة الملتقطة بالبكسلات الفعلية (موضع ثم حجم ثم موضع: DPI مختلف لكل شاشة).
             if let Some(w) = app.get_webview_window(OVERLAY) {
@@ -491,6 +512,7 @@ pub fn capture_frame(state: tauri::State<CaptureState>) -> Option<FrameInfo> {
         y: f.y,
         scale: f.scale,
         index: f.index,
+        mode: f.mode,
     })
 }
 
@@ -513,8 +535,11 @@ pub fn capture_ready(app: AppHandle, state: tauri::State<CaptureState>) {
 /// يلتقط المنطقة (x,y,w,h بالبكسلات الفعلية نسبةً لزاوية الشاشة الملتقطة) ويحفظ PNG وينسخ للحافظة.
 /// يعيد مسار الملف. الطبقة تُخفى قبل المعالجة.
 #[tauri::command]
-pub async fn capture_region(app: AppHandle, x: i64, y: i64, w: i64, h: i64) -> Result<String, String> {
+pub async fn capture_region(app: AppHandle, x: i64, y: i64, w: i64, h: i64, edit: Option<bool>) -> Result<String, String> {
     let st = app.state::<CaptureState>();
+    if st.frame.lock().unwrap().as_ref().map(|f| f.mode != "area").unwrap_or(false) {
+        return Err("الطبقة الحالية ليست للقطة منطقة".into());
+    }
     let frame = st.frame.lock().unwrap().take();
     *st.busy.lock().unwrap() = false;
     hide_overlay(&app);
@@ -528,10 +553,29 @@ pub async fn capture_region(app: AppHandle, x: i64, y: i64, w: i64, h: i64) -> R
         }
         let path = save_and_copy(&app, &crop, cw, ch)?;
         let _ = app.emit("capture:saved", Saved { path: path.clone(), width: cw, height: ch, mode: "area" });
+        if edit.unwrap_or(false) {
+            crate::editor::open_path(&app, &path);
+        }
         Ok(path)
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+/// يستلم اللقطة المجمّدة لغرض `mode` ("record"/"color") ويخفي الطبقة؛ خطأ إن لم يطابق الغرض.
+pub(crate) fn take_frame(app: &AppHandle, mode: &str) -> Result<Frame, String> {
+    let st = app.state::<CaptureState>();
+    let mut g = st.frame.lock().unwrap();
+    match g.as_ref() {
+        Some(f) if f.mode == mode => {}
+        Some(_) => return Err("الطبقة الحالية لغرض آخر".into()),
+        None => return Err("لا لقطة مجمّدة".into()),
+    }
+    let f = g.take().unwrap();
+    drop(g);
+    *st.busy.lock().unwrap() = false;
+    hide_overlay(app);
+    Ok(f)
 }
 
 /// يلغي الالتقاط: لا حفظ ولا نسخ.

@@ -113,5 +113,8 @@ export const DEFAULTS: Partial<Settings> = {
   hotkeyPalette: "Alt+Space", // فارغ = شريط الأوامر معطّل
   hotkeyArea: "Ctrl+Alt+A",   // لقطة منطقة؛ فارغ = معطّل؛ "PrintScreen" يعترض زر Print Screen
   hotkeyScreen: "Ctrl+Alt+S", // لقطة الشاشة كاملة (تحت المؤشر)
+  hotkeyRecord: "Ctrl+Alt+R", // تسجيل منطقة (يبدّل بدء/إيقاف)؛ فارغ = معطّل
+  hotkeyColor: "Ctrl+Alt+C",  // منتقي الألوان؛ فارغ = معطّل
+  recordingQuality: "medium", // low | medium | high
   checkUpdates: true,
 };
