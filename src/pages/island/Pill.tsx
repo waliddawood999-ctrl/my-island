@@ -16,8 +16,8 @@ import { TabBar } from "./TabBar";
 import { BatteryChip, DownloadsSection } from "./DownloadsSection";
 
 const PILL = { w: 200, h: 32 };
-/** اللوحة عرضية (أعرض من ارتفاعها): 720×480 ثابتة. */
-const PANEL = { w: 720, h: 480 };
+/** اللوحة عرضية (أعرض من ارتفاعها): 720×400 ثابتة (قرار وليد ~20:59: أقصر ما يمكن بلا إخفاء محتوى). */
+const PANEL = { w: 720, h: 400 };
 const panelSize = () => PANEL;
 const PALETTE = { w: 640, h: 440 };
 /** احتياط (ms): لو لم يصل رد اكتمال الحركة تُصغَّر النافذة بعد هذه المدة. */
