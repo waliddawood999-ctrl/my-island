@@ -12,7 +12,9 @@ import { fmtElapsed, useRecording } from "../../useRecording";
 import { ClipboardTab } from "./ClipboardTab";
 import { ToolsTab } from "./ToolsTab";
 import { ShelfTab } from "./ShelfTab";
+import { LauncherTab } from "./LauncherTab";
 import { useShelf } from "../../useShelf";
+import { useLauncher } from "../../useLauncher";
 import { MediaSection } from "./MediaSection";
 import { Liquid } from "./Liquid";
 import { Palette } from "./Palette";
@@ -36,10 +38,11 @@ function fmtTime(fmt: string): string {
 }
 
 /** التبويبات؛ الرفّ يظهر فقط إن كان moduleShelf مفعّلًا (غياب المفتاح = مفعّل) وعدّاده بجانب الاسم. */
-const tabDefs = (shelfOn: boolean, shelfCount: number) => [
+const tabDefs = (shelfOn: boolean, shelfCount: number, launcherOn: boolean) => [
   { id: "home", label: i("الرئيسية", "Home") },
   { id: "clip", label: i("الحافظة", "Clipboard") },
   ...(shelfOn ? [{ id: "shelf", label: shelfCount > 0 ? `${i("الرفّ", "Shelf")} (${shelfCount})` : i("الرفّ", "Shelf") }] : []),
+  ...(launcherOn ? [{ id: "launcher", label: i("اللانشر", "Launcher") }] : []),
   { id: "tools", label: i("الأدوات", "Tools") },
   { id: "chat", label: i("المحادثة", "Chat") },
 ];
@@ -93,6 +96,8 @@ export function Pill() {
       : null;
   const shelfOn = settings.moduleShelf ?? true;
   const shelf = useShelf(shelfOn);
+  const launcherOn = settings.moduleLauncher ?? true;
+  const launcher = useLauncher(launcherOn);
   const showDl = !!settings.showDownloads;
   const dlInPill = !!settings.downloadsInPill;
   const showBat = !!settings.showBattery;
@@ -244,7 +249,7 @@ export function Pill() {
   const opacity = hidden ? 0 : palette ? 1 : open ? opened : settings.autoHide && !hover ? 0 : rest;
 
   const radius = palette ? 24 : open ? 28 : 16;
-  const tabs = tabDefs(shelfOn, shelf.items.length);
+  const tabs = tabDefs(shelfOn, shelf.items.length, launcherOn);
   const tab = Math.max(0, tabs.findIndex((t) => t.id === tabId));
   const curTab = tabs[tab].id;
   const tabLabels = tabs.map((t) => t.label);
@@ -378,6 +383,11 @@ export function Pill() {
                 {curTab === "clip" && (
                   <div className="min-h-0 flex-1">
                     <ClipboardTab />
+                  </div>
+                )}
+                {curTab === "launcher" && (
+                  <div className="min-h-0 flex-1">
+                    <LauncherTab launcher={launcher} />
                   </div>
                 )}
                 {curTab === "shelf" && (

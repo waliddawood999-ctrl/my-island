@@ -17,6 +17,7 @@ pub mod recorder;   // Media Foundation (H.264) / GIF
 pub mod color;      // منتقي الألوان + السجل
 pub mod editor;     // نافذة محرّر اللقطات
 pub mod shelf;      // الرفّ: ملفات/نص/صور مؤقتة + سحب أصلي للخارج
+pub mod launcher;   // اللانشر: تطبيقات/ملفات/مجلدات/روابط + مجموعات + اختصارات عالمية
 // pub mod ocr;        // Windows.Media.Ocr
 // pub mod ai;         // بث SSE لأي OpenAI-compatible
 // pub mod attach;     // استخراج نصوص المرفقات محليًا
@@ -25,7 +26,7 @@ pub mod shelf;      // الرفّ: ملفات/نص/صور مؤقتة + سحب أ
 // pub mod vpn; pub mod controls; pub mod audio; pub mod privacy;
 pub mod files;      // فهرس شريط الأوامر (ذاكرة فقط) + تطبيقات + أيقونات
 pub mod palette;    // اختصار شريط الأوامر + الأخيرة + run_shell
-// pub mod linkicon;   // favicon / أيقونة exe
+// linkicon: مدمج في launcher.rs (favicon الروابط)
 // pub mod drop_target;
 // pub mod obs;        // WebSocket محلي
 // pub mod license;    // Pro أوفلاين + trialStart
@@ -51,6 +52,7 @@ pub fn run() {
         .manage(color::ColorState::default())
         .manage(editor::EditorState::default())
         .manage(shelf::ShelfState::default())
+        .manage(launcher::LauncherState::default())
         .plugin(tauri_plugin_single_instance::init(|_, _, _| {}))
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
@@ -62,6 +64,7 @@ pub fn run() {
                         palette::open(app);
                     } else if capture::on_shortcut(app, sc) {
                     } else if recorder::on_shortcut(app, sc) {
+                    } else if launcher::on_shortcut(app, sc) {
                     } else {
                         color::on_shortcut(app, sc);
                     }
@@ -90,6 +93,7 @@ pub fn run() {
                     capture::rebind(app.handle());
                     recorder::rebind(app.handle());
                     color::rebind(app.handle());
+                    launcher::rebind(app.handle());
                     // تحديث مسار exe في Run إن كان autostart مفعّلًا (يتتبّع نقل التطبيق).
                     let on = app.state::<state::AppState>().settings.lock().unwrap()
                         .get("autostart").and_then(|v| v.as_bool()).unwrap_or(false);
@@ -171,7 +175,19 @@ pub fn run() {
             shelf::shelf_remove,
             shelf::shelf_clear,
             shelf::shelf_copy,
-            shelf::shelf_drag
+            shelf::shelf_drag,
+            launcher::launcher_list,
+            launcher::launcher_add,
+            launcher::launcher_remove,
+            launcher::launcher_launch,
+            launcher::launcher_pick_icon,
+            launcher::launcher_add_link,
+            launcher::launcher_edit_link,
+            launcher::launcher_link_icon,
+            launcher::launcher_groups_get,
+            launcher::launcher_groups_set,
+            launcher::launcher_hotkeys_get,
+            launcher::launcher_hotkeys_set
         ])
         .run(tauri::generate_context!())
         .expect("error while running application");

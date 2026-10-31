@@ -85,6 +85,8 @@ impl AppState {
                 if k == crate::palette::RECENT_KEY { continue; }
                 // سجل الألوان (color.rs) ليس إعدادًا.
                 if k == crate::color::HISTORY_KEY { continue; }
+                // مجموعات واختصارات اللانشر (launcher.rs) ليست إعدادات.
+                if k.starts_with(crate::launcher::KV_PREFIX) { continue; }
                 if let Ok(val) = serde_json::from_str::<Value>(&v) {
                     merged.insert(k, val);
                 }

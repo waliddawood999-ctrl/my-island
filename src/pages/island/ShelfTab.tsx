@@ -10,7 +10,7 @@ import type { ShelfItem } from "../../useShelf";
 /** ذاكرة أيقونات الصدفة (palette_icon) لكل مسار — تُجلب مرة واحدة. */
 const iconCache = new Map<string, string | null>();
 
-function useShellIcon(path: string, want: boolean): string | null {
+export function useShellIcon(path: string, want: boolean): string | null {
   const [icon, setIcon] = useState<string | null>(iconCache.get(path) ?? null);
   useEffect(() => {
     if (!want) return;

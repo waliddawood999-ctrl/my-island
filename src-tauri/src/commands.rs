@@ -41,6 +41,9 @@ pub fn settings_set(app: AppHandle, state: State<AppState>, patch: Map<String, V
     if applied.contains_key("hotkeyColor") {
         crate::color::rebind(&app);
     }
+    if applied.contains_key("moduleLauncher") {
+        crate::launcher::rebind(&app);
+    }
     if applied.contains_key("captureVisible") {
         crate::capture::apply_affinity(&app);
     }
