@@ -37,6 +37,8 @@ update_install, news_get, news_told, notifications_access,
 notifications_request, obs_state, obs_password_set,
 obs_password_status, hotkeys_check, list_item
 
+> الأمران set_island_hidden(hidden: bool) وreport_island_rect(width, height بـ CSS px) مُنفَّذان في الجلسة 0.1 (commands.rs).
+
 ## أحداث (emit/listen)
 ai:chunk, ai:done, ai:error, media:update, media:cover, media:bands,
 media:level, audio:state, downloads:update, downloads:done,
@@ -45,3 +47,6 @@ island:edge, island:shy, island:keep, island:desktop, island:warn,
 island:note, mascot:look, mascot:sleep, cursor:near, input:layout,
 input:caps, vpn:choose, update:progress, weather:error,
 dictation:error, license:changed, license:needed
+
+### مضاف في الجلسة 0.1
+island:hidden (الخلفية → main، payload: bool) — يشغّل التلاشي الناعم قبل إخفاء/بعد إظهار النافذة
