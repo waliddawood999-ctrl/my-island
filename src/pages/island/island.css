@@ -59,3 +59,24 @@ html, body, #root {
 @keyframes island-rec { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 .island-rec-dot { animation: island-rec 1.2s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .island-rec-dot { animation: none; } }
+
+/* محرّر الملاحظة (Tiptap، الجلسة 3.6): كل كتلة تتجه تلقائيًا حسب أول حرف قوي (عربي/لاتيني). */
+.island-note-doc { outline: none; min-height: 100%; line-height: 1.7; }
+.island-note-doc > * { unicode-bidi: plaintext; text-align: start; }
+.island-note-doc p { margin: 0 0 0.35em; }
+.island-note-doc h1, .island-note-doc h2, .island-note-doc h3 { font-weight: 800; line-height: 1.35; margin: 0.5em 0 0.25em; }
+.island-note-doc h1 { font-size: 1.35em; }
+.island-note-doc h2 { font-size: 1.18em; }
+.island-note-doc h3 { font-size: 1.05em; }
+.island-note-doc ul, .island-note-doc ol { margin: 0 0 0.35em; padding-inline-start: 1.4em; }
+.island-note-doc ul { list-style: disc; }
+.island-note-doc ol { list-style: decimal; }
+.island-note-doc a { color: #8ea2ff; text-decoration: underline; cursor: text; }
+.island-note-doc blockquote { border-inline-start: 3px solid rgb(255 255 255 / 0.25); padding-inline-start: 0.7em; margin: 0.3em 0; color: var(--island-text-dim); }
+.island-note-doc code { background: rgb(255 255 255 / 0.1); border-radius: 4px; padding: 0 0.3em; }
+.island-note-doc ul[data-type="taskList"] { list-style: none; padding-inline-start: 0; }
+.island-note-doc ul[data-type="taskList"] li { display: flex; align-items: flex-start; gap: 0.5em; }
+.island-note-doc ul[data-type="taskList"] li > label { margin-top: 0.38em; flex: none; user-select: none; }
+.island-note-doc ul[data-type="taskList"] li > div { flex: 1; min-width: 0; }
+.island-note-doc ul[data-type="taskList"] li[data-checked="true"] > div { color: var(--island-text-faint); text-decoration: line-through; }
+.island-note-doc ul[data-type="taskList"] input[type="checkbox"] { accent-color: #8ea2ff; width: 14px; height: 14px; cursor: pointer; }

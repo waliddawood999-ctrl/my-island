@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { Settings as SettingsIcon } from "lucide-react";
+import { Bell, Settings as SettingsIcon, Timer as TimerIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { dur, ease, paletteVariants, sectionVariants, spring, swapVariants, tap } from "../../motion";
 import { i } from "../../i18n";
@@ -15,6 +15,9 @@ import { ShelfTab } from "./ShelfTab";
 import { LauncherTab } from "./LauncherTab";
 import { useShelf } from "../../useShelf";
 import { useLauncher } from "../../useLauncher";
+// محرّر Tiptap ثقيل: يُحمَّل عند أول فتح لتبويب الملاحظة فقط.
+const NoteTab = lazy(() => import("./NoteTab").then((m) => ({ default: m.NoteTab })));
+import { fmtCountdown, TIMER_NEAR_MS, useNoteAlert, useTimer } from "../../useNote";
 import { MediaSection } from "./MediaSection";
 import { Liquid } from "./Liquid";
 import { Palette } from "./Palette";
@@ -22,6 +25,8 @@ import { TabBar } from "./TabBar";
 import { BatteryChip, DownloadsSection } from "./DownloadsSection";
 
 const PILL = { w: 200, h: 32 };
+/** تنبيه تذكير/مؤقّت: حبة أعرض قليلًا تعرض النص حتى يُنقر عليها أو تنتهي المهلة. */
+const ALERT = { w: 340, h: 36 };
 /** اللوحة عرضية (أعرض من ارتفاعها): 720×400 ثابتة (قرار وليد ~20:59: أقصر ما يمكن بلا إخفاء محتوى). */
 const PANEL = { w: 720, h: 400 };
 const panelSize = () => PANEL;
@@ -43,6 +48,7 @@ const tabDefs = (shelfOn: boolean, shelfCount: number, launcherOn: boolean) => [
   { id: "clip", label: i("الحافظة", "Clipboard") },
   ...(shelfOn ? [{ id: "shelf", label: shelfCount > 0 ? `${i("الرفّ", "Shelf")} (${shelfCount})` : i("الرفّ", "Shelf") }] : []),
   ...(launcherOn ? [{ id: "launcher", label: i("اللانشر", "Launcher") }] : []),
+  { id: "note", label: i("ملاحظة", "Note") },
   { id: "tools", label: i("الأدوات", "Tools") },
   { id: "chat", label: i("المحادثة", "Chat") },
 ];
@@ -108,6 +114,12 @@ export function Pill() {
   const dlText = biggest ? (biggest.percent != null ? `⬇ ${Math.round(biggest.percent)}%` : `⬇ ${fmtBytes(biggest.size)}`) : null;
   // التسجيل: نقطة حمراء + مؤقّت في الحبة المنكمشة؛ النقر عليها (منكمشة) يوقف التسجيل.
   const rec = useRecording();
+  // ملاحظة/تذكيرات/مؤقّت: التنبيه (island:note) والمؤقّت القريب يظهران في الحبة المنكمشة.
+  const { alert, dismiss } = useNoteAlert();
+  const { timer, remaining } = useTimer();
+  const timerNear = timer !== null && remaining !== null && remaining > 0 && remaining <= TIMER_NEAR_MS;
+  const alertRef = useRef(alert);
+  alertRef.current = alert;
   const hoverT = useRef<number | undefined>(undefined);
   const collapseT = useRef<number | undefined>(undefined);
   const shrinkT = useRef<number | undefined>(undefined);
@@ -140,7 +152,8 @@ export function Pill() {
     if (!shrinkPending.current) return;
     shrinkPending.current = false;
     window.clearTimeout(shrinkT.current);
-    report(PILL.w, PILL.h);
+    const rest = alertRef.current ? ALERT : PILL;
+    report(rest.w, rest.h);
   };
   const scheduleShrink = () => {
     shrinkPending.current = true;
@@ -242,7 +255,14 @@ export function Pill() {
     collapseT.current = window.setTimeout(collapse, settings.collapseDelayMs ?? 350);
   };
 
-  const size = palette ? PALETTE : open ? panel : PILL;
+  // وصول تنبيه أثناء الانكماش: تكبير النافذة قبل الحركة؛ زواله: تصغيرها بعد الحركة.
+  useEffect(() => {
+    if (paletteRef.current || open) return;
+    if (alert) { cancelShrink(); report(ALERT.w, ALERT.h); }
+    else scheduleShrink();
+  }, [alert?.id, alert?.at]);
+
+  const size = palette ? PALETTE : open ? panel : alert ? ALERT : PILL;
   // الشفافية من الإعدادات؛ autoHide يخفي الحبة في الراحة (النافذة تبقى تستقبل المرور فتظهر عند الهوفر).
   const rest = (settings.opacityRest ?? 100) / 100;
   const opened = (settings.opacityOpen ?? 100) / 100;
@@ -254,14 +274,14 @@ export function Pill() {
   const curTab = tabs[tab].id;
   const tabLabels = tabs.map((t) => t.label);
   /** ما يُعرض في الحبة المنكمشة: واحد فقط، يتبدّل بتمويه قصير. */
-  const pillKey = rec.recording ? "rec" : dlText ? "dl" : pillTitle ? "title" : "clock";
+  const pillKey = rec.recording ? "rec" : alert && !open ? "alert" : timerNear ? "timer" : dlText ? "dl" : pillTitle ? "title" : "clock";
 
   return (
     <div className="flex w-full justify-center">
       <motion.div
         onMouseEnter={onEnter}
         onMouseLeave={onLeave}
-        onClick={() => { if (rec.recording && !open && !palette) invoke("record_stop").catch(() => {}); }}
+        onClick={() => { if (alert) dismiss(); else if (rec.recording && !open && !palette) invoke("record_stop").catch(() => {}); }}
         onContextMenu={(e) => { e.preventDefault(); invoke("open_settings").catch(() => {}); }}
         initial={false}
         animate={{ opacity, width: size.w, height: size.h, borderRadius: radius }}
@@ -285,7 +305,7 @@ export function Pill() {
           initial={false}
           animate={{ opacity: open || palette ? 0 : 1 }}
           transition={{ duration: dur.base, ease: ease.out }}
-          style={{ height: PILL.h }}
+          style={{ height: alert && !open ? ALERT.h : PILL.h }}
           className="absolute inset-x-0 top-0 flex items-center justify-center text-[13px] font-medium tabular-nums"
         >
           <AnimatePresence mode="wait" initial={false}>
@@ -301,6 +321,20 @@ export function Pill() {
                 <span dir="ltr" className="flex items-center gap-2" aria-label={i("جارٍ التسجيل — انقر للإيقاف", "Recording — click to stop")}>
                   <span className="island-rec-dot h-2.5 w-2.5 rounded-full bg-red-500" />
                   <span className="tabular-nums">{fmtElapsed(rec.elapsed)}</span>
+                </span>
+              ) : alert && !open ? (
+                <span dir="auto" className="flex max-w-full items-center gap-2 px-3" role="alert">
+                  <motion.span animate={{ rotate: [0, -16, 14, -10, 0] }} transition={{ duration: dur.alert, repeat: 2 }}>
+                    {alert.kind === "timer" ? <TimerIcon size={15} /> : <Bell size={15} />}
+                  </motion.span>
+                  <span className="truncate">
+                    {alert.text || (alert.kind === "timer" ? i("انتهى المؤقّت", "Timer finished") : i("تذكير", "Reminder"))}
+                  </span>
+                </span>
+              ) : timerNear && remaining !== null ? (
+                <span dir="ltr" className="flex items-center gap-1.5" aria-label={i("المؤقّت", "Timer")}>
+                  <TimerIcon size={13} />
+                  <span className="tabular-nums">{fmtCountdown(remaining)}</span>
                 </span>
               ) : dlText ? (
                 <span dir="ltr" aria-label={i("أكبر تنزيل جارٍ", "Largest active download")}>{dlText}</span>
@@ -351,6 +385,24 @@ export function Pill() {
               <SettingsIcon size={16} />
             </motion.button>
           </div>
+          <AnimatePresence>
+            {open && alert && (
+              <motion.button
+                key="alert-toast"
+                variants={swapVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                onClick={dismiss}
+                role="alert"
+                dir="auto"
+                className="absolute bottom-3 left-1/2 z-20 flex max-w-[80%] -translate-x-1/2 items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-[13px] backdrop-blur"
+              >
+                {alert.kind === "timer" ? <TimerIcon size={15} /> : <Bell size={15} />}
+                <span className="truncate">{alert.text || (alert.kind === "timer" ? i("انتهى المؤقّت", "Timer finished") : i("تذكير", "Reminder"))}</span>
+              </motion.button>
+            )}
+          </AnimatePresence>
           <AnimatePresence mode="wait" initial={false}>
             {open && (
               <motion.div
@@ -373,6 +425,13 @@ export function Pill() {
                         <DownloadsSection snap={dl} battery={showBat ? battery : null} showDownloads={showDl} />
                       </motion.div>
                     )}
+                  </div>
+                )}
+                {curTab === "note" && (
+                  <div className="min-h-0 flex-1">
+                    <Suspense fallback={null}>
+                      <NoteTab timer={timer} />
+                    </Suspense>
                   </div>
                 )}
                 {curTab === "tools" && (

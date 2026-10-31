@@ -18,6 +18,7 @@ pub mod color;      // منتقي الألوان + السجل
 pub mod editor;     // نافذة محرّر اللقطات
 pub mod shelf;      // الرفّ: ملفات/نص/صور مؤقتة + سحب أصلي للخارج
 pub mod launcher;   // اللانشر: تطبيقات/ملفات/مجلدات/روابط + مجموعات + اختصارات عالمية
+pub mod note;       // الملاحظة + التذكيرات + المؤقّت (kv `note:*` + خيط جدولة)
 // pub mod ocr;        // Windows.Media.Ocr
 // pub mod ai;         // بث SSE لأي OpenAI-compatible
 // pub mod attach;     // استخراج نصوص المرفقات محليًا
@@ -53,6 +54,7 @@ pub fn run() {
         .manage(editor::EditorState::default())
         .manage(shelf::ShelfState::default())
         .manage(launcher::LauncherState::default())
+        .manage(note::NoteState::default())
         .plugin(tauri_plugin_single_instance::init(|_, _, _| {}))
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
@@ -94,6 +96,7 @@ pub fn run() {
                     recorder::rebind(app.handle());
                     color::rebind(app.handle());
                     launcher::rebind(app.handle());
+                    note::start(app.handle());
                     // تحديث مسار exe في Run إن كان autostart مفعّلًا (يتتبّع نقل التطبيق).
                     let on = app.state::<state::AppState>().settings.lock().unwrap()
                         .get("autostart").and_then(|v| v.as_bool()).unwrap_or(false);
@@ -187,7 +190,15 @@ pub fn run() {
             launcher::launcher_groups_get,
             launcher::launcher_groups_set,
             launcher::launcher_hotkeys_get,
-            launcher::launcher_hotkeys_set
+            launcher::launcher_hotkeys_set,
+            note::note_get,
+            note::note_set,
+            note::note_folders_get,
+            note::note_folders_set,
+            note::reminders_get,
+            note::reminders_set,
+            note::timer_get,
+            note::timer_set
         ])
         .run(tauri::generate_context!())
         .expect("error while running application");

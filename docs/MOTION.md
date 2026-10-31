@@ -40,6 +40,7 @@
 | `blur.swap/section` | 6 / 4 px | تمويه التبديل |
 | `shift.swap/section` | 6 / 8 px | إزاحة الدخول |
 | `stagger.section` | 0.05 s | تتابع الأقسام |
+| `dur.alert` | 0.6 s × 3 دورات | هزّة جرس تنبيه التذكير/المؤقّت في الحبة (`Pill.tsx`)؛ تنتهي وحدها ثم لا حركة |
 | `swapVariants` `sectionVariants` `paletteVariants` `tap` | — | متغيرات جاهزة |
 
 ## رموز بصرية (`src/pages/island/island.css`)
