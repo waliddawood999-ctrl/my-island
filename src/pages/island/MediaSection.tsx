@@ -3,6 +3,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { Music, Pause, Play, SkipBack, SkipForward } from "lucide-react";
 import { i } from "../../i18n";
 import type { MediaView } from "../../useMedia";
+import { useLyrics } from "../../useLyrics";
+import { LyricsView } from "./LyricsView";
 
 const fmt = (s: number) => {
   const t = Math.max(0, Math.floor(s));
@@ -22,12 +24,13 @@ function useLivePos(m: MediaView): number {
 }
 
 /** قسم الميديا في الرئيسية: غلاف + عنوان/فنان + شريط تقدم قابل للنقر + سابق/تشغيل/التالي. */
-export function MediaSection({ media }: { media: MediaView }) {
+export function MediaSection({ media, showLyrics = false }: { media: MediaView; showLyrics?: boolean }) {
   const { info, cover, sources } = media;
   const live = useLivePos(media);
   const [seekTo, setSeekTo] = useState<number | null>(null);
   const seekT = useRef<number | undefined>(undefined);
   const pos = seekTo ?? live;
+  const lyrics = useLyrics(showLyrics && info.session, info.artist, info.title, info.album, info.duration);
   const ctl = (action: string) => invoke("media_control", { action }).catch(() => {});
 
   if (!info.session) {
@@ -53,9 +56,9 @@ export function MediaSection({ media }: { media: MediaView }) {
   const btn = "rounded-full p-2 text-white hover:bg-white/15 disabled:opacity-30 disabled:hover:bg-transparent";
 
   return (
-    <div className="flex h-full flex-col justify-center gap-4">
+    <div className={`flex h-full flex-col ${showLyrics ? "gap-3" : "justify-center gap-4"}`}>
       <div className="flex items-center gap-4">
-        <div className="h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-white/10">
+        <div className={`${showLyrics ? "h-16 w-16" : "h-24 w-24"} shrink-0 overflow-hidden rounded-xl bg-white/10`}>
           {cover ? (
             <img src={cover} alt={i("غلاف الألبوم", "Album cover")} className="h-full w-full object-cover" />
           ) : (
@@ -68,6 +71,12 @@ export function MediaSection({ media }: { media: MediaView }) {
           {info.album && <div dir="auto" className="truncate text-[12px] text-white/40">{info.album}</div>}
         </div>
       </div>
+
+      {showLyrics && (
+        <div className="min-h-0 flex-1 [mask-image:linear-gradient(transparent,#000_18%,#000_82%,transparent)]">
+          <LyricsView lyrics={lyrics} pos={pos} />
+        </div>
+      )}
 
       <div dir="ltr" className="flex items-center gap-3 text-[12px] tabular-nums text-white/60">
         <span className="w-10 text-end">{fmt(pos)}</span>

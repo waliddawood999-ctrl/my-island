@@ -84,3 +84,6 @@ settings_set لمفتاح `autostart` يكتب/يحذف قيمة MyIsland في H
 - شروط البث: جلسة ميديا `playing` **و** `liquidSpectrum === true` (الافتراضي عند غياب المفتاح = معطّل) **و** الحبة غير مخفية. عند انتفاء أي شرط يتوقف الالتقاط كليًا خلال ≤ ~0.3s ويُرسل إطار أصفار أخيرًا (كي تهدأ الواجهة) ثم لا شيء.
 - المستهلك (2.3): `src/pages/island/Liquid.tsx` يشترك في `media:bands` فقط حين `moduleMedia && liquidSpectrum`، ويُوقظ حلقة rAF عند كل إطار. لا أوامر ولا أحداث جديدة في 2.3.
 - الخصوصية: لا يُسجَّل ولا يُحفظ أي صوت؛ العيّنات تُحلَّل لحظيًا في الذاكرة.
+
+### مضاف في الجلسة 2.4
+lyrics_get(artist: String, title: String, album?: String, duration: f64 ثوانٍ) → `Lyrics { found, synced, instrumental, offline, lines: [{t: ثوانٍ, text}], plain }` — LRCLIB (`/api/get` ثم `/api/search` احتياطيًا)، يرفض remix/live/karaoke/sped-up التي لا يحملها العنوان المطلوب ويختار الأقرب مدةً (≤5s)، يفضّل syncedLyrics ثم plainLyrics. لا شبكة ⇒ `offline:true` بلا خطأ. التخزين المؤقت في kv بمفتاح `lyrics:<بصمة فنان+عنوان+مدة>` (يُستثنى من settings_get؛ نتيجة «لا كلمات» تنتهي بعد 7 أيام، والمفقودة شبكيًا لا تُخزَّن). لا أحداث جديدة.

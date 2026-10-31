@@ -186,7 +186,7 @@ export function Pill() {
           </div>
           {tab === 0 && open && moduleMedia && (
             <div className="min-h-0 flex-1 pt-3">
-              <MediaSection media={media} />
+              <MediaSection media={media} showLyrics={!!(settings.lyricsInHome || settings.lyricsInPlayer)} />
             </div>
           )}
           {tab === 1 && open && (

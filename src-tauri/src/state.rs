@@ -73,6 +73,8 @@ impl AppState {
                 .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))
                 .map_err(|e| e.to_string())?;
             for (k, v) in rows.flatten() {
+                // ذاكرة كلمات الأغاني المؤقتة (lyrics.rs) ليست إعدادات.
+                if k.starts_with(crate::lyrics::CACHE_PREFIX) { continue; }
                 if let Ok(val) = serde_json::from_str::<Value>(&v) {
                     merged.insert(k, val);
                 }

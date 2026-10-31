@@ -21,6 +21,7 @@ rusqlite = { version = "0.32", features = ["bundled"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 sha2 = "0.10"
 base64 = "0.22"
+ureq = { version = "2", features = ["json"] }
 image = { version = "0.25", default-features = false, features = ["png"] }
 
 [target.'cfg(windows)'.dependencies]

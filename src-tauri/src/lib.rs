@@ -9,7 +9,7 @@ pub mod autostart;  // مفتاح Run في ريجيستري ويندوز
 pub mod media;      // SMTC: ما يُشغَّل الآن + التحكم
 pub mod spectrum;   // WASAPI loopback + FFT
 // pub mod player_audio;
-// pub mod lyrics;     // LRCLIB
+pub mod lyrics;     // LRCLIB
 // pub mod downloads;  // + steam.rs لتنزيلات Steam
 // pub mod steam;
 // pub mod capture;    // لقطات + overlay
@@ -110,7 +110,8 @@ pub fn run() {
             media::media_seek,
             media::media_pick,
             media::media_sources,
-            media::media_now
+            media::media_now,
+            lyrics::lyrics_get
         ])
         .run(tauri::generate_context!())
         .expect("error while running application");
