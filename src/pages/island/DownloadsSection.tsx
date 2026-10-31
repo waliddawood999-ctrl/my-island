@@ -1,3 +1,5 @@
+import { motion } from "motion/react";
+import { spring } from "../../motion";
 import { Battery as BatteryIcon, BatteryCharging, CheckCircle2, Download } from "lucide-react";
 import { i } from "../../i18n";
 import { fmtBytes, type Battery, type DownloadsSnap } from "../../useDownloads";
@@ -32,7 +34,7 @@ export function DownloadsSection({ snap, battery, showDownloads }: { snap: Downl
         <span className="ms-auto"><BatteryChip b={battery} /></span>
       </div>
       {showDownloads && (
-        <div className="flex max-h-28 flex-col gap-2 overflow-y-auto">
+        <div className="flex max-h-40 flex-col gap-2 overflow-y-auto">
           {active.length === 0 && recent.length === 0 && (
             <span className="text-white/40">{i("لا تنزيلات حاليًا", "No downloads right now")}</span>
           )}
@@ -48,7 +50,7 @@ export function DownloadsSection({ snap, battery, showDownloads }: { snap: Downl
               </div>
               <div className="h-1.5 overflow-hidden rounded-full bg-white/20">
                 {d.percent != null ? (
-                  <div style={{ width: `${d.percent}%` }} className="h-full rounded-full bg-white transition-[width] duration-500" />
+                  <motion.div initial={false} animate={{ width: `${d.percent}%` }} transition={spring.content} className="h-full rounded-full bg-white" />
                 ) : (
                   <div className="h-full w-full animate-pulse rounded-full bg-white/60" />
                 )}

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { Settings as SettingsIcon } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { dur, ease, paletteVariants, sectionVariants, spring, swapVariants, tap } from "../../motion";
 import { i } from "../../i18n";
 import { useSettings } from "../../useSettings";
 import { useMedia } from "../../useMedia";
@@ -10,13 +12,19 @@ import { ClipboardTab } from "./ClipboardTab";
 import { MediaSection } from "./MediaSection";
 import { Liquid } from "./Liquid";
 import { Palette } from "./Palette";
+import { TabBar } from "./TabBar";
 import { BatteryChip, DownloadsSection } from "./DownloadsSection";
 
 const PILL = { w: 200, h: 32 };
-const PANEL = { w: 720, h: 480 };
+/** اللوحة عمودية: عرض 380–440 وارتفاع سخي حتى ~70% من ارتفاع الشاشة (يُحسب عند الفتح). */
+const PANEL_W = 420;
+const panelSize = () => {
+  const sh = typeof window !== "undefined" && window.screen?.height ? window.screen.height : 1080;
+  return { w: PANEL_W, h: Math.max(480, Math.min(Math.round(sh * 0.7), 780)) };
+};
 const PALETTE = { w: 640, h: 440 };
-/** مدة انتقال CSS (ms) — تُستعمل أيضًا لتأخير تصغير النافذة بعد الانكماش. */
-const ANIM_MS = 300;
+/** احتياط (ms): لو لم يصل رد اكتمال الحركة تُصغَّر النافذة بعد هذه المدة. */
+const SHRINK_GUARD_MS = dur.windowShrinkGuard * 1000;
 
 /** clockFormat: auto = حسب نظام المستخدم، 24/12 صريحان. */
 function fmtTime(fmt: string): string {
@@ -89,11 +97,18 @@ export function Pill() {
   const hoverT = useRef<number | undefined>(undefined);
   const collapseT = useRef<number | undefined>(undefined);
   const shrinkT = useRef<number | undefined>(undefined);
+  const shrinkPending = useRef(false);
+  const [panel, setPanel] = useState(panelSize);
 
+  // الساعة HH:MM: مؤقّت واحد يصحو عند بداية كل دقيقة (لا مؤقّت ثانية بثانية) ويتوقف مع إخفاء الصفحة.
   useEffect(() => {
     setTime(fmtTime(fmt));
-    const t = setInterval(() => setTime(fmtTime(fmt)), 1000);
-    return () => clearInterval(t);
+    let t: number;
+    const arm = () => {
+      t = window.setTimeout(() => { setTime(fmtTime(fmt)); arm(); }, 60_000 - (Date.now() % 60_000) + 50);
+    };
+    arm();
+    return () => window.clearTimeout(t);
   }, [fmt]);
 
   useEffect(() => {
@@ -106,10 +121,27 @@ export function Pill() {
 
   useEffect(() => { report(PILL.w, PILL.h); }, []);
 
+  /** تصغير النافذة بعد انتهاء حركة الانكماش (رد onAnimationComplete) مع مؤقّت احتياطي واحد. */
+  const flushShrink = () => {
+    if (!shrinkPending.current) return;
+    shrinkPending.current = false;
+    window.clearTimeout(shrinkT.current);
+    report(PILL.w, PILL.h);
+  };
+  const scheduleShrink = () => {
+    shrinkPending.current = true;
+    window.clearTimeout(shrinkT.current);
+    shrinkT.current = window.setTimeout(flushShrink, SHRINK_GUARD_MS);
+  };
+  const cancelShrink = () => {
+    shrinkPending.current = false;
+    window.clearTimeout(shrinkT.current);
+  };
+
   const openPalette = (wasHidden: boolean) => {
     window.clearTimeout(hoverT.current);
     window.clearTimeout(collapseT.current);
-    window.clearTimeout(shrinkT.current);
+    cancelShrink();
     setOpen(false);
     report(PALETTE.w, PALETTE.h);
     paletteRef.current = { wasHidden };
@@ -122,8 +154,7 @@ export function Pill() {
     paletteRef.current = null;
     setPalette(null);
     invoke("release_focus", { restore }).catch(() => {});
-    window.clearTimeout(shrinkT.current);
-    shrinkT.current = window.setTimeout(() => report(PILL.w, PILL.h), ANIM_MS + 30);
+    scheduleShrink();
     if (cur.wasHidden) invoke("set_island_hidden", { hidden: true }).catch(() => {});
   }, []);
 
@@ -137,14 +168,15 @@ export function Pill() {
   }, [closePalette]);
 
   const expand = () => {
-    window.clearTimeout(shrinkT.current);
-    report(PANEL.w, PANEL.h); // النافذة أولًا ثم الأنيميشن
+    cancelShrink();
+    const p = panelSize();
+    setPanel(p);
+    report(p.w, p.h); // النافذة أولًا ثم الأنيميشن
     setOpen(true);
   };
   const collapse = () => {
     setOpen(false);
-    window.clearTimeout(shrinkT.current);
-    shrinkT.current = window.setTimeout(() => report(PILL.w, PILL.h), ANIM_MS + 30);
+    scheduleShrink();
   };
 
   const onEnter = () => {
@@ -164,26 +196,29 @@ export function Pill() {
     collapseT.current = window.setTimeout(collapse, settings.collapseDelayMs ?? 350);
   };
 
-  const size = palette ? PALETTE : open ? PANEL : PILL;
+  const size = palette ? PALETTE : open ? panel : PILL;
   // الشفافية من الإعدادات؛ autoHide يخفي الحبة في الراحة (النافذة تبقى تستقبل المرور فتظهر عند الهوفر).
   const rest = (settings.opacityRest ?? 100) / 100;
   const opened = (settings.opacityOpen ?? 100) / 100;
   const opacity = hidden ? 0 : palette ? 1 : open ? opened : settings.autoHide && !hover ? 0 : rest;
 
+  const radius = palette ? 24 : open ? 28 : 16;
+  const tabLabels = TABS();
+  /** ما يُعرض في الحبة المنكمشة: واحد فقط، يتبدّل بتمويه قصير. */
+  const pillKey = dlText ? "dl" : pillTitle ? "title" : "clock";
+
   return (
     <div className="flex w-full justify-center">
-      <div
+      <motion.div
         onMouseEnter={onEnter}
         onMouseLeave={onLeave}
         onContextMenu={(e) => { e.preventDefault(); invoke("open_settings").catch(() => {}); }}
-        style={{
-          opacity,
-          width: size.w,
-          height: size.h,
-          transition: `width ${ANIM_MS}ms cubic-bezier(.2,.8,.2,1), height ${ANIM_MS}ms cubic-bezier(.2,.8,.2,1), border-radius ${ANIM_MS}ms cubic-bezier(.2,.8,.2,1)`,
-          borderRadius: palette ? 24 : open ? 28 : 16,
-        }}
-        className="relative overflow-hidden bg-black text-white transition-opacity duration-200"
+        initial={false}
+        animate={{ opacity, width: size.w, height: size.h, borderRadius: radius }}
+        transition={{ default: spring.island, opacity: { duration: dur.base, ease: ease.out } }}
+        onAnimationComplete={flushShrink}
+        style={{ boxShadow: open || palette ? "var(--island-ring-open)" : "var(--island-ring)" }}
+        className="relative overflow-hidden bg-black text-white"
       >
         <Liquid
           enabled={moduleMedia && (settings.liquidSpectrum ?? false)}
@@ -195,74 +230,106 @@ export function Pill() {
           hasSession={media.info.session}
           visible={!hidden && opacity > 0}
         />
-        <div
+        <motion.div
           aria-label={i("الساعة", "Clock")}
+          initial={false}
+          animate={{ opacity: open || palette ? 0 : 1 }}
+          transition={{ duration: dur.base, ease: ease.out }}
           style={{ height: PILL.h }}
-          className={`absolute inset-x-0 top-0 flex items-center justify-center text-[13px] font-medium tabular-nums transition-opacity duration-200 ${open || palette ? "opacity-0" : "opacity-100"}`}
+          className="absolute inset-x-0 top-0 flex items-center justify-center text-[13px] font-medium tabular-nums"
         >
-          {dlText ? (
-            <span dir="ltr" aria-label={i("أكبر تنزيل جارٍ", "Largest active download")}>{dlText}</span>
-          ) : pillTitle ? (
-            <PillTitle text={pillTitle} />
-          ) : (
-            (settings.showClock ?? true) && <span dir="ltr">{time}</span>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={pillKey}
+              variants={swapVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="flex w-full items-center justify-center"
+            >
+              {dlText ? (
+                <span dir="ltr" aria-label={i("أكبر تنزيل جارٍ", "Largest active download")}>{dlText}</span>
+              ) : pillTitle ? (
+                <PillTitle text={pillTitle} />
+              ) : (
+                (settings.showClock ?? true) && <span dir="ltr">{time}</span>
+              )}
+              {showBat && !pillTitle && !dlText && battery?.has_battery && (
+                <span className="ms-3 text-[11px] text-white/70"><BatteryChip b={battery} size={12} /></span>
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </motion.div>
+        <AnimatePresence>
+          {palette && (
+            <motion.div
+              key="palette"
+              variants={paletteVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              style={{ width: PALETTE.w, height: PALETTE.h }}
+              className="absolute left-1/2 top-0 -translate-x-1/2"
+            >
+              <Palette settings={settings} onClose={closePalette} />
+            </motion.div>
           )}
-          {showBat && !pillTitle && !dlText && battery?.has_battery && (
-            <span className="ms-3 text-[11px] text-white/70"><BatteryChip b={battery} size={12} /></span>
-          )}
-        </div>
-        {palette && (
-          <div
-            style={{ width: PALETTE.w, height: PALETTE.h }}
-            className="absolute left-1/2 top-0 -translate-x-1/2"
-          >
-            <Palette settings={settings} onClose={closePalette} />
-          </div>
-        )}
-        <div
-          style={{ width: PANEL.w, height: PANEL.h }}
-          className={`absolute left-1/2 top-0 flex -translate-x-1/2 flex-col p-4 transition-opacity duration-200 ${open ? "opacity-100 delay-100" : "pointer-events-none opacity-0"}`}
+        </AnimatePresence>
+        <motion.div
+          initial={false}
+          animate={{ opacity: open ? 1 : 0 }}
+          transition={{ duration: dur.base, ease: ease.out, delay: open ? 0.08 : 0 }}
+          style={{ width: panel.w, height: panel.h, padding: "var(--island-pad)", pointerEvents: open ? "auto" : "none" }}
+          className="absolute left-1/2 top-0 flex -translate-x-1/2 flex-col"
         >
-          <div role="tablist" className="flex shrink-0 gap-2">
-            {TABS().map((label, n) => (
-              <button
-                key={n}
-                role="tab"
-                aria-selected={tab === n}
-                onClick={() => setTab(n)}
-                className={`rounded-full px-4 py-1.5 text-[13px] ${tab === n ? "bg-white/20 text-white" : "text-white/60 hover:text-white"}`}
-              >
-                {label}
-              </button>
-            ))}
-            <button
+          <div className="flex shrink-0 items-center gap-2">
+            <TabBar labels={tabLabels} active={tab} onSelect={setTab} />
+            <motion.button
               aria-label={i("الإعدادات", "Settings")}
               title={i("الإعدادات", "Settings")}
               onClick={() => invoke("open_settings").catch(() => {})}
-              className="ms-auto rounded-full p-1.5 text-white/60 hover:text-white"
+              whileHover={tap.whileHover}
+              whileTap={tap.whileTap}
+              transition={tap.transition}
+              className="i-btn ms-auto p-1.5"
             >
               <SettingsIcon size={16} />
-            </button>
+            </motion.button>
           </div>
-          {tab === 0 && open && (
-            <div className="flex min-h-0 flex-1 flex-col gap-3 pt-3">
-              {moduleMedia && (
-                <div className="min-h-0 flex-1">
-                  <MediaSection media={media} showLyrics={!!(settings.lyricsInHome || settings.lyricsInPlayer)} />
-                </div>
-              )}
-              {(showDl || (showBat && battery?.has_battery)) && (
-                <DownloadsSection snap={dl} battery={showBat ? battery : null} showDownloads={showDl} />
-              )}
-            </div>
-          )}
-          {tab === 1 && open && (
-            <div className="min-h-0 flex-1">
-              <ClipboardTab />
-            </div>
-          )}
-        </div>
-      </div>
+          <AnimatePresence mode="wait" initial={false}>
+            {open && (
+              <motion.div
+                key={tab}
+                variants={swapVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                className="flex min-h-0 flex-1 flex-col pt-3"
+              >
+                {tab === 0 && (
+                  <div className="flex min-h-0 flex-1 flex-col" style={{ gap: "var(--island-section-gap)" }}>
+                    {moduleMedia && (
+                      <motion.div custom={0} variants={sectionVariants} initial="initial" animate="animate" className="min-h-0 flex-1">
+                        <MediaSection media={media} showLyrics={!!(settings.lyricsInHome || settings.lyricsInPlayer)} />
+                      </motion.div>
+                    )}
+                    {(showDl || (showBat && battery?.has_battery)) && (
+                      <motion.div custom={1} variants={sectionVariants} initial="initial" animate="animate" className="shrink-0">
+                        <DownloadsSection snap={dl} battery={showBat ? battery : null} showDownloads={showDl} />
+                      </motion.div>
+                    )}
+                  </div>
+                )}
+                {tab === 1 && (
+                  <div className="min-h-0 flex-1">
+                    <ClipboardTab />
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+      </motion.div>
     </div>
   );
 }

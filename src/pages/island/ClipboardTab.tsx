@@ -1,3 +1,5 @@
+import { AnimatePresence, motion } from "motion/react";
+import { dur, ease, spring, tap } from "../../motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Pin, PinOff, Search, Trash2, X } from "lucide-react";
@@ -85,13 +87,14 @@ export function ClipboardTab() {
             className="w-full bg-transparent text-[13px] text-white placeholder:text-white/40 focus:outline-none"
           />
         </label>
-        <button
+        <motion.button
+          {...tap}
           onClick={(e) => act(e, () => invoke("clip_clear"))}
-          className="flex items-center gap-1 rounded-full bg-white/10 px-3 py-1.5 text-[12px] text-white/80 hover:bg-white/20"
+          className="i-btn flex items-center gap-1 bg-white/10 px-3 py-1.5 text-[12px] text-white/80"
         >
           <Trash2 size={13} />
           {i("مسح الكل", "Clear all")}
-        </button>
+        </motion.button>
       </div>
 
       <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto scroll-smooth pe-1">
@@ -100,13 +103,19 @@ export function ClipboardTab() {
             {q ? i("لا نتائج", "No results") : i("الحافظة فارغة", "Clipboard is empty")}
           </p>
         )}
+        <AnimatePresence initial={false} mode="popLayout">
         {shown.map((c) => (
-          <div
+          <motion.div
             key={c.id}
+            layout="position"
+            initial={{ opacity: 0, y: 6, filter: "blur(4px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)", transition: { ...spring.content, opacity: { duration: dur.swap, ease: ease.out } } }}
+            exit={{ opacity: 0, transition: { duration: dur.fast, ease: ease.inOut } }}
+            whileTap={{ scale: 0.985 }}
             role="button"
             tabIndex={-1}
             onClick={() => paste(c)}
-            className="group flex cursor-pointer items-center gap-3 rounded-xl bg-white/5 px-3 py-2 hover:bg-white/10"
+            className="i-card i-card-hover group flex cursor-pointer items-center gap-3 px-3 py-2"
           >
             <div className="min-w-0 flex-1">
               {c.kind === "image" && c.thumb ? (
@@ -124,28 +133,35 @@ export function ClipboardTab() {
                 <span dir="ltr" className="text-[11px] text-white/40">{c.width}×{c.height}</span>
               )}
             </div>
-            <button
+            <motion.button
+              {...tap}
               aria-label={c.pinned ? i("إلغاء التثبيت", "Unpin") : i("تثبيت", "Pin")}
               onClick={(e) => act(e, () => invoke("clip_pin", { id: c.id, pinned: !c.pinned }))}
-              className={`rounded-full p-1.5 hover:bg-white/20 ${c.pinned ? "text-amber-300" : "text-white/40"}`}
+              className={`i-btn p-1.5 ${c.pinned ? "!text-amber-300" : "!text-white/40 hover:!text-white"}`}
             >
               {c.pinned ? <PinOff size={14} /> : <Pin size={14} />}
-            </button>
-            <button
+            </motion.button>
+            <motion.button
+              {...tap}
               aria-label={i("حذف", "Delete")}
               onClick={(e) => act(e, () => invoke("clip_delete", { id: c.id }))}
-              className="rounded-full p-1.5 text-white/40 hover:bg-white/20 hover:text-red-300"
+              className="i-btn p-1.5 !text-white/40 hover:!text-red-300"
             >
               <X size={14} />
-            </button>
-          </div>
+            </motion.button>
+          </motion.div>
         ))}
+        </AnimatePresence>
       </div>
 
       {toast && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center">
+        <motion.div
+          initial={{ opacity: 0, y: 8, filter: "blur(4px)" }}
+          animate={{ opacity: 1, y: 0, filter: "blur(0px)", transition: spring.content }}
+          className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center"
+        >
           <span className="rounded-full bg-white/90 px-4 py-1.5 text-[12px] font-medium text-black">{toast}</span>
-        </div>
+        </motion.div>
       )}
     </div>
   );

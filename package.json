@@ -3,17 +3,29 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "scripts": { "dev": "vite", "build": "tsc --noEmit && vite build", "tauri": "tauri" },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "tauri": "tauri"
+  },
   "dependencies": {
-    "react": "^19.0.0", "react-dom": "^19.0.0",
     "@tauri-apps/api": "^2.0.0",
+    "@tiptap/react": "latest",
+    "@tiptap/starter-kit": "latest",
     "lucide-react": "latest",
-    "@tiptap/react": "latest", "@tiptap/starter-kit": "latest"
+    "motion": "^12.43.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "vite": "^6.0.0", "@vitejs/plugin-react": "^4.3.4",
-    "tailwindcss": "^4.0.0", "@tailwindcss/vite": "^4.0.0",
-    "@tauri-apps/cli": "^2.0.0", "typescript": "^5.0.0",
-    "@types/node": "^22.0.0", "@types/react": "^19.0.0", "@types/react-dom": "^19.0.0"
+    "@tailwindcss/vite": "^4.0.0",
+    "@tauri-apps/cli": "^2.0.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.0.0",
+    "vite": "^6.0.0"
   }
 }

@@ -1,4 +1,3 @@
-
 html, body, #root {
   width: 100%;
   margin: 0;
@@ -8,7 +7,45 @@ html, body, #root {
   font-family: "Segoe UI", system-ui, sans-serif;
 }
 
-/* عنوان الأغنية المتحرك في الحبة المنكمشة */
+/*
+ * رموز التصميم الموحّدة (docs/MOTION.md §رموز بصرية): الزوايا، الأسطح، الحلقات، الضبابية، المسافات.
+ * لا قيم مبعثرة في المكوّنات — استعمل هذه المتغيرات / الفئات.
+ */
+:root {
+  --island-radius-pill: 16px;
+  --island-radius-palette: 24px;
+  --island-radius-panel: 28px;
+  --island-radius-card: 14px;
+  --island-radius-control: 9999px;
+
+  --island-surface: rgb(255 255 255 / 0.06);
+  --island-surface-hover: rgb(255 255 255 / 0.11);
+  --island-surface-active: rgb(255 255 255 / 0.18);
+  --island-surface-strong: rgb(255 255 255 / 0.20);
+  --island-text-dim: rgb(255 255 255 / 0.60);
+  --island-text-faint: rgb(255 255 255 / 0.40);
+  /* حلقة داخلية رفيعة بدل الظل الخارجي (النافذة تُقصّ على حجم الحبة فلا يظهر ظل خارجي). */
+  --island-ring: inset 0 0 0 1px rgb(255 255 255 / 0.08);
+  --island-ring-open: inset 0 0 0 1px rgb(255 255 255 / 0.10), inset 0 1px 0 rgb(255 255 255 / 0.06);
+  --island-blur: 14px;
+
+  --island-gap: 12px;
+  --island-pad: 16px;
+  --island-section-gap: 12px;
+}
+
+/* أسطح البطاقات والأزرار: hover/active أوضح، الحركة (الحجم) عبر motion لا CSS. */
+.i-card { background: var(--island-surface); border-radius: var(--island-radius-card); }
+.i-card-hover:hover { background: var(--island-surface-hover); }
+.i-btn { border-radius: var(--island-radius-control); color: var(--island-text-dim); }
+.i-btn:hover:not(:disabled) { background: var(--island-surface-hover); color: #fff; }
+.i-btn:active:not(:disabled) { background: var(--island-surface-active); color: #fff; }
+.i-btn:disabled { opacity: 0.3; }
+.i-btn:focus-visible { outline: 2px solid rgb(255 255 255 / 0.6); outline-offset: 1px; }
+.i-glass { background: rgb(24 24 27 / 0.72); -webkit-backdrop-filter: blur(var(--island-blur)); backdrop-filter: blur(var(--island-blur)); }
+
+/* عنوان الأغنية المتحرك في الحبة المنكمشة — حركة خطية مستمرة تُترك لـCSS (مركّب GPU، بلا JS)،
+   وتعمل فقط حين يطول العنوان عن العرض. استثناء موثّق في docs/MOTION.md. */
 @keyframes island-marquee {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }

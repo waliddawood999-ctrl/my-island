@@ -1,10 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Music, Pause, Play, SkipBack, SkipForward } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { dur, ease, spring, tap } from "../../motion";
 import { i } from "../../i18n";
 import type { MediaView } from "../../useMedia";
 import { useLyrics } from "../../useLyrics";
 import { LyricsView } from "./LyricsView";
+
+/** سطر نصي يتبدّل: دخول بتأخير مستقل وخروج سريع (docs/MOTION.md §تبديل المحتوى). */
+const line = (delay: number) => ({
+  initial: { opacity: 0, y: 6, filter: "blur(5px)" },
+  animate: { opacity: 1, y: 0, filter: "blur(0px)", transition: { ...spring.content, delay, opacity: { duration: dur.swap, ease: ease.out, delay } } },
+  exit: { opacity: 0, y: -4, filter: "blur(5px)", transition: { duration: dur.fast, ease: ease.inOut } },
+});
 
 const fmt = (s: number) => {
   const t = Math.max(0, Math.floor(s));
@@ -53,22 +62,36 @@ export function MediaSection({ media, showLyrics = false }: { media: MediaView; 
   };
 
   const pct = info.duration > 0 ? (pos / info.duration) * 100 : 0;
-  const btn = "rounded-full p-2 text-white hover:bg-white/15 disabled:opacity-30 disabled:hover:bg-transparent";
+  const btn = "i-btn p-2 text-white";
 
   return (
-    <div className={`flex h-full flex-col ${showLyrics ? "gap-3" : "justify-center gap-4"}`}>
-      <div className="flex items-center gap-4">
-        <div className={`${showLyrics ? "h-16 w-16" : "h-24 w-24"} shrink-0 overflow-hidden rounded-xl bg-white/10`}>
+    <div className={`flex h-full flex-col items-stretch ${showLyrics ? "gap-3" : "justify-center gap-5"}`}>
+      <div className="flex shrink-0 flex-col items-center gap-3 text-center">
+        <motion.div
+          initial={false}
+          animate={{ scale: info.playing ? 1 : 0.94 }}
+          transition={spring.content}
+          className={`${showLyrics ? "h-24 w-24" : "h-52 w-52"} shrink-0 overflow-hidden rounded-2xl bg-white/10`}
+        >
           {cover ? (
             <img src={cover} alt={i("غلاف الألبوم", "Album cover")} className="h-full w-full object-cover" />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-white/40"><Music size={32} /></div>
           )}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div dir="auto" className="truncate text-[18px] font-semibold">{info.title || i("بدون عنوان", "Untitled")}</div>
-          <div dir="auto" className="truncate text-[14px] text-white/60">{info.artist}</div>
-          {info.album && <div dir="auto" className="truncate text-[12px] text-white/40">{info.album}</div>}
+        </motion.div>
+        <div className="w-full min-w-0">
+          {/* العنوان والفنان والألبوم: تبديل بتمويه قصير وتوقيت دخول مستقل لكل سطر فلا يتداخل */}
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div key={`t-${info.title}`} {...line(0)} dir="auto" className="truncate text-[18px] font-semibold">{info.title || i("بدون عنوان", "Untitled")}</motion.div>
+          </AnimatePresence>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div key={`a-${info.artist}`} {...line(0.05)} dir="auto" className="truncate text-[14px] text-white/60">{info.artist}</motion.div>
+          </AnimatePresence>
+          {info.album && (
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div key={`b-${info.album}`} {...line(0.1)} dir="auto" className="truncate text-[12px] text-white/40">{info.album}</motion.div>
+            </AnimatePresence>
+          )}
         </div>
       </div>
 
@@ -97,27 +120,38 @@ export function MediaSection({ media, showLyrics = false }: { media: MediaView; 
       </div>
 
       <div dir="ltr" className="flex items-center justify-center gap-3">
-        <button className={btn} disabled={!info.can_prev} onClick={() => ctl("prev")} aria-label={i("السابق", "Previous")} title={i("السابق", "Previous")}>
+        <motion.button {...tap} className={btn} disabled={!info.can_prev} onClick={() => ctl("prev")} aria-label={i("السابق", "Previous")} title={i("السابق", "Previous")}>
           <SkipBack size={22} />
-        </button>
-        <button
-          className="rounded-full bg-white p-3 text-black hover:bg-white/85"
+        </motion.button>
+        <motion.button
+          {...tap}
+          className="rounded-full bg-white p-3 text-black hover:bg-white/85 active:bg-white/70"
           onClick={() => ctl("toggle")}
           aria-label={info.playing ? i("إيقاف مؤقت", "Pause") : i("تشغيل", "Play")}
           title={info.playing ? i("إيقاف مؤقت", "Pause") : i("تشغيل", "Play")}
         >
-          {info.playing ? <Pause size={22} /> : <Play size={22} />}
-        </button>
-        <button className={btn} disabled={!info.can_next} onClick={() => ctl("next")} aria-label={i("التالي", "Next")} title={i("التالي", "Next")}>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.span
+              key={info.playing ? "pause" : "play"}
+              initial={{ opacity: 0, scale: 0.7, filter: "blur(3px)" }}
+              animate={{ opacity: 1, scale: 1, filter: "blur(0px)", transition: spring.press }}
+              exit={{ opacity: 0, scale: 0.7, filter: "blur(3px)", transition: { duration: dur.fast, ease: ease.inOut } }}
+              className="flex"
+            >
+              {info.playing ? <Pause size={22} /> : <Play size={22} />}
+            </motion.span>
+          </AnimatePresence>
+        </motion.button>
+        <motion.button {...tap} className={btn} disabled={!info.can_next} onClick={() => ctl("next")} aria-label={i("التالي", "Next")} title={i("التالي", "Next")}>
           <SkipForward size={22} />
-        </button>
+        </motion.button>
       </div>
 
       {sources.length > 1 && (
         <div className="flex flex-wrap items-center justify-center gap-2 text-[12px]">
           <button
             onClick={() => invoke("media_pick", { id: null }).catch(() => {})}
-            className="rounded-full px-3 py-1 text-white/60 hover:text-white"
+            className="i-btn px-3 py-1"
           >
             {i("تلقائي", "Auto")}
           </button>
@@ -125,7 +159,7 @@ export function MediaSection({ media, showLyrics = false }: { media: MediaView; 
             <button
               key={s.id}
               onClick={() => invoke("media_pick", { id: s.id }).catch(() => {})}
-              className={`rounded-full px-3 py-1 ${s.id === info.source ? "bg-white/20 text-white" : "text-white/60 hover:text-white"}`}
+              className={`i-btn px-3 py-1 ${s.id === info.source ? "!bg-white/20 !text-white" : ""}`}
             >
               {s.name}
             </button>
