@@ -1,7 +1,8 @@
 // طبقة الأوامر العامة — الأسماء حرفيًا من docs/IPC.md.
 use crate::{state::AppState, win};
 use serde_json::{Map, Value};
-use tauri::{AppHandle, Emitter, State};
+use serde::Serialize;
+use tauri::{AppHandle, Emitter, Manager, State};
 
 #[tauri::command]
 pub fn set_island_hidden(app: AppHandle, hidden: bool) {
@@ -28,6 +29,9 @@ pub fn settings_set(app: AppHandle, state: State<AppState>, patch: Map<String, V
     if applied.keys().any(|k| matches!(k.as_str(), "monitor" | "offsetX" | "underTaskbar")) {
         win::position_main(&app);
     }
+    if let Some(on) = applied.get("autostart").and_then(Value::as_bool) {
+        crate::autostart::apply(on)?;
+    }
     let _ = app.emit("settings:changed", applied);
     Ok(())
 }
@@ -42,4 +46,41 @@ pub fn take_focus(app: AppHandle) {
 #[tauri::command]
 pub fn release_focus(app: AppHandle) {
     win::release_focus(&app);
+}
+
+/// يفتح نافذة الإعدادات (يُظهرها ويمنحها الفوكس — هي نافذة عادية لا NOACTIVATE).
+#[tauri::command]
+pub fn open_settings(app: AppHandle) {
+    if let Some(w) = app.get_webview_window("settings") {
+        let _ = w.unminimize();
+        let _ = w.show();
+        let _ = w.set_focus();
+    }
+}
+
+#[derive(Serialize)]
+pub struct MonitorInfo {
+    pub index: usize,
+    pub name: String,
+    pub width: u32,
+    pub height: u32,
+    pub primary: bool,
+}
+
+/// الشاشات بترتيب الفهرس نفسه الذي يستعمله monitor في win::position_main.
+#[tauri::command]
+pub fn monitors_list(app: AppHandle) -> Vec<MonitorInfo> {
+    let primary = app.primary_monitor().ok().flatten().map(|m| (m.position().x, m.position().y));
+    app.available_monitors()
+        .unwrap_or_default()
+        .iter()
+        .enumerate()
+        .map(|(index, m)| MonitorInfo {
+            index,
+            name: m.name().cloned().unwrap_or_default(),
+            width: m.size().width,
+            height: m.size().height,
+            primary: primary == Some((m.position().x, m.position().y)),
+        })
+        .collect()
 }

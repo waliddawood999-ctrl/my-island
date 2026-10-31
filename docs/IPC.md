@@ -67,3 +67,7 @@ clip_list() → مصفوفة {id, kind, text, image_path, thumb(base64 PNG ≤96
 ### مضاف في الجلسة 1.2
 clip_paste(id) → "pasted" | "clipboard" — يضع العنصر (نص أو صورة PNG) في حافظة ويندوز؛ وإن كانت pasteOnClick مفعّلة (الافتراضي مفعّلة عند غياب المفتاح) يستعيد آخر نافذة تطبيق غير نافذتنا (يتتبّعها خيط كل 100ms) ويرسل Ctrl+V بـSendInput ثم يعيد الحبة بلا فوكس. "clipboard" = بقي في الحافظة فقط (الخيار معطّل أو الهدف يعمل كمسؤول/UIPI أو لا نافذة سابقة) ⇒ الواجهة تعرض «لُصق في الحافظة».
 take_focus() · release_focus() — تعطيل/إعادة WS_EX_NOACTIVATE؛ تُستعملان لحقل بحث تبويب الحافظة فقط (onFocus/onBlur)؛ release_focus يردّ الفوكس لآخر نافذة تطبيق. لا أحداث جديدة.
+
+### مضاف في الجلسة 1.3
+open_settings() — يُظهر نافذة settings ويمنحها الفوكس (نافذة عادية)؛ إغلاقها يخفيها فقط (CloseRequested ⇒ hide) · monitors_list() → [{index, name, width, height, primary}] بنفس فهرس `monitor` في win::position_main.
+settings_set لمفتاح `autostart` يكتب/يحذف قيمة MyIsland في HKCU\...\Run (autostart.rs). لا أحداث جديدة: تبديل `language` يصل كل النوافذ عبر settings:changed ويعيد رسمها.

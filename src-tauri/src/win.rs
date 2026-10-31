@@ -176,6 +176,56 @@ mod focus {
         });
     }
 
+    /// هل نافذة h تغطي شاشة كاملة (ملء الشاشة)؟ تُقارَن بمستطيلات الشاشات الفعلية.
+    fn covers_monitor(app: &AppHandle, h: HWND) -> bool {
+        use windows::Win32::Foundation::RECT;
+        use windows::Win32::UI::WindowsAndMessaging::GetWindowRect;
+        let mut r = RECT::default();
+        if unsafe { GetWindowRect(h, &mut r) }.is_err() {
+            return false;
+        }
+        app.available_monitors().unwrap_or_default().iter().any(|m| {
+            let (p, s) = (m.position(), m.size());
+            r.left <= p.x && r.top <= p.y && r.right >= p.x + s.width as i32 && r.bottom >= p.y + s.height as i32
+        })
+    }
+
+    /// hideInFullscreen: يخفي الحبة طالما نافذة أمامية (ليست لنا ولا الشل) تملأ شاشة، ويعيدها بعدها.
+    pub fn start_fullscreen_watch(app: AppHandle) {
+        std::thread::spawn(move || {
+            let me = unsafe { GetCurrentProcessId() };
+            let mut auto_hidden = false;
+            loop {
+                std::thread::sleep(std::time::Duration::from_millis(500));
+                let enabled = app
+                    .state::<AppState>()
+                    .settings
+                    .lock()
+                    .unwrap()
+                    .get("hideInFullscreen")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
+                let fg = unsafe { GetForegroundWindow() };
+                let want = if !enabled {
+                    false
+                } else if fg.0.is_null() || pid_of(fg) == me {
+                    auto_hidden // نافذتنا أمامية ⇒ لا تغيير
+                } else {
+                    !is_shell(fg) && covers_monitor(&app, fg)
+                };
+                if want && !auto_hidden {
+                    if !*app.state::<AppState>().hidden.lock().unwrap() {
+                        set_hidden(&app, true);
+                        auto_hidden = true;
+                    }
+                } else if !want && auto_hidden {
+                    auto_hidden = false;
+                    set_hidden(&app, false);
+                }
+            }
+        });
+    }
+
     fn target() -> Option<HWND> {
         let v = LAST_TARGET.load(Ordering::Relaxed);
         if v == 0 {
@@ -321,10 +371,12 @@ mod focus {
 }
 
 #[cfg(windows)]
-pub use focus::{paste_into_previous, release_focus, start_tracker, take_focus};
+pub use focus::{paste_into_previous, release_focus, start_fullscreen_watch, start_tracker, take_focus};
 
 #[cfg(not(windows))]
 pub fn start_tracker() {}
+#[cfg(not(windows))]
+pub fn start_fullscreen_watch(_app: AppHandle) {}
 #[cfg(not(windows))]
 pub fn take_focus(_app: &AppHandle) {}
 #[cfg(not(windows))]

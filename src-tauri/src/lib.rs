@@ -5,6 +5,7 @@ pub mod commands;   // طبقة الأوامر العامة (settings_get/set ..
 pub mod win;        // موضع/إخفاء/فوكس النافذة الرئيسية
 pub mod watchdog;   // نبض page_pong وإعادة تحميل الصفحة الصامتة
 pub mod clipboard;  // مستمع الحافظة + جدول clips
+pub mod autostart;  // مفتاح Run في ريجيستري ويندوز
 // pub mod media;   // SMTC
 // pub mod spectrum;   // WASAPI loopback + FFT
 // pub mod player_audio;
@@ -54,11 +55,16 @@ pub fn run() {
                 .or_else(|| app.path().app_data_dir().ok());
             watchdog::start(app.handle(), dir.clone());
             win::start_tracker();
+            win::start_fullscreen_watch(app.handle().clone());
             if let Some(dir) = dir {
                 if let Err(e) = app.state::<state::AppState>().init_db(dir) {
                     eprintln!("تعذّر فتح island.db: {e}");
                 } else {
                     clipboard::start(app.handle());
+                    // تحديث مسار exe في Run إن كان autostart مفعّلًا (يتتبّع نقل التطبيق).
+                    let on = app.state::<state::AppState>().settings.lock().unwrap()
+                        .get("autostart").and_then(|v| v.as_bool()).unwrap_or(false);
+                    if on { let _ = autostart::apply(true); }
                 }
             }
             if let Some(w) = app.get_webview_window(win::MAIN) {
@@ -72,6 +78,15 @@ pub fn run() {
             }
             Ok(())
         })
+        .on_window_event(|window, event| {
+            // نافذة الإعدادات تُخفى عند الإغلاق (لا تُدمَّر) كي يعيد open_settings فتحها.
+            if window.label() == "settings" {
+                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             commands::set_island_hidden,
             commands::report_island_rect,
@@ -79,6 +94,8 @@ pub fn run() {
             commands::settings_set,
             commands::take_focus,
             commands::release_focus,
+            commands::open_settings,
+            commands::monitors_list,
             watchdog::page_pong,
             clipboard::clip_list,
             clipboard::clip_delete,
