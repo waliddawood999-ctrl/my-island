@@ -3,7 +3,7 @@
 pub mod state;      // AppState: إعدادات + جلسات + حالة النوافذ
 pub mod commands;   // طبقة الأوامر العامة (settings_get/set ...)
 pub mod win;        // موضع/إخفاء/فوكس النافذة الرئيسية
-// pub mod watchdog; // نبض page_pong وإعادة التشغيل الذاتية
+pub mod watchdog;   // نبض page_pong وإعادة تحميل الصفحة الصامتة
 // pub mod media;   // SMTC
 // pub mod spectrum;   // WASAPI loopback + FFT
 // pub mod player_audio;
@@ -35,6 +35,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .manage(state::AppState::default())
+        .manage(watchdog::WatchdogState::default())
         .plugin(tauri_plugin_single_instance::init(|_, _, _| {}))
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
@@ -50,6 +51,7 @@ pub fn run() {
             let dir = std::env::var_os("ISLAND_DATA_DIR")
                 .map(std::path::PathBuf::from)
                 .or_else(|| app.path().app_data_dir().ok());
+            watchdog::start(app.handle(), dir.clone());
             if let Some(dir) = dir {
                 if let Err(e) = app.state::<state::AppState>().init_db(dir) {
                     eprintln!("تعذّر فتح island.db: {e}");
@@ -70,7 +72,8 @@ pub fn run() {
             commands::set_island_hidden,
             commands::report_island_rect,
             commands::settings_get,
-            commands::settings_set
+            commands::settings_set,
+            watchdog::page_pong
         ])
         .run(tauri::generate_context!())
         .expect("error while running application");

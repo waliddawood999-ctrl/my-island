@@ -6,6 +6,7 @@ report_page_scale, take_focus, release_focus, restart_island,
 runs_as_admin, open_settings, open_path, open_captures, monitors_list,
 prtsc_taken
 إعدادات: settings_get, settings_set, settings_target
+نبض: page_pong
 حافظة: clip_list, clip_paste, clip_pin, clip_delete, clip_clear,
 clip_set_text, clip_set_png, clip_current_text
 رفّ: shelf_list, shelf_add, shelf_remove, shelf_clear
@@ -54,3 +55,7 @@ island:hidden (الخلفية → main، payload: bool) — يشغّل التل�
 ### مضاف في الجلسة 0.2
 settings:changed (الخلفية → كل النوافذ، payload: كائن المقطع المحفوظ فقط) — يُبث بعد كل settings_set
 settings_get() → كائن الإعدادات المدموجة (DEFAULTS + kv) · settings_set(patch: كائن جزئي) → يحفظ كل مفتاح في kv كـ JSON
+
+### مضاف في الجلسة 0.3
+page_pong() — نبضة من صفحة main كل ثانيتين؛ الخلفية (watchdog.rs) تعيد تحميل webview بعد صمت > 6s (وتعيد تشغيل العملية بعد إعادتي تحميل فاشلتين) وتسجّل في crash-log.txt بمجلد البيانات
+debug_freeze — ليس أمر Tauri: زر واجهة في وضع التطوير فقط (import.meta.env.DEV) يوقف النبض لاختبار المراقب
