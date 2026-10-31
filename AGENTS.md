@@ -30,7 +30,7 @@
 
 ## الخط (قاعدة دائمة)
 
-خط الواجهة الوحيد هو مكدّس `--font-ui` المعرّف في `src/index.css` (ثمانية `thmanyah Serif Text` ثم `IBM Plex Sans Arabic` المدمج)، والعناوين `--font-display` والأرقام `--font-num`؛ أي نص جديد يرثه. ممنوع: أي `font-family` أخرى، وأي ملف خط (OTF/TTF/WOFF) يُرفع للمستودع — خطوط ثمانية ترخيصها يمنع الاستضافة وإعادة التوزيع فتُثبَّت يدويًا من font.thmanyah.com، والاحتياطي يأتي من npm (`@fontsource/ibm-plex-sans-arabic` 400/500/700 فقط).
+خط الواجهة الوحيد هو مكدّس `--font-ui` المعرّف في `src/index.css` (ثمانية `thmanyah Serif Text` اختيارية بالاسم، ثم **Almarai** المدمج داخل المثبّت كخط افتراضي، ثم `IBM Plex Sans Arabic` احتياطيًا)، والعناوين `--font-display` والأرقام `--font-num`؛ أي نص جديد يرثه. ممنوع: أي `font-family` أخرى، وأي ملف خط (OTF/TTF/WOFF) يُرفع للمستودع — خطوط ثمانية ترخيصها يمنع الاستضافة وإعادة التوزيع فتُثبَّت يدويًا من font.thmanyah.com، والمدمج يأتي من npm (`@fontsource/almarai` ترخيص OFL يسمح بالدمج؛ أوزان 400 للنص و700 للتسميات و800 للعناوين والأرقام الكبيرة فقط، و`@fontsource/ibm-plex-sans-arabic` 400/700 احتياطيًا).
 
 ## قواعد العمل (توفير التوكن إلزامي)
 
