@@ -62,6 +62,7 @@ export interface Settings {
   agentsStatus:boolean,
   agentsAsk:boolean,
   showPrivacy:boolean,
+  privacyIndicator:boolean,
   showVpn:boolean,
   vpnLookupIp:boolean,
   showNotifications:boolean,
