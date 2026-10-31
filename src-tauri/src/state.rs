@@ -1,5 +1,7 @@
-// AppState: إعدادات الموضع الافتراضية الآن (الجلسة 0.2 تربطها بجدول kv) + حالة نافذة الحبة.
-use std::sync::Mutex;
+// AppState: إعدادات الموضع + قاعدة island.db + الإعدادات المدموجة (الخلفية مصدر الحقيقة).
+use rusqlite::Connection;
+use serde_json::{json, Map, Value};
+use std::{path::PathBuf, sync::Mutex};
 
 /// قيَم الموضع — تطابق مفاتيح monitor / offsetX / underTaskbar في src/settings.ts.
 #[derive(Clone, Copy, Debug)]
@@ -15,10 +17,94 @@ impl Default for PlacementSettings {
     }
 }
 
-#[derive(Default)]
+/// مرآة DEFAULTS من src/settings.ts — أبقِهما متطابقتين.
+pub fn defaults() -> Map<String, Value> {
+    let Value::Object(m) = json!({
+        "language": "ar",
+        "hoverDelayMs": 250,
+        "collapseDelayMs": 350,
+        "clockFormat": "auto",
+        "aiBaseUrl": "https://api.groq.com/openai/v1",
+        "sttBaseUrl": "https://api.groq.com/openai/v1",
+        "sttModel": "whisper-large-v3-turbo",
+        "recordingFps": 30,
+        "recordFormat": "mp4",
+        "checkUpdates": true
+    }) else { unreachable!() };
+    m
+}
+
 pub struct AppState {
     pub placement: Mutex<PlacementSettings>,
     pub hidden: Mutex<bool>,
     /// آخر مستطيل للحبة أبلغت عنه الواجهة (بوحدات CSS: عرض، ارتفاع).
     pub island_size: Mutex<(f64, f64)>,
+    /// اتصال island.db (WAL). None إن تعذّر الفتح (نعمل بالافتراضيات فقط).
+    pub db: Mutex<Option<Connection>>,
+    /// الإعدادات المدموجة: DEFAULTS ثم kv.
+    pub settings: Mutex<Map<String, Value>>,
+}
+
+impl Default for AppState {
+    fn default() -> Self {
+        Self {
+            placement: Mutex::default(),
+            hidden: Mutex::default(),
+            island_size: Mutex::default(),
+            db: Mutex::new(None),
+            settings: Mutex::new(defaults()),
+        }
+    }
+}
+
+impl AppState {
+    /// يفتح island.db في dir، ينفّذ schema.sql، ويدمج kv فوق الافتراضيات.
+    pub fn init_db(&self, dir: PathBuf) -> Result<(), String> {
+        std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+        let conn = Connection::open(dir.join("island.db")).map_err(|e| e.to_string())?;
+        conn.execute_batch(include_str!("../schema.sql")).map_err(|e| e.to_string())?;
+        let mut merged = defaults();
+        {
+            let mut st = conn.prepare("SELECT key, value FROM kv").map_err(|e| e.to_string())?;
+            let rows = st
+                .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))
+                .map_err(|e| e.to_string())?;
+            for (k, v) in rows.flatten() {
+                if let Ok(val) = serde_json::from_str::<Value>(&v) {
+                    merged.insert(k, val);
+                }
+            }
+        }
+        self.sync_placement(&merged);
+        *self.settings.lock().unwrap() = merged;
+        *self.db.lock().unwrap() = Some(conn);
+        Ok(())
+    }
+
+    /// يحدّث PlacementSettings من الإعدادات المدموجة.
+    pub fn sync_placement(&self, s: &Map<String, Value>) {
+        let mut p = self.placement.lock().unwrap();
+        if let Some(v) = s.get("monitor").and_then(Value::as_u64) { p.monitor = v as usize; }
+        if let Some(v) = s.get("offsetX").and_then(Value::as_i64) { p.offset_x = v as i32; }
+        if let Some(v) = s.get("underTaskbar").and_then(Value::as_bool) { p.under_taskbar = v; }
+    }
+
+    /// يحفظ كل مفتاح في kv كـ JSON ويدمجه في الذاكرة؛ يعيد المقطع المطبّق.
+    pub fn apply_patch(&self, patch: Map<String, Value>) -> Result<Map<String, Value>, String> {
+        if let Some(conn) = self.db.lock().unwrap().as_mut() {
+            let tx = conn.transaction().map_err(|e| e.to_string())?;
+            for (k, v) in &patch {
+                tx.execute(
+                    "INSERT INTO kv(key,value) VALUES(?1,?2) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                    (k, v.to_string()),
+                )
+                .map_err(|e| e.to_string())?;
+            }
+            tx.commit().map_err(|e| e.to_string())?;
+        }
+        let mut s = self.settings.lock().unwrap();
+        for (k, v) in &patch { s.insert(k.clone(), v.clone()); }
+        self.sync_placement(&s);
+        Ok(patch)
+    }
 }

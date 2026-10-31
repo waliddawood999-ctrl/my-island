@@ -46,6 +46,15 @@ pub fn run() {
                 .build(),
         )
         .setup(move |app| {
+            // island.db: ISLAND_DATA_DIR يتجاوز مجلد بيانات التطبيق.
+            let dir = std::env::var_os("ISLAND_DATA_DIR")
+                .map(std::path::PathBuf::from)
+                .or_else(|| app.path().app_data_dir().ok());
+            if let Some(dir) = dir {
+                if let Err(e) = app.state::<state::AppState>().init_db(dir) {
+                    eprintln!("تعذّر فتح island.db: {e}");
+                }
+            }
             if let Some(w) = app.get_webview_window(win::MAIN) {
                 win::apply_noactivate(&w);
                 let _ = w.set_always_on_top(true);
@@ -59,7 +68,9 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::set_island_hidden,
-            commands::report_island_rect
+            commands::report_island_rect,
+            commands::settings_get,
+            commands::settings_set
         ])
         .run(tauri::generate_context!())
         .expect("error while running application");
