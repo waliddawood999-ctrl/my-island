@@ -31,3 +31,15 @@ pub fn settings_set(app: AppHandle, state: State<AppState>, patch: Map<String, V
     let _ = app.emit("settings:changed", applied);
     Ok(())
 }
+
+/// الحبة تأخذ فوكس الكيبورد (حقل البحث فقط) — الاستثناء الوحيد من WS_EX_NOACTIVATE.
+#[tauri::command]
+pub fn take_focus(app: AppHandle) {
+    win::take_focus(&app);
+}
+
+/// تعيد NOACTIVATE وتردّ الفوكس لآخر نافذة تطبيق كانت أمامية.
+#[tauri::command]
+pub fn release_focus(app: AppHandle) {
+    win::release_focus(&app);
+}

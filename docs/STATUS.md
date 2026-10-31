@@ -1,5 +1,5 @@
 # حالة المشروع
-- المرحلة الحالية: 0 — الجلسة 0.3 مكتملة برمجيًا (القبول على ويندوز لم يُجرَّب بعد)
+- المرحلة الحالية: 1 — الجلسة 1.2 مكتملة برمجيًا (القبول على ويندوز لم يُجرَّب بعد)
 - اكتمل: الهندسة العكسية + المخطط + IPC + AGENTS/CLAUDE + PROMPTS؛ 0.0 (Vite/React/Tailwind/Tauri بأربع صفحات)؛
   0.1: `win.rs` (WS_EX_NOACTIVATE + TOOLWINDOW، موضع أعلى المنتصف حسب monitor/offsetX/underTaskbar بقيَم افتراضية في `state.rs`، إخفاء/إظهار ناعم بلا تنشيط)، `commands.rs` (`set_island_hidden`, `report_island_rect`)، اختصار Ctrl+Alt+I في `lib.rs`، مكوّن الحبة `src/pages/island/Pill.tsx` (أسود 200×32 بساعة HH:MM عبر i()). حدث جديد `island:hidden` مسجّل في docs/IPC.md.
 - تحقق فعليًا: `npm run build` و`tsc --noEmit` ناجحان؛ `cargo check --target x86_64-pc-windows-gnu` ناجح بلا تحذيرات (على Linux بـwindres وهمي لأن البيئة بلا أدوات ويندوز؛ `cargo check` الأصلي يفشل هنا لغياب gtk/webkit فقط).
@@ -14,5 +14,8 @@
 - 1.1: `clipboard.rs` (مستمع clipboard-master + arboard؛ نص/صورة PNG في `clips/` + مصغّر؛ sha256 UNIQUE يرفع المكرّر للأعلى؛ استثناء أعلام ويندوز وclipExcludedApps بمصدر = عملية النافذة الأمامية؛ clipLimit)، أوامر `clip_list/clip_delete/clip_clear/clip_pin/clip_current_text`، `state.rs` (حقل data_dir)، `lib.rs`، `Cargo.toml` (arboard, clipboard-master, sha2, base64, image[png]). مسجّل في docs/IPC.md.
 - تحقق 1.1: `cargo check --target x86_64-pc-windows-gnu` ناجح بلا تحذيرات؛ اختبار وحدة منفصل لمنطق التخزين (تكرار، ترتيب، تثبيت، مسح، حدّ، حذف ملفات الصور، الاستثناء) نجح على Linux.
 - لم يُتحقق منه (يحتاج ويندوز): قبول 1.1 — بعد نسخ نص وصورة من تطبيقين مختلفين، من وحدة تحكم webview: `__TAURI_INTERNALS__.invoke('clip_list')` يُظهر العناصر بالترتيب والمصدر الصحيحين، ونسخ نفس النص مرتين لا يكرّره؛ ونسخ من مدير كلمات مرور لا يُخزَّن.
-- التالي: القبول البصري للمرحلة 0 ثم 1.2 (تبويب الحافظة + clip_paste)
+- 1.2: `src/pages/island/ClipboardTab.tsx` (قائمة نص بمقتطف سطرين/صورة بمصغّر، بحث فوري، تثبيت/حذف لكل عنصر، مسح الكل، تلميح «لُصق في الحافظة»، تمرير داخل ارتفاع اللوحة) وربطه بتبويب الحافظة في `Pill.tsx`؛ `clipboard.rs` (`clip_paste` + ضبط حافظة ويندوز نصًا/صورة)؛ `win.rs` (خيط تتبّع آخر نافذة غير نافذتنا، `take_focus`/`release_focus`، لصق Ctrl+V بـSendInput مع كشف نوافذ المسؤول فيعود "clipboard")؛ `commands.rs` (الأمران)؛ `lib.rs`؛ `Cargo.toml` (ميزتا windows: Win32_Security وKeyboardAndMouse). مسجّل في docs/IPC.md.
+- تحقق 1.2: `npm run build` و`tsc --noEmit` ناجحان؛ `cargo check --target x86_64-pc-windows-gnu` ناجح بلا تحذيرات.
+- لم يُتحقق منه (يحتاج ويندوز): قبول 1.2 — Notepad وWordPad: نسخ منهما ثم لصق من الحبة بنقرة يصل مكان المؤشر؛ البحث/التثبيت/الحذف؛ لصق داخل نافذة مسؤول يعطي التلميح. قرار: take_focus يُستدعى لحقل البحث فقط (لا يمكن الكتابة في نافذة NOACTIVATE)، ومسار اللصق يستعيد النافذة السابقة مباشرة بربط خيط الإدخال دون أخذ فوكس الحبة كي يصل Ctrl+V للهدف.
+- التالي: القبول البصري للمرحلتين 0 و1.2 ثم 1.3 (نافذة الإعدادات)
 - آخر خطأ معروف: لا شيء

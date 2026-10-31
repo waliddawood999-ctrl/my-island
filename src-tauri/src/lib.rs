@@ -53,6 +53,7 @@ pub fn run() {
                 .map(std::path::PathBuf::from)
                 .or_else(|| app.path().app_data_dir().ok());
             watchdog::start(app.handle(), dir.clone());
+            win::start_tracker();
             if let Some(dir) = dir {
                 if let Err(e) = app.state::<state::AppState>().init_db(dir) {
                     eprintln!("تعذّر فتح island.db: {e}");
@@ -76,12 +77,15 @@ pub fn run() {
             commands::report_island_rect,
             commands::settings_get,
             commands::settings_set,
+            commands::take_focus,
+            commands::release_focus,
             watchdog::page_pong,
             clipboard::clip_list,
             clipboard::clip_delete,
             clipboard::clip_clear,
             clipboard::clip_pin,
-            clipboard::clip_current_text
+            clipboard::clip_current_text,
+            clipboard::clip_paste
         ])
         .run(tauri::generate_context!())
         .expect("error while running application");

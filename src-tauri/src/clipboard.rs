@@ -255,6 +255,67 @@ pub fn clip_current_text() -> Option<String> {
     }
 }
 
+/// يضع عنصرًا في حافظة ويندوز ثم (إن كانت pasteOnClick مفعّلة، والافتراضي مفعّلة) يلصقه في
+/// آخر نافذة تطبيق سابقة بـCtrl+V. يعيد "pasted" أو "clipboard" (بقي في الحافظة فقط:
+/// pasteOnClick معطّلة أو الهدف يعمل كمسؤول أو لا نافذة سابقة) — الواجهة تعرض تلميح «لُصق في الحافظة».
+#[tauri::command]
+pub fn clip_paste(app: AppHandle, state: State<AppState>, id: i64) -> Result<String, String> {
+    let c = with_db(&state, |conn| {
+        list(conn).map(|v| v.into_iter().find(|c| c.id == id))
+    })?
+    .ok_or("العنصر غير موجود")?;
+    #[cfg(windows)]
+    {
+        set_windows_clipboard(&c)?;
+        let paste = state
+            .settings
+            .lock()
+            .unwrap()
+            .get("pasteOnClick")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(true);
+        if paste && crate::win::paste_into_previous(&app) {
+            return Ok("pasted".into());
+        }
+        Ok("clipboard".into())
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (app, c);
+        Err("اللصق متاح على ويندوز فقط".into())
+    }
+}
+
+#[cfg(windows)]
+fn set_windows_clipboard(c: &Clip) -> Result<(), String> {
+    let mut last = String::new();
+    for _ in 0..6 {
+        let r = (|| -> Result<(), String> {
+            let mut cb = arboard::Clipboard::new().map_err(|e| e.to_string())?;
+            match c.kind.as_str() {
+                "text" => cb.set_text(c.text.clone().unwrap_or_default()).map_err(|e| e.to_string()),
+                "image" => {
+                    let path = c.image_path.as_ref().ok_or("مسار الصورة مفقود")?;
+                    let img = image::open(path).map_err(|e| e.to_string())?.to_rgba8();
+                    cb.set_image(arboard::ImageData {
+                        width: img.width() as usize,
+                        height: img.height() as usize,
+                        bytes: std::borrow::Cow::Owned(img.into_raw()),
+                    })
+                    .map_err(|e| e.to_string())
+                }
+                k => Err(format!("نوع غير مدعوم للصق: {k}")),
+            }
+        })();
+        match r {
+            Ok(()) => return Ok(()),
+            Err(e) => last = e,
+        }
+        std::thread::sleep(std::time::Duration::from_millis(40));
+    }
+    Err(last)
+}
+
 /// يبدأ مستمع الحافظة في خيط مستقل (ويندوز فقط).
 pub fn start(app: &AppHandle) {
     #[cfg(windows)]

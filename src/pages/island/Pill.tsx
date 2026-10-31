@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { i } from "../../i18n";
 import { useSettings } from "../../useSettings";
+import { ClipboardTab } from "./ClipboardTab";
 
 const PILL = { w: 200, h: 32 };
 const PANEL = { w: 720, h: 480 };
@@ -96,9 +97,9 @@ export function Pill() {
         </div>
         <div
           style={{ width: PANEL.w, height: PANEL.h }}
-          className={`absolute left-1/2 top-0 -translate-x-1/2 p-4 transition-opacity duration-200 ${open ? "opacity-100 delay-100" : "pointer-events-none opacity-0"}`}
+          className={`absolute left-1/2 top-0 flex -translate-x-1/2 flex-col p-4 transition-opacity duration-200 ${open ? "opacity-100 delay-100" : "pointer-events-none opacity-0"}`}
         >
-          <div role="tablist" className="flex gap-2">
+          <div role="tablist" className="flex shrink-0 gap-2">
             {TABS().map((label, n) => (
               <button
                 key={n}
@@ -111,6 +112,11 @@ export function Pill() {
               </button>
             ))}
           </div>
+          {tab === 1 && open && (
+            <div className="min-h-0 flex-1">
+              <ClipboardTab />
+            </div>
+          )}
         </div>
       </div>
     </div>
