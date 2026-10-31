@@ -350,7 +350,7 @@ fn tick(app: &AppHandle, now: i64) {
 }
 
 /// تنبيه: حدث island:note للواجهة + صوت alertSound إن ضُبط (غير فارغ ولا "off").
-fn alert(app: &AppHandle, payload: Value) {
+pub(crate) fn alert(app: &AppHandle, payload: Value) {
     let _ = app.emit("island:note", payload);
     let sound = app
         .state::<AppState>()

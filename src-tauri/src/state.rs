@@ -52,7 +52,10 @@ pub fn defaults() -> Map<String, Value> {
         "themeMaterial": "solid",
         "glassTint": 45,
         "browserTabMode": false,
-        "showNetSpeed": false
+        "showNetSpeed": false,
+        "showToday": true,
+        "prayerCity": "riyadh",
+        "prayerAlerts": true
     }) else { unreachable!() };
     m
 }

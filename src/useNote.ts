@@ -6,7 +6,7 @@ import { i } from "./i18n";
 
 export interface Reminder { id: string; text: string; at: number; repeat: RepeatKind; done: boolean }
 export interface TimerState { endsAt: number; totalMs: number; label: string }
-export interface NoteAlert { kind: "reminder" | "timer" | "break"; id: string; text: string; at: number; late: boolean }
+export interface NoteAlert { kind: "reminder" | "timer" | "break" | "prayer"; id: string; text: string; at: number; late: boolean }
 export interface Folder { id: string; name: string }
 
 /** يظهر المؤقّت في الحبة المنكمشة حين يتبقى هذا الزمن (ms) أو أقل. */

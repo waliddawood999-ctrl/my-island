@@ -20,6 +20,7 @@ pub mod color;      // منتقي الألوان + السجل
 pub mod editor;     // نافذة محرّر اللقطات
 pub mod shelf;      // الرفّ: ملفات/نص/صور مؤقتة + سحب أصلي للخارج
 pub mod launcher;   // اللانشر: تطبيقات/ملفات/مجلدات/روابط + مجموعات + اختصارات عالمية
+pub mod today;      // لوحة اليوم: مواقيت أم القرى + تنبيهات + طقس Open-Meteo
 pub mod note;       // الملاحظة + التذكيرات + المؤقّت (kv `note:*` + خيط جدولة)
 // pub mod ocr;        // Windows.Media.Ocr
 // pub mod ai;         // بث SSE لأي OpenAI-compatible
@@ -109,6 +110,7 @@ pub fn run() {
                     color::rebind(app.handle());
                     launcher::rebind(app.handle());
                     note::start(app.handle());
+                    today::start(app.handle());
                     // تحديث مسار exe في Run إن كان autostart مفعّلًا (يتتبّع نقل التطبيق).
                     let on = app.state::<state::AppState>().settings.lock().unwrap()
                         .get("autostart").and_then(|v| v.as_bool()).unwrap_or(false);
@@ -211,7 +213,10 @@ pub fn run() {
             note::reminders_get,
             note::reminders_set,
             note::timer_get,
-            note::timer_set
+            note::timer_set,
+            today::today_cities,
+            today::today_get,
+            today::weather_get
         ])
         .run(tauri::generate_context!())
         .expect("error while running application");

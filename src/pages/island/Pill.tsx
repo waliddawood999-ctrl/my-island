@@ -27,6 +27,7 @@ const importNote = () => import("./NoteTab").then((m) => ({ default: m.NoteTab }
 const makeNoteTab = () => lazy(importNote);
 import { fmtCountdown, TIMER_NEAR_MS, useNoteAlert, useTimer } from "../../useNote";
 import { MediaSection } from "./MediaSection";
+import { TodaySection } from "./TodaySection";
 import { Liquid } from "./Liquid";
 import { Eyes } from "./Eyes";
 import { useBackdrop } from "./useBackdrop";
@@ -590,6 +591,11 @@ export function Pill() {
                         ) : (
                           <MediaSection media={media} showLyrics={!!(settings.lyricsInHome || settings.lyricsInPlayer)} />
                         )}
+                      </motion.div>
+                    )}
+                    {(settings.showToday ?? true) && (
+                      <motion.div custom={1} variants={sectionVariants} initial="initial" animate="animate" className="min-h-0 w-56 shrink-0 overflow-y-auto border-s border-white/10 ps-3">
+                        <TodaySection settings={settings} />
                       </motion.div>
                     )}
                     {(showDl || (showBat && hasBatteryContent(battery, btOn)) || (attentionOn && attention?.enabled)) && (

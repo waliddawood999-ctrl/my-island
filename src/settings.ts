@@ -99,6 +99,9 @@ export interface Settings {
   weatherUnits:'c'|'f',
   showWeather:boolean,
   weatherAlerts:boolean,
+  showToday:boolean,     // قسم «اليوم» في الرئيسية (هجري + مواقيت صلاة + طقس)
+  prayerCity:string,     // معرّف مدينة سعودية من جدول today.rs (riyadh, makkah, ...)
+  prayerAlerts:boolean,  // تنبيه قبل الصلاة 10د وعند دخول الوقت (بصوت alertSound إن ضُبط)
   aiBaseUrl:string,
   aiModels:string[],
   sttBaseUrl:string,
@@ -157,4 +160,7 @@ export const DEFAULTS: Partial<Settings> = {
   motionLevel: 'full',     // full = نابضة · reduced = مخففة · off = متوقفة (انظر src/motion.ts)
   liveRates: true,         // شريط الأوامر: أسعار عملات حية (open.er-api.com) تُجلب كسولًا عند تحويل عملة وتُخزَّن 12 ساعة؛ false = المضمّنة فقط بلا شبكة
   batteryTip: true,        // قسم البطارية: نصيحة «افصل الشاحن عند 80%» أثناء الشحن
+  showToday: true,       // محلي بلا شبكة؛ الطقس نفسه خلف showWeather (افتراضيًا معطّل)
+  prayerCity: "riyadh",
+  prayerAlerts: true,
 };

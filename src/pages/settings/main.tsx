@@ -8,13 +8,16 @@ import { EcoIndicator, RamUsage } from "./Perf";
 import { WorkspacesEditor } from "./Workspaces";
 import { Group, LinesField, Nav, NumberField, Row, Section, Select, Slider, SubHead, TextField, Toggle } from "./fields";
 
+interface CityOpt { id: string; ar: string; en: string }
 interface MonitorInfo { index: number; name: string; width: number; height: number; primary: boolean }
 
 function App() {
   const s = useSettings();
   const [monitors, setMonitors] = useState<MonitorInfo[]>([]);
+  const [cities, setCities] = useState<CityOpt[]>([]);
   useEffect(() => {
     invoke<MonitorInfo[]>("monitors_list").then(setMonitors).catch(() => {});
+    invoke<CityOpt[]>("today_cities").then(setCities).catch(() => {});
   }, []);
   const pct = (v: number) => `${v}%`;
   const ms = (v: number) => `${v} ms`;
@@ -164,6 +167,35 @@ function App() {
       </Group>
 
       <Group id="modules" title={i("الوحدات", "Modules")}>
+      <Section title={i("اليوم والصلاة", "Today & prayer")}>
+        <Row label={i("إظهار قسم «اليوم»", "Show the Today section")} hint={i("هجري + مواقيت الصلاة في الرئيسية — محلي بلا إنترنت", "Hijri date + prayer times on Home — local, offline")}>
+          <Toggle label={i("إظهار قسم «اليوم»", "Show the Today section")} value={s.showToday ?? true} onChange={(v) => saveSettings({ showToday: v })} />
+        </Row>
+        <Row label={i("المدينة", "City")} hint={i("مواقيت أم القرى تُحسب محليًا لإحداثيات المدينة", "Umm al-Qura times computed locally for the city")}>
+          <Select
+            label={i("المدينة", "City")} value={s.prayerCity ?? "riyadh"}
+            options={(cities.length ? cities : [{ id: s.prayerCity ?? "riyadh", ar: "الرياض", en: "Riyadh" }]).map((c) => ({ value: c.id, label: s.language === "en" ? c.en : c.ar }))}
+            onChange={(v) => saveSettings({ prayerCity: v })}
+          />
+        </Row>
+        <Row label={i("تنبيهات الصلاة", "Prayer alerts")} hint={i("قبل 10 دقائق وعند دخول الوقت — بصوت التنبيه إن فُعّل", "10 minutes before and at the time — with the alert sound if set")}>
+          <Toggle label={i("تنبيهات الصلاة", "Prayer alerts")} value={s.prayerAlerts ?? true} onChange={(v) => saveSettings({ prayerAlerts: v })} />
+        </Row>
+        <Row label={i("الطقس", "Weather")} hint={i("يتصل بـ Open-Meteo (بلا حساب) لمدينتك — مطفأ افتراضيًا", "Connects to Open-Meteo (no account) for your city — off by default")}>
+          <Toggle label={i("الطقس", "Weather")} value={s.showWeather ?? false} onChange={(v) => saveSettings({ showWeather: v })} />
+        </Row>
+        <Row label={i("وحدة الحرارة", "Temperature unit")}>
+          <Select
+            label={i("وحدة الحرارة", "Temperature unit")} value={s.weatherUnits ?? "c"}
+            options={[{ value: "c", label: "°C" }, { value: "f", label: "°F" }]}
+            onChange={(v) => saveSettings({ weatherUnits: v })}
+          />
+        </Row>
+        <Row label={i("صوت التنبيه", "Alert sound")} hint={i("مسار WAV أو default · فارغ/off = صامت", "WAV path or default · empty/off = silent")}>
+          <TextField label={i("صوت التنبيه", "Alert sound")} value={s.alertSound ?? ""} onCommit={(v) => saveSettings({ alertSound: v })} />
+        </Row>
+      </Section>
+
       <Section title={i("التنزيلات والبطارية والشبكة", "Downloads, battery & network")}>
         <SubHead>{i("التنزيلات", "Downloads")}</SubHead>
         <Row label={i("إظهار التنزيلات", "Show downloads")}>
