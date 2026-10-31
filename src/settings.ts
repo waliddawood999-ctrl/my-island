@@ -76,6 +76,9 @@ export interface Settings {
   weatherUnits:'c'|'f',
   showWeather:boolean,
   weatherAlerts:boolean,
+  showToday:boolean,     // قسم «اليوم» في الرئيسية (هجري + مواقيت صلاة + طقس)
+  prayerCity:string,     // معرّف مدينة سعودية من جدول today.rs (riyadh, makkah, ...)
+  prayerAlerts:boolean,  // تنبيه قبل الصلاة 10د وعند دخول الوقت (بصوت alertSound إن ضُبط)
   aiBaseUrl:string,
   aiModels:string[],
   sttBaseUrl:string,
@@ -117,4 +120,7 @@ export const DEFAULTS: Partial<Settings> = {
   hotkeyColor: "Ctrl+Alt+C",  // منتقي الألوان؛ فارغ = معطّل
   recordingQuality: "medium", // low | medium | high
   checkUpdates: true,
+  showToday: true,       // محلي بلا شبكة؛ الطقس نفسه خلف showWeather (افتراضيًا معطّل)
+  prayerCity: "riyadh",
+  prayerAlerts: true,
 };

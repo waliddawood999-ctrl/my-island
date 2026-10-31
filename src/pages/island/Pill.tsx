@@ -19,6 +19,7 @@ import { useLauncher } from "../../useLauncher";
 const NoteTab = lazy(() => import("./NoteTab").then((m) => ({ default: m.NoteTab })));
 import { fmtCountdown, TIMER_NEAR_MS, useNoteAlert, useTimer } from "../../useNote";
 import { MediaSection } from "./MediaSection";
+import { TodaySection } from "./TodaySection";
 import { Liquid } from "./Liquid";
 import { Palette } from "./Palette";
 import { TabBar } from "./TabBar";
@@ -418,6 +419,11 @@ export function Pill() {
                     {moduleMedia && (
                       <motion.div custom={0} variants={sectionVariants} initial="initial" animate="animate" className="min-h-0 flex-1">
                         <MediaSection media={media} showLyrics={!!(settings.lyricsInHome || settings.lyricsInPlayer)} />
+                      </motion.div>
+                    )}
+                    {(settings.showToday ?? true) && (
+                      <motion.div custom={1} variants={sectionVariants} initial="initial" animate="animate" className="w-56 shrink-0 border-s border-white/10 ps-3">
+                        <TodaySection settings={settings} />
                       </motion.div>
                     )}
                     {(showDl || (showBat && battery?.has_battery)) && (

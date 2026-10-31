@@ -35,7 +35,10 @@ pub fn defaults() -> Map<String, Value> {
         "hotkeyRecord": "Ctrl+Alt+R",
         "hotkeyColor": "Ctrl+Alt+C",
         "recordingQuality": "medium",
-        "checkUpdates": true
+        "checkUpdates": true,
+        "showToday": true,
+        "prayerCity": "riyadh",
+        "prayerAlerts": true
     }) else { unreachable!() };
     m
 }

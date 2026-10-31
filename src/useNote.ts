@@ -5,7 +5,7 @@ import type { RepeatKind } from "./reminderParse";
 
 export interface Reminder { id: string; text: string; at: number; repeat: RepeatKind; done: boolean }
 export interface TimerState { endsAt: number; totalMs: number; label: string }
-export interface NoteAlert { kind: "reminder" | "timer"; id: string; text: string; at: number; late: boolean }
+export interface NoteAlert { kind: "reminder" | "timer" | "prayer"; id: string; text: string; at: number; late: boolean }
 export interface Folder { id: string; name: string }
 
 /** يظهر المؤقّت في الحبة المنكمشة حين يتبقى هذا الزمن (ms) أو أقل. */
