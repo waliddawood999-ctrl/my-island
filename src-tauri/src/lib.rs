@@ -141,6 +141,7 @@ pub fn run() {
             clipboard::clip_clear,
             clipboard::clip_pin,
             clipboard::clip_current_text,
+            clipboard::clip_set_text,
             clipboard::clip_paste,
             media::media_control,
             media::media_seek,

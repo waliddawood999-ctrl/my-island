@@ -255,6 +255,28 @@ pub fn clip_current_text() -> Option<String> {
     }
 }
 
+/// يضع نصًا في حافظة ويندوز بلا لصق (نسخ نتيجة/RGB من الإجراءات الذكية). يمرّ عبر المستمع كأي نسخ فيظهر في السجل.
+#[tauri::command]
+pub fn clip_set_text(text: String) -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        let mut last = String::new();
+        for _ in 0..6 {
+            match arboard::Clipboard::new().and_then(|mut cb| cb.set_text(text.clone())) {
+                Ok(()) => return Ok(()),
+                Err(e) => last = e.to_string(),
+            }
+            std::thread::sleep(std::time::Duration::from_millis(40));
+        }
+        Err(last)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = text;
+        Err("النسخ متاح على ويندوز فقط".into())
+    }
+}
+
 /// يضع عنصرًا في حافظة ويندوز ثم (إن كانت pasteOnClick مفعّلة، والافتراضي مفعّلة) يلصقه في
 /// آخر نافذة تطبيق سابقة بـCtrl+V. يعيد "pasted" أو "clipboard" (بقي في الحافظة فقط:
 /// pasteOnClick معطّلة أو الهدف يعمل كمسؤول أو لا نافذة سابقة) — الواجهة تعرض تلميح «لُصق في الحافظة».
