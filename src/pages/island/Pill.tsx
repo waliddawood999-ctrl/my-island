@@ -21,6 +21,7 @@ import { fmtCountdown, TIMER_NEAR_MS, useNoteAlert, useTimer } from "../../useNo
 import { MediaSection } from "./MediaSection";
 import { Liquid } from "./Liquid";
 import { Eyes } from "./Eyes";
+import { useBackdrop } from "./useBackdrop";
 import { rowReversed } from "../../eyes";
 import { Palette } from "./Palette";
 import { TabBar } from "./TabBar";
@@ -146,6 +147,13 @@ export function Pill() {
   const timerNear = timer !== null && remaining !== null && remaining > 0 && remaining <= TIMER_NEAR_MS;
   const alertRef = useRef(alert);
   alertRef.current = alert;
+  // استقرار الحبة: false من لحظة تغيّر الحجم المستهدف حتى انتهاء الحركة (وإعادة قياس النافذة)؛ يتحكّم بطلب الزجاج الحقيقي فقط.
+  // مشتق في العرض نفسه: «مستقر» = اكتملت الحركة لمفتاح الحجم الحالي (فلا تمرّ لحظة يُطلب فيها الزجاج بحجم جديد قبل اكتمالها).
+  const [doneKey, setDoneKey] = useState<string | null>(null);
+  const initKey = useRef<string | null>(null);
+  const sizeKeyRef = useRef("");
+  const settleNow = () => setDoneKey(sizeKeyRef.current);
+  const settleT = useRef<number | undefined>(undefined);
   const hoverT = useRef<number | undefined>(undefined);
   const collapseT = useRef<number | undefined>(undefined);
   const shrinkT = useRef<number | undefined>(undefined);
@@ -178,12 +186,14 @@ export function Pill() {
   }, [pill.w, pill.h]);
 
   /** تصغير النافذة بعد انتهاء حركة الانكماش (رد onAnimationComplete) مع مؤقّت احتياطي واحد. */
-  const flushShrink = () => {
-    if (!shrinkPending.current) return;
+  const flushShrink = (): boolean => {
+    if (!shrinkPending.current) return false;
     shrinkPending.current = false;
     window.clearTimeout(shrinkT.current);
     const rest = alertRef.current ? alertSz : pill;
-    report(rest.w, rest.h);
+    // الاستقرار (للزجاج الحقيقي) بعد أن تُقاس النافذة فعلًا: وإلا تُطبَّق المنطقة على حجم قديم.
+    report(rest.w, rest.h).finally(settleNow);
+    return true;
   };
   const scheduleShrink = () => {
     shrinkPending.current = true;
@@ -299,6 +309,23 @@ export function Pill() {
   const opacity = hidden ? 0 : palette ? 1 : open ? opened : settings.autoHide && !hover ? 0 : rest;
 
   const radius = palette ? 24 : open ? 28 : (alert ? alertSz.h : pill.h) / 2; // كبسولة كاملة الاستدارة
+  // مفتاح الحجم المستهدف؛ أول عرض = مستقر. مؤقّت احتياطي أحادي إن لم يصل رد الاكتمال (كحارس التصغير).
+  const sizeKey = `${size.w}x${size.h}`;
+  sizeKeyRef.current = sizeKey;
+  if (initKey.current === null) initKey.current = sizeKey;
+  const settled = (doneKey ?? initKey.current) === sizeKey;
+  useEffect(() => {
+    if (settled) return;
+    window.clearTimeout(settleT.current);
+    settleT.current = window.setTimeout(settleNow, SHRINK_GUARD_MS + 700);
+    return () => window.clearTimeout(settleT.current);
+  }, [sizeKey, settled]);
+  useBackdrop({
+    glass: (settings.themeMaterial ?? "solid") === "glass",
+    light: settings.themeMode === "light",
+    ready: settled && !hidden && opacity >= 0.99,
+    radius,
+  });
   const tabs = tabDefs(shelfOn, shelf.items.length, launcherOn);
   const tab = Math.max(0, tabs.findIndex((t) => t.id === tabId));
   const curTab = tabs[tab].id;
@@ -316,7 +343,7 @@ export function Pill() {
         initial={false}
         animate={{ opacity, width: size.w, height: size.h, borderRadius: radius }}
         transition={{ default: spring.island, opacity: { duration: dur.base, ease: ease.out } }}
-        onAnimationComplete={flushShrink}
+        onAnimationComplete={() => { if (!flushShrink()) settleNow(); }}
         style={{ boxShadow: open || palette ? "var(--island-ring-open)" : "var(--island-ring)" }}
         className="island-body relative overflow-hidden"
       >

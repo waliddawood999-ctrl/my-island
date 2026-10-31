@@ -71,6 +71,8 @@ pub fn position_main(app: &AppHandle) {
 /// الواجهة تبلّغ بحجم الحبة (CSS px) → النافذة تلتفّ حولها تمامًا ثم تُعاد للمنتصف.
 pub fn resize_to_island(app: &AppHandle, width: f64, height: f64) {
     let Some(w) = app.get_webview_window(MAIN) else { return };
+    // الخلفية الزجاجية الحقيقية منطقة بحجم النافذة الحالي: تُسقَط قبل تغيير الحجم وتعيد الواجهة طلبها بعد استقرار الحركة.
+    crate::backdrop::drop_for_resize(app);
     let scale = w.scale_factor().unwrap_or(1.0);
     let _ = w.set_size(PhysicalSize::new(
         (width * scale).ceil() as u32,
