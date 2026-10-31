@@ -4,7 +4,6 @@ html, body, #root {
   background: transparent;
   overflow: hidden;
   user-select: none;
-  font-family: "Segoe UI", system-ui, sans-serif;
 }
 
 /*
