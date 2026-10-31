@@ -23,7 +23,7 @@ export const ease = {
   inOut: [0.65, 0, 0.35, 1],
 } as const;
 
-type SpringKey = "island" | "content" | "press" | "tabLead" | "tabTrail";
+type SpringKey = "island" | "content" | "press" | "tabLead" | "tabTrail" | "eye";
 
 /** نوابض: تجاوز (overshoot) بسيط جدًا كحد أقصى — damping مرتفع نسبيًا. */
 const FULL_SPRING: Record<SpringKey, Transition> = {
@@ -37,10 +37,12 @@ const FULL_SPRING: Record<SpringKey, Transition> = {
   tabLead: { type: "spring", stiffness: 620, damping: 38, mass: 0.7 },
   /** حافة مؤشر التبويب التابعة (أبطأ فيتمدد المؤشر ثم ينكمش). */
   tabTrail: { type: "spring", stiffness: 300, damping: 34, mass: 0.8 },
+  /** عيون التميمة: انزلاق/تغيّر الحالة — فوق الحرج قليلًا (ζ≈1.1): ناعم بلا أي ارتداد. */
+  eye: { type: "spring", stiffness: 240, damping: 29, mass: 0.7 },
 };
 const SHORT: Transition = { type: "tween", duration: 0.12, ease: ease.out };
 const NONE: Transition = { type: "tween", duration: 0 };
-const flat = (t: Transition): Record<SpringKey, Transition> => ({ island: t, content: t, press: t, tabLead: t, tabTrail: t });
+const flat = (t: Transition): Record<SpringKey, Transition> => ({ island: t, content: t, press: t, tabLead: t, tabTrail: t, eye: t });
 
 export const spring: Record<SpringKey, Transition> = { ...FULL_SPRING };
 
@@ -56,6 +58,14 @@ const FULL_DUR: Dur = {
   alert: 0.6,
 };
 export const dur: Dur = { ...FULL_DUR };
+
+/** رمشة العيون: إغلاق سريع ثم فتح أبطأ قليلًا (tween لا نابض: لا ارتداد)، والفاصل العشوائي بين رمشتين (ms). */
+export const eyeBlink: { close: Transition; open: Transition; minMs: number; maxMs: number } = {
+  close: { type: "tween", duration: 0.07, ease: ease.inOut },
+  open: { type: "tween", duration: 0.13, ease: ease.out },
+  minMs: 2800,
+  maxMs: 5600,
+};
 
 /** تمويه قصير للمحتوى المتبدّل (px). */
 export const blur = { swap: 6, section: 4 };
@@ -137,6 +147,8 @@ export function setMotionLevel(l: MotionLevel) {
     tap.whileHover = { scale: 1.06 }; tap.whileTap = { scale: 0.92 };
     alertShake.animate = { rotate: [0, -16, 14, -10, 0] };
     alertShake.transition = { duration: FULL_DUR.alert, repeat: 2 };
+    eyeBlink.close = { type: "tween", duration: 0.07, ease: ease.inOut };
+    eyeBlink.open = { type: "tween", duration: 0.13, ease: ease.out };
   } else {
     const t = l === "off" ? NONE : SHORT;
     Object.assign(spring, flat(t));
@@ -149,6 +161,8 @@ export function setMotionLevel(l: MotionLevel) {
     tap.whileHover = { scale: l === "off" ? 1 : 1.02 }; tap.whileTap = { scale: l === "off" ? 1 : 0.97 };
     alertShake.animate = { rotate: 0 };
     alertShake.transition = NONE;
+    eyeBlink.close = l === "off" ? NONE : { type: "tween", duration: 0.05, ease: ease.inOut };
+    eyeBlink.open = l === "off" ? NONE : SHORT;
   }
   tap.transition = spring.press;
   buildVariants();

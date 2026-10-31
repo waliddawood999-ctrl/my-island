@@ -44,7 +44,8 @@ pub fn defaults() -> Map<String, Value> {
         "liveRates": true,
         "ecoMode": false,
         "ecoOnBattery": false,
-        "motionLevel": "full"
+        "motionLevel": "full",
+        "eyesEnabled": true
     }) else { unreachable!() };
     m
 }

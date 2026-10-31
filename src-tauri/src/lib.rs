@@ -29,6 +29,7 @@ pub mod note;       // الملاحظة + التذكيرات + المؤقّت (k
 // pub mod vpn; pub mod controls; pub mod audio; pub mod privacy;
 pub mod files;      // فهرس شريط الأوامر (ذاكرة فقط) + تطبيقات + أيقونات
 pub mod perf;       // الأداء والتوفير: وضع Eco + استهلاك رام التطبيق
+pub mod mascot;     // عيون التميمة: موضع المؤشر الحقيقي (mascot:look)، خيط مركون ما لم يُفعَّل
 pub mod rates;      // أسعار العملات الحية لشريط الأوامر (open.er-api.com، كاش 12 ساعة)
 pub mod palette;    // اختصار شريط الأوامر + الأخيرة + run_shell
 // linkicon: مدمج في launcher.rs (favicon الروابط)
@@ -96,6 +97,7 @@ pub fn run() {
                     battery::start(app.handle());
                     attention::start(app.handle());
                     perf::start(app.handle());
+                    mascot::start(app.handle());
                     files::start(app.handle());
                     palette::rebind(app.handle());
                     capture::rebind(app.handle());
@@ -168,6 +170,7 @@ pub fn run() {
             rates::rates_get,
             perf::perf_status,
             perf::perf_ram,
+            mascot::mascot_active,
             capture::capture_start,
             capture::capture_frame,
             capture::capture_ready,

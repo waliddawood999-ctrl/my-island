@@ -20,6 +20,8 @@ const NoteTab = lazy(() => import("./NoteTab").then((m) => ({ default: m.NoteTab
 import { fmtCountdown, TIMER_NEAR_MS, useNoteAlert, useTimer } from "../../useNote";
 import { MediaSection } from "./MediaSection";
 import { Liquid } from "./Liquid";
+import { Eyes } from "./Eyes";
+import { rowReversed } from "../../eyes";
 import { Palette } from "./Palette";
 import { TabBar } from "./TabBar";
 import { BatteryChip, DownloadsSection } from "./DownloadsSection";
@@ -348,7 +350,18 @@ export function Pill() {
               ) : pillTitle ? (
                 <PillTitle text={pillTitle} />
               ) : (
-                (settings.showClock ?? true) && <span dir="ltr">{time}</span>
+                (settings.eyesEnabled ?? true) ? (
+                  // عيون التميمة بجانب الساعة؛ ينعكس الترتيب بالعربية فقط (التتبّع فيزيائي لا يتأثر).
+                  <span
+                    className="flex items-center gap-2.5"
+                    style={{ flexDirection: rowReversed(settings.language === "en" ? "en" : "ar") ? "row-reverse" : "row" }}
+                  >
+                    <Eyes islandHidden={hidden} />
+                    {(settings.showClock ?? true) && <span dir="ltr">{time}</span>}
+                  </span>
+                ) : (
+                  (settings.showClock ?? true) && <span dir="ltr">{time}</span>
+                )
               )}
               {showBat && !pillTitle && !dlText && battery?.has_battery && (
                 <span className="ms-3 text-[11px] text-white/70"><BatteryChip b={battery} size={12} /></span>
