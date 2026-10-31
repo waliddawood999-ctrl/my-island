@@ -27,8 +27,8 @@ import { BatteryChip, DownloadsSection } from "./DownloadsSection";
 const PILL = { w: 200, h: 32 };
 /** تنبيه تذكير/مؤقّت: حبة أعرض قليلًا تعرض النص حتى يُنقر عليها أو تنتهي المهلة. */
 const ALERT = { w: 340, h: 36 };
-/** اللوحة عرضية (أعرض من ارتفاعها): 720×400 ثابتة (قرار وليد ~20:59: أقصر ما يمكن بلا إخفاء محتوى). */
-const PANEL = { w: 720, h: 400 };
+/** اللوحة عرضية (أعرض من ارتفاعها): 720×320 ثابتة (قرار وليد: تقصير بعد لقطة فعلية)؛ أي محتوى أطول يمرّر داخليًا في منطقة المحتوى فقط. */
+const PANEL = { w: 720, h: 320 };
 const panelSize = () => PANEL;
 const PALETTE = { w: 640, h: 440 };
 /** احتياط (ms): لو لم يصل رد اكتمال الحركة تُصغَّر النافذة بعد هذه المدة. */
@@ -79,7 +79,7 @@ function PillTitle({ text }: { text: string }) {
   );
 }
 
-/** الحبة: pill أسود 200×32 بساعة، تتمدد بالهوفر إلى لوحة 720×480 وتنكمش بعد مغادرة المؤشر. */
+/** الحبة: pill أسود 200×32 بساعة، تتمدد بالهوفر إلى لوحة 720×320 وتنكمش بعد مغادرة المؤشر. */
 export function Pill() {
   const settings = useSettings();
   const fmt = settings.clockFormat ?? "auto";
@@ -416,12 +416,12 @@ export function Pill() {
                 {curTab === "home" && (
                   <div className="flex min-h-0 flex-1 flex-row" style={{ gap: "var(--island-section-gap)" }}>
                     {moduleMedia && (
-                      <motion.div custom={0} variants={sectionVariants} initial="initial" animate="animate" className="min-h-0 flex-1">
+                      <motion.div custom={0} variants={sectionVariants} initial="initial" animate="animate" className="min-h-0 min-w-0 flex-1">
                         <MediaSection media={media} showLyrics={!!(settings.lyricsInHome || settings.lyricsInPlayer)} />
                       </motion.div>
                     )}
                     {(showDl || (showBat && battery?.has_battery)) && (
-                      <motion.div custom={1} variants={sectionVariants} initial="initial" animate="animate" className="w-60 shrink-0 border-s border-white/10 ps-3">
+                      <motion.div custom={1} variants={sectionVariants} initial="initial" animate="animate" className="min-h-0 w-60 shrink-0 border-s border-white/10 ps-3">
                         <DownloadsSection snap={dl} battery={showBat ? battery : null} showDownloads={showDl} />
                       </motion.div>
                     )}

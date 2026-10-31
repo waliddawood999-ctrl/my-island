@@ -65,13 +65,15 @@ export function MediaSection({ media, showLyrics = false }: { media: MediaView; 
   const btn = "i-btn p-2 text-white";
 
   return (
-    <div className={`flex h-full flex-col items-stretch ${showLyrics ? "gap-3" : "justify-center gap-5"}`}>
+    // تمرير داخلي لمنطقة الميديا فقط: الحاوية الخارجية تمرّر، والداخلية min-h-full تُوسّط المحتوى القصير دون قصّ أعلاه.
+    <div className="h-full overflow-y-auto overflow-x-hidden">
+    <div className={`flex min-h-full flex-col items-stretch ${showLyrics ? "gap-3" : "justify-center gap-4"}`}>
       <div className="flex shrink-0 items-center gap-4">
         <motion.div
           initial={false}
           animate={{ scale: info.playing ? 1 : 0.94 }}
           transition={spring.content}
-          className={`${showLyrics ? "h-16 w-16" : "h-28 w-28"} shrink-0 overflow-hidden rounded-2xl bg-white/10`}
+          className={`${showLyrics ? "h-16 w-16" : "h-24 w-24"} shrink-0 overflow-hidden rounded-2xl bg-white/10`}
         >
           {cover ? (
             <img src={cover} alt={i("غلاف الألبوم", "Album cover")} className="h-full w-full object-cover" />
@@ -96,7 +98,7 @@ export function MediaSection({ media, showLyrics = false }: { media: MediaView; 
       </div>
 
       {showLyrics && (
-        <div className="min-h-0 flex-1 [mask-image:linear-gradient(transparent,#000_18%,#000_82%,transparent)]">
+        <div className="min-h-[72px] flex-1 basis-0 overflow-hidden [mask-image:linear-gradient(transparent,#000_18%,#000_82%,transparent)]">
           <LyricsView lyrics={lyrics} pos={pos} />
         </div>
       )}
@@ -166,6 +168,7 @@ export function MediaSection({ media, showLyrics = false }: { media: MediaView; 
           ))}
         </div>
       )}
+    </div>
     </div>
   );
 }
