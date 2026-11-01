@@ -2,8 +2,17 @@ name: Build Windows
 
 on:
   workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publish this build to the auto-updater (my-island-releases)'
+        type: boolean
+        default: false
+  # الدفع إلى main = بناء فقط؛ النشر يدوي وبموافقة صريحة.
   push:
     branches: [main]
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -52,17 +61,21 @@ jobs:
 
       # نشر التحديث: يعمل فقط حين يوجد السرّان TAURI_SIGNING_PRIVATE_KEY وRELEASES_TOKEN.
       # الشرط عبر خطوة تفحص الأسرار (لا يمكن استعمال secrets مباشرة في if).
+      # النشر لا يحدث أبدًا عند الدفع إلى main: فقط عند تشغيل يدوي مع تفعيل خيار publish.
       - name: Check release secrets
         id: rel
         shell: bash
         run: |
+          if [ "$EVENT" != "workflow_dispatch" ] || [ "$PUBLISH" != "true" ]; then echo "نشر التحديث متخطّى: لم يُطلب النشر يدويًا (شغّل المسار يدويًا وفعّل publish)."; fi
           if [ -n "$K" ] && [ -n "$T" ]; then echo "go=true" >> "$GITHUB_OUTPUT"; else echo "go=false" >> "$GITHUB_OUTPUT"; echo "نشر التحديث متخطّى: السرّان غير مكتملين."; fi
         env:
           K: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           T: ${{ secrets.RELEASES_TOKEN }}
+          EVENT: ${{ github.event_name }}
+          PUBLISH: ${{ inputs.publish }}
 
       - name: Publish update release
-        if: steps.rel.outputs.go == 'true'
+        if: steps.rel.outputs.go == 'true' && github.event_name == 'workflow_dispatch' && inputs.publish == true
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
