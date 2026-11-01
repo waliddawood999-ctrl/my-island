@@ -243,3 +243,9 @@
 
 - **About (قسم «حول» في الإعدادات):** `src/pages/settings/main.tsx` — `AboutSection` أسفل «التحديثات» في «عام»: الإصدار عبر `getVersion()` من `@tauri-apps/api/app` (رقم CI المختوم في tauri.conf.json، لا رقم يدوي)، «طُوِّر بواسطة وليد»، وزرّان «ما الجديد» (…/my-island-releases/releases) و«GitHub» (…/my-island-releases) عبر `open_path` الموجود (لا IPC ولا مفاتيح إعدادات جديدة، المحدّث لم يُمسّ). مستودع الكود يبقى خاصًا.
 - تحقق About: `npm run build` و`tsc --noEmit` ناجحان؛ `cargo check --target x86_64-pc-windows-gnu` ناجح (ثُبّت target وmingw في البيئة). لم يُتحقق على ويندوز: ظهور الرقم الصحيح في النسخة المختومة وفتح الرابطين في المتصفح الافتراضي.
+
+## INSERT L — منزلقا الزجاج على جسم الحبة أيضًا (feat(ui): glass sliders apply to pill body too)
+- **ما بُني:** `src/pages/island/island.css` (حُذفت قاعدة استثناء `.island-body` من `backdrop-filter` عند `data-backdrop=win11|win10`، فيُطبَّق `blur(var(--glass-blur)) saturate(var(--glass-saturate))` على جسم الحبة في وضع الزجاج كالبطاقات والقوائم)؛ `scripts/glass.test.mjs` (توقعان جديدان: جسم الحبة مشمول بالمتغيرين، ولا استثناء backdrop).
+- **لم يُلمس:** `island_backdrop`/DWM و`glassTint` ولا أي مفتاح إعدادات أو افتراضية (24 / 180). Eco يبقي سقفه (8 / 100) على كل الأسطح.
+- **مقايضة مقبولة من المالك:** تمويه CSS عالٍ فوق الأكريليك الأصلي قد يحلّب الصورة فوق خلفيات فاتحة؛ القيمة 0 = بلا تمويه إضافي. الضبط بيد المالك.
+- **قبول بصري على ويندوز (لم يُجرَّب — لا ويندوز هنا):** تحريك منزلقي «تمويه الزجاج (CSS)» و«تشبّع الزجاج» يغيّر جسم الحبة نفسه، فوق خلفية فاتحة ومظلمة، مع Win11 وWin10؛ الصفر = الأكريليك الأصلي وحده.

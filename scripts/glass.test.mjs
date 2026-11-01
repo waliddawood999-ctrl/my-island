@@ -39,6 +39,8 @@ const css = readFileSync("src/pages/island/island.css", "utf8");
 eq("css recipe filter", css.includes("blur(var(--glass-blur)) saturate(var(--glass-saturate))"), true);
 eq("css dark bg", css.includes("rgb(20 20 20 / 0.35)"), true);
 eq("css light bg", css.includes("rgb(255 255 255 / 0.12)"), true);
+eq("css body covered by glass vars", /:root\[data-material="glass"\] \.island-body\s*\{[^}]*blur\(var\(--glass-blur\)\) saturate\(var\(--glass-saturate\)\)/.test(css), true);
+eq("css no backdrop exemption for body", /data-backdrop="win1[01]"\] \.island-body\s*\{[^}]*backdrop-filter:\s*none/.test(css), false);
 eq("css border", css.includes("1px solid rgb(255 255 255 / 0.25)"), true);
 
 console.log(fail ? `FAIL (${fail})` : "OK glass");

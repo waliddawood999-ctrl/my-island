@@ -130,7 +130,7 @@ html, body, #root {
 :root[data-material="glass"][data-backdrop="win11"] { --island-bg: rgb(0 0 0 / calc(var(--glass-tint, 45) / 100)); }
 :root[data-material="glass"][data-backdrop="win11"][data-theme="light"] { --island-bg: rgb(236 239 243 / calc(min(var(--glass-tint, 45) + 5, 85) / 100)); }
 :root[data-material="glass"][data-backdrop="win10"] { --island-bg: transparent; }
-:root[data-backdrop="win11"] .island-body, :root[data-backdrop="win10"] .island-body { -webkit-backdrop-filter: none; backdrop-filter: none; }
+/* INSERT L: جسم الحبة يتلقّى blur/saturate من المنزلقين حتى فوق الأكريليك الأصلي (0 = بلا تمويه CSS إضافي)؛ لا استثناء لـdata-backdrop. */
 
 /* ───────── النشاط الحي (docs/MOTION.md §النشاط الحي) ─────────
    لمسة واحدة لكل نوع نشاط، تُستعمل بالاتساق في الكبسولة المدمجة والبطاقة معًا. ألوان مصمتة (بلا تدرّجات ولا توهّج)،
