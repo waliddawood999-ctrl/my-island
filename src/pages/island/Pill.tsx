@@ -30,6 +30,7 @@ const makeNoteTab = () => lazy(importNote);
 import { normSound, normVolume, playSound } from "../../sounds";
 import { IslandMachine, normCardOrder, realSched } from "../../islandMachine";
 import { crossfade, normSpeed, resolveReduce } from "../../islandMotion";
+import { tintForOpacity } from "../../appearance";
 import { PeekView } from "./PeekView";
 import { PillMedia, PlayerPanel, useAccent } from "./Player";
 import { scrollsFurther } from "./wheel";
@@ -165,6 +166,7 @@ export function Pill() {
   const paletteRef = useRef<{ wasHidden: boolean } | null>(null);
   const moduleMedia = settings.moduleMedia ?? true;
   const media = useMedia(moduleMedia);
+  const glassStyle = settings.glassStyle === "clear" ? "clear" as const : "frosted" as const;
   const trackKey = `${media.info.source}|${media.info.title}|${media.info.artist}|${media.info.album}`;
   const accent = useAccent(media.cover, trackKey, settings);
   const reduceUI = motion_level !== "full" || resolveReduce(settings.reduceMotion, false);
@@ -404,13 +406,14 @@ export function Pill() {
     return () => window.clearTimeout(settleT.current);
   }, [sizeKey, settled]);
   useBackdrop({
-    // الأكريليك الأصلي للأسلوب البلوري فقط وحين يُسمح بالزجاج (ليس Eco/تقليل الشفافية)؛ الشفاف يُظهر سطح المكتب بلا تمويه DWM (docs/GLASS.md).
-    glass: (settings.themeMaterial ?? "glass") === "glass" && settings.glassStyle !== "clear" && glassOk,
+    // أكريليك ويندوز الأصلي لكلا الأسلوبين (frosted/clear) حين تكون المادة زجاجية ومسموحة (ليس Eco/تقليل الشفافية)؛ docs/GLASS.md.
+    glass: (settings.themeMaterial ?? "glass") === "glass" && glassOk,
     light: theme === "light",
-    ready: settled && !hidden && opacity >= 0.99,
+    ready: settled && !hidden && opacity > 0,
     radius,
-    // الأكريليك الأصلي ألفاه = 0.28 + 0.0075·t؛ الكثافة تضرب الألفا (الحدّ الأدنى 0.28 من النظام).
-    tint: clampTint(((0.28 + 0.0075 * clampTint(settings.glassTint)) * clampN(settings.backgroundOpacity, 0.3, 1, 1) - 0.28) / 0.0075),
+    // الكثافة (backgroundOpacity) تضرب ألفا الصبغة؛ الحدّ الأدنى من خريطة الأسلوب.
+    tint: tintForOpacity(glassStyle, theme === "light", clampTint(settings.glassTint), clampN(settings.backgroundOpacity, 0.3, 1, 1)),
+    style: glassStyle,
   });
   M.setCfg({ hoverDelayMs: clampN(settings.hoverDelayMs, 0, 800, 250), wheelCycle: settings.peekWheelCycle ?? true, panelPaging: settings.panelWheelPaging ?? true, cards: normCardOrder(settings.peekCardOrder), slowMo: Number((globalThis as { __slowmo?: number }).__slowmo) || 1 });
   const upcomingForPeek = upMeeting ? { title: upMeeting.item.title, start: upMeeting.item.start } : null;
@@ -672,7 +675,7 @@ export function Pill() {
                 onClick={dismiss}
                 role="alert"
                 dir="auto"
-                className="absolute bottom-3 left-1/2 z-20 flex max-w-[80%] -translate-x-1/2 items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-[13px] backdrop-blur"
+                className="absolute bottom-3 left-1/2 z-20 flex max-w-[80%] -translate-x-1/2 items-center gap-2 rounded-full bg-black/70 px-4 py-2 text-[13px] text-white"
               >
                 {alert.kind === "timer" ? <TimerIcon size={15} /> : alert.kind === "break" ? <Coffee size={15} /> : <LottieIcon name="bell" size={20} loops={3} />}
                 <span className="truncate">{alert.text || (alert.kind === "timer" ? i("انتهى المؤقّت", "Timer finished") : i("تذكير", "Reminder"))}</span>

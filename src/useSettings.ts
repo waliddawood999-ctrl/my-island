@@ -4,7 +4,6 @@ import { listen } from "@tauri-apps/api/event";
 import { DEFAULTS, type Settings } from "./settings";
 import { setLang } from "./i18n";
 import { setMotionTuning, useMotionSync, useEco } from "./motion";
-import { glassVars } from "./glass";
 import { appearanceVars, effectiveMotion, glassAllowed, migrateSettings, resolveTheme, type Env } from "./appearance";
 
 /** glassTint صالح 0..80 (غير ذلك ⇒ الافتراضي 45). */
@@ -32,14 +31,11 @@ function useEnv(): Env {
 /** يطبّق المظهر كله على <html> (data-* + متغيرات CSS من tokens.css) حيًّا بلا إعادة تحميل. */
 function useAppearance(s: Partial<Settings>, env: Env) {
   const { attrs, vars } = appearanceVars(s, env);
-  const gv = glassVars(s.glassBlur, s.glassSaturation, env.eco);
-  const key = JSON.stringify([attrs, vars, gv]);
+  const key = JSON.stringify([attrs, vars]);
   useEffect(() => {
     const root = document.documentElement;
     for (const [k, v] of Object.entries(attrs)) { if (v) root.dataset[k] = v; else delete root.dataset[k]; }
     for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
-    root.style.setProperty("--glass-blur", gv.blur);
-    root.style.setProperty("--glass-saturate", gv.saturate);
     root.dataset.glassStyle = attrs.glass;
   }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
 }

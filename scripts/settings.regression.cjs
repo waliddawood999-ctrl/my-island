@@ -87,10 +87,10 @@ const where = {};
   await nav("appearance").click(); await page.waitForTimeout(300);
   await page.getByRole("radio", { name: "Clear glass" }).click(); await page.waitForTimeout(150);
   const gs = (await calls("settings_set")).filter((c) => c.patch && c.patch.glassStyle === "clear").pop();
-  ok("Clear glass style ⇒ glassStyle=clear, blur ≤ 8", gs && gs.patch.glassBlur <= 8, JSON.stringify(gs));
-  await page.locator('[data-preset="liquid"]').click(); await page.waitForTimeout(150);
-  const pr = (await calls("settings_set")).filter((c) => c.patch && c.patch.glassStyle === "crystal" && c.patch.cornerStyle === "extra").pop();
-  ok("preset 'Liquid Glass' applies a full value set", !!pr && pr.patch.themeMaterial === "glass" && pr.patch.glassBlur === 32, JSON.stringify(pr));
+  ok("Clear glass ⇒ glassStyle=clear, tint 25, no blur key", gs && gs.patch.glassTint === 25 && !("glassBlur" in gs.patch), JSON.stringify(gs));
+  await page.locator('[data-preset="smoked"]').click(); await page.waitForTimeout(150);
+  const pr = (await calls("settings_set")).filter((c) => c.patch && c.patch.glassStyle === "crystal" && c.patch.glassTint === 68).pop();
+  ok("preset 'Smoked' applies crystal + tint 68", !!pr && pr.patch.themeMaterial === "glass" && !("glassBlur" in pr.patch), JSON.stringify(pr));
   ok("4 presets available", (await page.locator("[data-preset]").count()) === 4);
 
   // اختصار: مسجّل

@@ -30,9 +30,8 @@ ok("reduceMotion/OS ⇒ reduced; off stays off", a.effectiveMotion({ reduceMotio
 ok("accent invalid ⇒ default; fg readable", (() => { const x = a.accentVars("zzz", "dark"); return x.accent === "#4fd1c5" && ["#ffffff", "#06080c"].includes(x.accentFg); })());
 ok("light accent darkened to ≥3:1 on light surface", (() => { const x = a.accentVars("#ffb224", "light"); const c = [1, 3, 5].map((i) => parseInt(x.accent.slice(i, i + 2), 16)); return a.contrast(c, [236, 239, 244]) >= 3; })());
 // إعدادات مسبقة
-ok("4 presets with expected ids", a.STYLE_PRESETS.map((p) => p.id).join() === "liquid,mica,minimal,clear");
-ok("clear preset ⇒ blur ≤ 8", a.STYLE_PRESETS.find((p) => p.id === "clear").values.glassBlur <= 8 && a.GLASS_STYLE_VALUES.clear.glassBlur <= 8);
-ok("all preset blurs ≤ 40", a.STYLE_PRESETS.every((p) => (p.values.glassBlur ?? 0) <= 40));
+ok("4 presets with expected ids", a.STYLE_PRESETS.map((p) => p.id).join() === "frosted,smoked,clear,minimal");
+ok("presets never set blur/saturation", a.STYLE_PRESETS.every((p) => !("glassBlur" in p.values) && !("glassSaturation" in p.values)));
 // ترحيل
 ok("migrate v0: shrunken pill reset, crystal added, version 2", (() => { const m = a.migrateSettings({ pillWidth: 180, pillHeight: 30 }); return m.pillWidth === 220 && m.pillHeight === 34 && m.glassStyle === "crystal" && m.settingsVersion === 3; })());
 ok("migrate keeps larger pill", (() => { const m = a.migrateSettings({ pillWidth: 260, pillHeight: 40, glassStyle: "clear" }); return !("pillWidth" in m) && !("pillHeight" in m) && !("glassStyle" in m); })());
@@ -44,17 +43,20 @@ ok("import drops unknown keys and wrong types", (() => { const p = a.parseImport
 // خريطة الأقسام: لا تكرار
 ok("no key in two sections", (() => { const all = Object.values(a.SECTION_KEYS).flat(); return new Set(all).size === all.length; })(), (() => { const all = Object.values(a.SECTION_KEYS).flat(); return all.filter((k, i) => all.indexOf(k) !== i).join(); })());
 ok("resetPatch gives a value for every section key", Object.values(a.SECTION_KEYS).flat().every((k) => k in a.resetPatch([k]) && a.resetPatch([k])[k] !== undefined), Object.values(a.SECTION_KEYS).flat().filter((k) => a.resetPatch([k])[k] === undefined).join());
-// تباين الزجاج WCAG: الافتراضي والإعدادات المسبقة. أسوأ خلفية = نقيضة النص (أبيض فوق الداكن، أسود فوق الفاتح) + متوسطة.
+// تباين الزجاج WCAG (T04): النص فوق السطح المركّب = صبغة الأكريليك (styleAlpha) فوق الخلفية.
+//  · Frosted (45) وSmoked (68): ≥ 4.5 فوق أسوأ خلفية (أبيض نقيّ في الداكن / أسود نقيّ في الفاتح) وفوق المتوسط.
+//  · Clear (25): الصبغة الخفيفة مقصودة ⇒ ≥ 4.5 فوق خلفية متوسطة السطوع (سطح مكتب اعتيادي) مع ظل النص؛ ويُقاس الأسوأ للتقرير (بلا ادّعاء AA عليه).
 const TEXT = { dark: [255, 255, 255], light: [13, 16, 23] };
 const worst = { dark: [255, 255, 255], light: [0, 0, 0] };
-const cases = [["crystal", 45], ["crystal", 38], ["crystal", 62], ["clear", 14]];
+const mid = [128, 128, 128];
+const cases = [["crystal", 45], ["crystal", 68], ["clear", 25]];
 for (const theme of ["dark", "light"]) for (const [style, tint] of cases) {
   const sf = a.glassSurface(style, theme, tint);
-  const mid = theme === "dark" ? [128, 128, 128] : [128, 128, 128];
   const cw = a.contrast(TEXT[theme], a.over([...sf.color, sf.alpha], worst[theme]));
   const cm = a.contrast(TEXT[theme], a.over([...sf.color, sf.alpha], mid));
-  const need = style === "clear" ? 3 : 4.5; // الشفاف: ≥3:1 فوق الأسوأ (أبيض/أسود نقيّ) و≥4.5 فوق المتوسط
-  ok(`contrast ${style}/${theme}/tint${tint}: worst backdrop ${cw.toFixed(2)} (≥${need}), mid backdrop ${cm.toFixed(2)} (AA 4.5)`, cw >= need && cm >= 4.5);
+  if (style === "crystal") ok(`contrast frosted/${theme}/tint${tint}: worst backdrop ${cw.toFixed(2)} ≥ 4.5, mid ${cm.toFixed(2)}`, cw >= 4.5 && cm >= 4.5);
+  else ok(`contrast clear/${theme}/tint${tint}: mid backdrop ${cm.toFixed(2)} ≥ 4.5 (extreme worst case ${cw.toFixed(2)} reported, not claimed)`, cm >= 4.5);
 }
+ok("styleAlpha mirrors the Rust map (frosted 45 dark = .6175; clear 25 dark = .225)", Math.abs(a.styleAlpha("frosted", false, 45) - 0.6175) < 1e-9 && Math.abs(a.styleAlpha("clear", false, 25) - 0.225) < 1e-9);
 console.log(fail ? `FAILED ${fail}` : "ALL PASSED");
 process.exit(fail ? 1 : 0);

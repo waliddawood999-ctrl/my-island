@@ -15,7 +15,6 @@ import { saveSettings, useSettings } from "../../useSettings";
 import { EcoIndicator, RamUsage } from "./Perf";
 import { WorkspacesEditor } from "./Workspaces";
 import { CountdownsEditor, WorldClockEditor } from "./TodayExtras";
-import { clampGlassBlur, clampGlassSaturation } from "../../glass";
 import { manualCheck } from "../../useUpdater";
 import type { ManualStatus } from "../../updater";
 import { GLASS_STYLE_VALUES, SECTION_KEYS, STYLE_PRESETS, exportSettings, parseImport, resetPatch } from "../../appearance";
@@ -333,9 +332,21 @@ function App() {
             <Segmented label={i("النمط", "Theme")} value={s.themeMode ?? "system"} onChange={(v) => set({ themeMode: v })}
               options={[{ value: "system", label: i("النظام", "System") }, { value: "light", label: i("فاتح", "Light") }, { value: "dark", label: i("داكن", "Dark") }]} />
           </Row>
-          <Row icon={ic(Layers)} label={i("الخلفية", "Background")} hint={i("الزجاج يبيّن اللي خلف الجزيرة بشكل ضبابي", "Glass shows what is behind the island, blurred")}>
-            <Segmented label={i("الخلفية", "Background")} value={!glassOn ? "solid" : (s.glassStyle ?? "crystal")} onChange={(v) => set(v === "solid" ? { themeMaterial: "solid" } : GLASS_STYLE_VALUES[v])}
-              options={[{ value: "solid", label: i("أسود صلب", "Solid black") }, { value: "crystal", label: i("زجاج كريستال", "Crystal glass") }, { value: "clear", label: i("زجاج شفاف", "Clear glass") }]} />
+          <Row icon={ic(Layers)} label={i("الخلفية", "Background")} hint={i("الزجاج يبيّن اللي خلف الجزيرة بشكل ضبابي", "Glass shows what is behind the island, blurred")} col>
+            <div className="st-gstyles st-gstyles3" role="radiogroup" aria-label={i("الخلفية", "Background")}>
+              {([
+                { id: "solid", ar: "أسود صلب", en: "Solid black", dar: "سطح معتم بلا شفافية", den: "An opaque surface, no see-through" },
+                { id: "crystal", ar: "الزجاج المثلّج", en: "Frosted glass", dar: "تمويه أصلي من ويندوز بتظليل أقوى", den: "Native Windows blur with stronger tint" },
+                { id: "clear", ar: "الزجاج الشفاف", en: "Clear glass", dar: "نفس التمويه الأصلي بتظليل خفيف", den: "The same native blur with a light tint" },
+              ] as const).map((g) => (
+                <button key={g.id} role="radio" aria-label={i(g.ar, g.en)} aria-checked={(!glassOn ? "solid" : (s.glassStyle ?? "crystal")) === g.id} data-bg={g.id} className="st-gstyle"
+                  onClick={() => set(g.id === "solid" ? { themeMaterial: "solid" } : GLASS_STYLE_VALUES[g.id])}>
+                  <span className={`st-gprev ${g.id}`} />
+                  <span className="st-row-title">{i(g.ar, g.en)}</span>
+                  <span className="st-row-hint">{i(g.dar, g.den)}</span>
+                </button>
+              ))}
+            </div>
           </Row>
           <Row icon={ic(Percent)} label={i("الكثافة", "Density of background")} hint={i("كم تغطي الخلفية اللي خلف الجزيرة", "How much the background covers what is behind the island")}>
             <Slider label={i("الكثافة", "Density of background")} value={s.backgroundOpacity ?? 1} min={0.3} max={1} step={0.05} format={(v) => `${Math.round(v * 100)}%`} onLive={(v) => set({ backgroundOpacity: v })} onCommit={(v) => set({ backgroundOpacity: v })} />
@@ -346,20 +357,12 @@ function App() {
           </Row>
           
           {glassOn && (
-            <Row icon={ic(Moon)} label={i("قوة تظليل الزجاج", "Glass tint strength")} hint={i("كم تغمق لوحة الزجاج؛ كلما زاد صار النص أوضح", "How dark the glass looks; higher makes text easier to read")}>
+            <Row icon={ic(Moon)} label={i("قوة تظليل الزجاج", "Glass tint strength")} hint={i("قوة التظليل فوق التمويه — الأعلى أوضح للنص", "Tint strength over the blur — higher is easier to read")}>
               <Slider label={i("قوة تظليل الزجاج", "Glass tint strength")} value={s.glassTint ?? 45} min={0} max={80} step={1} format={pct} onLive={(v) => set({ glassTint: v })} onCommit={(v) => set({ glassTint: v })} />
             </Row>
           )}
-          {glassOn && (s.glassStyle ?? "crystal") === "crystal" && (
-            <Row icon={ic(Waves)} label={i("الضبابية", "Blur")} hint={i("للزجاج فقط، والحد ٤٠ عشان الأداء", "Glass only, capped at 40 for performance")}>
-              <Slider label={i("الضبابية", "Blur")} value={clampGlassBlur(s.glassBlur)} min={0} max={40} step={1} format={px} onLive={(v) => set({ glassBlur: v })} onCommit={(v) => set({ glassBlur: v })} />
-            </Row>
-          )}
-          {glassOn && (s.glassStyle ?? "crystal") === "crystal" && (
-            <Row icon={ic(Palette)} label={i("تشبّع الزجاج", "Glass saturation")} hint={i("كم تزداد حيوية الألوان خلف الزجاج", "How vivid the colors behind the glass look")}>
-              <Slider label={i("تشبّع الزجاج", "Glass saturation")} value={clampGlassSaturation(s.glassSaturation)} min={100} max={200} step={5} format={pct} onLive={(v) => set({ glassSaturation: v })} onCommit={(v) => set({ glassSaturation: v })} />
-            </Row>
-          )}
+          
+          
         </Section>
         <Section title={i("اللون والتفاصيل", "Color & details")}>
           <Row icon={ic(Brush)} label={i("لون ثابت", "Fixed color")} hint={i("للموجة وشريط التقدم والأيقونات", "For the waveform, progress bar and icons")}>

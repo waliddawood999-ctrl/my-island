@@ -82,24 +82,38 @@ export function effectiveMotion(s: Partial<Settings>, env: Env): "full" | "reduc
 }
 
 type P = Partial<Settings>;
-/** إعدادات مسبقة: نقرة واحدة تطبّق مجموعة كاملة. */
+/** إعدادات مسبقة: أربعة فقط، كلٌّ منها يرسم فعلًا بشكل مختلف (T04) — الزجاج أكريليك أصلي بصبغة مختلفة، لا blur/saturation (غير فعّالين على ويندوز). */
 export const STYLE_PRESETS: { id: string; ar: string; en: string; values: P }[] = [
-  { id: "liquid", ar: "زجاج سائل", en: "Liquid Glass", values: { themeMaterial: "glass", glassStyle: "crystal", glassTint: 38, glassBlur: 32, glassSaturation: 180, borderStrength: 60, shadowStrength: 55, cornerStyle: "extra", accentColor: "#4fd1c5" } },
-  { id: "mica", ar: "ميكا فلونت", en: "Fluent Mica", values: { themeMaterial: "glass", glassStyle: "crystal", glassTint: 62, glassBlur: 20, glassSaturation: 110, borderStrength: 40, shadowStrength: 40, cornerStyle: "rounded", accentColor: "#4c8dff" } },
+  { id: "frosted", ar: "زجاج مثلّج", en: "Frosted", values: { themeMaterial: "glass", glassStyle: "crystal", glassTint: 45 } },
+  { id: "smoked", ar: "زجاج مدخّن", en: "Smoked", values: { themeMaterial: "glass", glassStyle: "crystal", glassTint: 68 } },
+  { id: "clear", ar: "شفاف", en: "Clear", values: { themeMaterial: "glass", glassStyle: "clear", glassTint: 25 } },
   { id: "minimal", ar: "داكن بسيط", en: "Minimal Dark", values: { themeMode: "dark", themeMaterial: "solid", borderStrength: 30, shadowStrength: 30, cornerStyle: "rounded", accentColor: "#94a3b8" } },
-  { id: "clear", ar: "شفاف", en: "Clear", values: { themeMaterial: "glass", glassStyle: "clear", glassTint: 14, glassBlur: 6, glassSaturation: 120, borderStrength: 60, shadowStrength: 25, cornerStyle: "rounded", accentColor: "#4fd1c5" } },
 ];
-/** قيم الأسلوب عند اختيار «بلوري/شفاف» وحدهما. */
+/** قيم الأسلوب عند اختيار «مثلّج/شفاف» وحدهما (الصبغة فقط). */
 export const GLASS_STYLE_VALUES: Record<"crystal" | "clear", P> = {
-  crystal: { glassStyle: "crystal", themeMaterial: "glass", glassTint: 38, glassBlur: 32, glassSaturation: 180 },
-  clear: { glassStyle: "clear", themeMaterial: "glass", glassTint: 14, glassBlur: 6, glassSaturation: 120 },
+  crystal: { glassStyle: "crystal", themeMaterial: "glass", glassTint: 45 },
+  clear: { glassStyle: "clear", themeMaterial: "glass", glassTint: 25 },
 };
+
+/** ألفا صبغة الأكريليك (مرآة src-tauri/src/backdrop.rs::style_alpha): frosted داكن 0.28+0.0075t · فاتح min(0.32+0.0075t,0.92)؛ clear داكن 0.10+0.005t · فاتح min(0.14+0.005t,0.60). */
+export function styleAlpha(style: "frosted" | "clear", light: boolean, tint: number): number {
+  const t = Math.min(80, Math.max(0, tint));
+  return style === "clear" ? (light ? Math.min(0.14 + 0.005 * t, 0.6) : 0.1 + 0.005 * t) : light ? Math.min(0.32 + 0.0075 * t, 0.92) : 0.28 + 0.0075 * t;
+}
+/** يعيد glassTint المكافئ لألفا مضروبة بـ«الكثافة» backgroundOpacity (الحد الأدنى من خريطة الأسلوب). */
+export function tintForOpacity(style: "frosted" | "clear", light: boolean, tint: number, bo: number): number {
+  const t = Math.min(80, Math.max(0, Math.round(tint)));
+  if (!(bo < 1)) return t;
+  const base = styleAlpha(style, light, 0), k = style === "clear" ? 0.005 : 0.0075;
+  const a = styleAlpha(style, light, t) * Math.max(0.3, bo);
+  return Math.round(Math.min(80, Math.max(0, (a - base) / k)));
+}
 
 /** مفاتيح كل قسم (لزر «إعادة ضبط القسم»). المصدر الوحيد لخريطة الأقسام. */
 export const SECTION_KEYS: Record<string, (keyof Settings)[]> = {
   general: ["autostart", "language", "monitor"],
   island: ["pillWidth", "pillHeight", "pillRadius", "peekWidth", "peekHeight", "peekRadius", "panelWidth", "panelHeight", "panelRadius", "hoverDelayMs", "hoverZone", "peekWheelCycle", "peekCardOrder", "panelWheelPaging", "panelTabsStyle", "offsetX", "offsetY", "pillPosition", "autoHide", "hideInFullscreen", "opacityRest", "opacityOpen", "showClock", "clockFormat", "eyesEnabled", "captureVisible"],
-  appearance: ["themeMode", "themeMaterial", "glassStyle", "glassTint", "glassBlur", "glassSaturation", "backgroundOpacity", "accentMode", "accentColor", "borderStrength", "shadowStrength", "cornerStyle", "fontScale", "density"],
+  appearance: ["themeMode", "themeMaterial", "glassStyle", "glassTint", "backgroundOpacity", "accentMode", "accentColor", "borderStrength", "shadowStrength", "cornerStyle", "fontScale", "density"],
   motion: ["motionLevel", "motionPreset", "motionSpeed", "motionBounce", "reduceMotion"],
   modules: ["showToday", "prayerCity", "showWeather", "weatherCity", "weatherUnits", "showCountdowns", "showWorldClock", "showBattery", "batteryTip", "btBatteries", "showNetSpeed", "clipLimit", "pasteOnClick", "clipExcludedApps", "privacyIndicator", "showVolume", "showMeetings", "screenshotDir", "recordFormat", "recordingFps", "recordingQuality", "recordingDir", "liveRates", "liquidSpectrum", "playerLayout", "visualizer", "showPlaybackTime", "showSourceBadge", "showProgress", "artworkBackdrop", "attentionTracking"],
   notifications: ["soundChoice", "soundVolume", "prayerAlerts", "loadAlert", "meetingLeadMin", "breakReminders", "breakMinutes"],
@@ -117,8 +131,8 @@ export function migrateSettings(stored: P): P {
   if (v < 2) {
     if (typeof stored.pillWidth === "number" && stored.pillWidth < PILL.w) patch.pillWidth = PILL.w;
     if (typeof stored.pillHeight === "number" && stored.pillHeight < PILL.h) patch.pillHeight = PILL.h;
-    if (!stored.glassStyle) patch.glassStyle = "crystal";
   }
+  if (!stored.glassStyle) patch.glassStyle = "crystal"; // v<3: الأسلوب مفقود ⇒ crystal (glassTint لا يُمسّ)
   // v3 (T03): reduceMotion bool ⇒ نص؛ springStyle/animSpeed ⇒ motionPreset/motionSpeed (الخلفية Rust تُرحّل kv عند الإقلاع؛ هذا للمتبقّي/المستورد).
   const legacy = stored as Record<string, unknown>;
   if (typeof stored.reduceMotion === "boolean") patch.reduceMotion = migrateReduce(stored.reduceMotion);
@@ -159,12 +173,8 @@ export const resetPatch = (keys: (keyof Settings)[]): P => Object.fromEntries(ke
 
 /** لون وألفا السطح الفعلي خلف النص (وسط الحبة) — مرآة لقيم island.css/backdrop.rs، يُستعمل لاختبار تباين WCAG (scripts/appearance.test.mjs). */
 export function glassSurface(style: "crystal" | "clear", theme: ResolvedTheme, tint: number): { color: [number, number, number]; alpha: number } {
-  const t = Math.min(80, Math.max(0, tint));
   const dark = theme === "dark";
-  if (style === "crystal") {
-    const alpha = dark ? 0.28 + 0.0075 * t : Math.min(0.32 + 0.0075 * t, 0.92);
-    return { color: dark ? [0, 0, 0] : [236, 239, 243], alpha };
-  }
-  const alpha = dark ? 0.30 + 0.0086 * t : 0.36 + 0.01 * t; // صبغة مسطّحة واحدة (island.css)
-  return { color: dark ? [0, 0, 0] : [255, 255, 255], alpha };
+  const alpha = styleAlpha(style === "clear" ? "clear" : "frosted", !dark, tint);
+  // لون الصبغة: داكن أسود · فاتح Frosted #eceff3 · فاتح Clear أبيض (يطابق tint_abgr في Rust)
+  return { color: dark ? [0, 0, 0] : style === "clear" ? [255, 255, 255] : [236, 239, 243], alpha };
 }

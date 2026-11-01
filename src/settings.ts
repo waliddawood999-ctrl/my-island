@@ -86,8 +86,8 @@ export interface Settings {
   themeMode:'system'|'dark'|'light',
   themeMaterial:'solid'|'glass',
   glassTint:number,
-  glassBlur:number,
-  glassSaturation:number,
+  glassBlur:number,               // مهجور (T04): بلا أثر على ويندوز (CSS backdrop-filter لا يرى سطح المكتب)؛ يبقى للتوافق مع kv/الاستيراد
+  glassSaturation:number,         // مهجور (T04): كـglassBlur
   glassStyle:'crystal'|'clear',   // أسلوب الزجاج: بلوري (Liquid Glass) / شفاف — docs/GLASS.md
   accentColor:string,             // لون التمييز #rrggbb
   borderStrength:number,          // قوة الحدود 0..100 (50 = افتراضي)

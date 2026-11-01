@@ -52,7 +52,7 @@
   --accent: #4fd1c5; --accent-fg: #06201d; --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
 
   /* معاملات الزجاج (glassTint/Blur/Saturation من الإعدادات؛ style يضبطه data-glass) */
-  --glass-tint: 45; --glass-blur: 24px; --glass-saturate: 1.8;
+  --glass-tint: 45;
   --glass-rim-hi: rgb(255 255 255 / 0.35); --glass-rim-lo: rgb(255 255 255 / 0.08);
   --glass-spec: rgb(255 255 255 / 0.55);
   --glass-shadow: rgb(0 0 0 / calc(0.25 * var(--shadow-k)));

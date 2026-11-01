@@ -417,7 +417,7 @@ export function LauncherTab({ launcher }: { launcher: Launcher }) {
       {drag && (
         <div
           style={{ left: drag.x, top: drag.y }}
-          className="pointer-events-none absolute z-40 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-xl bg-white/20 px-3 py-1.5 text-[12px] text-white shadow-lg backdrop-blur"
+          className="pointer-events-none absolute z-40 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-xl bg-white/20 px-3 py-1.5 text-[12px] text-white shadow-lg "
         >
           {drag.kind === "group" ? <LayoutGrid size={14} /> : drag.icon ? <img src={`data:image/png;base64,${drag.icon}`} alt="" className="h-5 w-5" /> : <Rocket size={14} />}
           <span dir="auto" className="max-w-[140px] truncate">{drag.label}</span>

@@ -43,7 +43,8 @@ html, body, #root {
 .i-btn:active:not(:disabled) { background: var(--island-surface-active); color: #fff; }
 .i-btn:disabled { opacity: 0.3; }
 .i-btn:focus-visible { outline: 2px solid rgb(255 255 255 / 0.6); outline-offset: 1px; }
-.i-glass { background: rgb(24 24 27 / 0.72); -webkit-backdrop-filter: blur(var(--island-blur)); backdrop-filter: blur(var(--island-blur)); }
+/* سطح القوائم المنبثقة: مسطّح كالبطاقة (لا backdrop-filter: WebView2 الشفاف لا يرى سطح المكتب — docs/GLASS.md). */
+.i-glass { background: rgb(255 255 255 / 0.07); }
 
 /* عنوان الأغنية المتحرك في الحبة المنكمشة — حركة خطية مستمرة تُترك لـCSS (مركّب GPU، بلا JS)،
    وتعمل فقط حين يطول العنوان عن العرض. استثناء موثّق في docs/MOTION.md. */
@@ -100,45 +101,31 @@ html, body, #root {
 :root[data-theme="light"] .i-btn:focus-visible { outline-color: rgb(13 16 23 / 0.6); }
 :root[data-theme="light"] .island-note-doc blockquote { border-inline-start-color: rgb(13 16 23 / 0.25); }
 :root[data-theme="light"] .island-note-doc code { background: rgb(13 16 23 / 0.08); }
-:root[data-theme="light"] .i-glass { background: rgb(240 242 246 / 0.72); }
-/* ───────── المادة (docs/GLASS.md) ─────────
-   قاعدة واحدة لكل أسلوب: «سطح واحد» فقط = (أكريليك ويندوز الأصلي أو صبغة CSS، لا الاثنان) + حدّ 1px (::before) + لمعة علوية رفيعة (inset).
-   لا طبقات بيضاء إضافية ولا ::after ولا backdrop-filter على البطاقات الداخلية — هذه كانت «الورقة الباهتة الثانية» فوق الأكريليك.
-   solid  = سطح مصمت (الداكن #000 / الفاتح #eceff3).
-   glass  = data-glass="crystal" (بلوري) | "clear" (شفاف). data-fallback="solid" ⇒ زجاج غير مسموح (Eco/توفير/تقليل الشفافية): سطح مصبوغ شبه مصمت.
-   كل ما يتجاوز الشكل المستدير شفاف: html/body/#root شفافة والنافذة شفافة. */
-.island-body { background: var(--island-bg); color: var(--island-fg); box-shadow: var(--island-ring); }
+:root[data-theme="light"] .i-glass { background: rgb(13 16 23 / 0.05); }
+/* ───────── المادة (docs/GLASS.md · T04) ─────────
+   مادة أصلية واحدة: أكريليك ويندوز (SWCA) — يبقى مرسومًا والنافذة غير نشطة، وهو الوحيد الذي يمزج سطح المكتب. أسلوبان (Frosted/Clear) يختلفان
+   بألفا الصبغة (backdrop.rs::style_alpha) فقط. CSS = تراكب رفيع: حدّ 1px (::before) + لمعة علوية inset. لا backdrop-filter (WebView2 الشفاف لا يرى
+   سطح المكتب: WebView2Feedback #4945)، ولا ::after ولا background-image.
+   data-backdrop: win10 = الأكريليك مطبَّق ⇒ جسم شفاف · pending (أو غائب) = انتقال/انتظار ⇒ سطح شبه معتم يتلاشى إلى الشفاف خلال 160ms ·
+   none = غير مدعوم/«تأثيرات الشفافية» مطفأة ⇒ سطح شبه معتم. data-fallback="solid" (Eco/تقليل الشفافية) ⇒ السطح شبه المعتم نفسه. لا ملء منخفض الألفا أبدًا. */
+.island-body { background-color: var(--island-bg); transition: background-color 160ms var(--ease); color: var(--island-fg); box-shadow: var(--island-ring); }
 .island-body[data-open="true"] { box-shadow: var(--island-ring-open); }
-:root[data-fallback="solid"] { --island-bg: #0a0b10; }
-:root[data-fallback="solid"][data-theme="light"] { --island-bg: #eceff3; }
+:root[data-reduce-transparency] .island-body { transition: none; }
 
-/* صبغة الاحتياط داخل الصفحة (حين لا أكريليك أصلي): ألفا = 0.28 + 0.0075·t؛ الفاتح +0.04 بسقف 0.92. مع الأكريليك الصبغة داخله فقط (جسم شفاف) ⇒ لا تظليل مزدوج. */
-:root[data-material="glass"][data-glass="crystal"] { --island-bg: rgb(0 0 0 / calc((0.28 + var(--glass-tint) * 0.0075) * var(--bg-k))); --app-bg: rgb(18 19 26 / 0.80); }
-:root[data-material="glass"][data-glass="crystal"][data-theme="light"] { --island-bg: rgb(236 239 243 / calc(min(0.32 + var(--glass-tint) * 0.0075, 0.92) * var(--bg-k))); --app-bg: rgb(236 239 244 / 0.82); }
-:root[data-material="glass"][data-glass="crystal"][data-backdrop="win10"] { --island-bg: transparent; }
-/* شفاف: صبغة مسطّحة واحدة (بلا تدرّجات بيضاء) بألفا من glassTint؛ لا أكريليك أصلي (data-backdrop يبقى none) فسطح المكتب يظهر خلفها بوضوح. */
-:root[data-material="glass"][data-glass="clear"] { --island-bg: rgb(0 0 0 / calc((0.30 + var(--glass-tint) * 0.0086) * var(--bg-k))); --app-bg: rgb(18 19 26 / 0.62); }
-:root[data-material="glass"][data-glass="clear"][data-theme="light"] { --island-bg: rgb(255 255 255 / calc((0.36 + var(--glass-tint) * 0.0100) * var(--bg-k))); --app-bg: rgb(236 239 244 / 0.66); }
+/* سطح شبه معتم (انتظار/بديل) */
+:root[data-material="glass"] { --island-bg: rgb(14 15 20 / 0.92); --app-bg: rgb(18 19 26 / 0.80); }
+:root[data-material="glass"][data-theme="light"] { --island-bg: rgb(236 239 243 / 0.94); --app-bg: rgb(236 239 244 / 0.82); }
+:root[data-material="glass"][data-backdrop="none"], :root[data-fallback="solid"] { --island-bg: rgb(14 15 20 / 0.94); }
+:root[data-material="glass"][data-backdrop="none"][data-theme="light"], :root[data-fallback="solid"][data-theme="light"] { --island-bg: rgb(236 239 243 / 0.96); }
+/* الأكريليك الأصلي مطبَّق: الصبغة داخله ⇒ جسم شفاف (لا تظليل مزدوج) */
+:root[data-material="glass"][data-backdrop="win10"], :root[data-material="glass"][data-backdrop="win10"][data-theme="light"] { --island-bg: transparent; }
 
-/* بلوري: لمعة علوية + توهّج داخلي خفيف + عمق سفلي (inset فقط — لا طبقة فوق المحتوى). */
-:root[data-material="glass"][data-glass="crystal"] .island-body {
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  box-shadow: inset 0 1px 0 var(--glass-spec), inset 0 0 12px rgb(255 255 255 / 0.05), inset 0 -10px 20px rgb(0 0 0 / 0.10);
-  text-shadow: 0 1px 2px rgb(0 0 0 / 0.30);
-}
-:root[data-material="glass"][data-glass="crystal"][data-theme="light"] .island-body {
-  box-shadow: inset 0 1px 0 var(--glass-spec), inset 0 0 12px rgb(255 255 255 / 0.25), inset 0 -10px 20px rgb(13 16 23 / 0.04);
-  text-shadow: 0 1px 0 rgb(255 255 255 / 0.40);
-}
-/* شفاف: لمعة علوية فقط. */
-:root[data-material="glass"][data-glass="clear"] .island-body {
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22);
-  text-shadow: 0 1px 3px rgb(0 0 0 / 0.55);
-}
-:root[data-material="glass"][data-glass="clear"][data-theme="light"] .island-body { text-shadow: 0 1px 2px rgb(255 255 255 / 0.65); }
+/* التراكب: لمعة علوية رفيعة (inset) + ظل نص خفيف — لا شيء غيرهما */
+:root:is([data-material="glass"], [data-fallback="solid"]) .island-body { box-shadow: inset 0 1px 0 var(--glass-spec); text-shadow: 0 1px 2px rgb(0 0 0 / 0.30); }
+:root:is([data-material="glass"], [data-fallback="solid"])[data-theme="light"] .island-body { text-shadow: 0 1px 0 rgb(255 255 255 / 0.40); }
+:root[data-material="glass"][data-glass="clear"] .island-body { box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22); }
 
-/* حدّ 1px: أعلى ساطع ← أسفل خافت (قناع mask-composite)، يتبع قوة الحدّ؛ لمسة لونية خفيفة جدًا على حافتي البلوري فقط داخل التدرّج نفسه. */
+/* حدّ 1px: أعلى ساطع ← أسفل خافت (قناع mask-composite)، يتبع قوة الحدّ */
 :root:is([data-material="glass"], [data-fallback="solid"]) .island-body::before {
   content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; z-index: 40;
   background: linear-gradient(180deg, var(--glass-rim-hi), var(--glass-rim-lo) 45%, var(--glass-rim-lo) 62%, rgb(255 255 255 / 0.18));
@@ -146,9 +133,8 @@ html, body, #root {
   mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
   opacity: min(1, var(--border-k));
 }
-:root[data-fallback="solid"] .island-body { box-shadow: inset 0 1px 0 var(--glass-spec); }
 
-/* بطاقات اللوحة والقوائم المنبثقة: سطح مسطّح خفيف + حلقة؛ لا تدرّج ولا backdrop-filter (كانت تُرى ورقة ثانية فوق الزجاج). */
+/* بطاقات اللوحة والقوائم المنبثقة: سطح مسطّح خفيف + حلقة (بلا تدرّج ولا backdrop-filter) */
 :root[data-material="glass"] .i-card, :root[data-material="glass"] .i-glass { background: rgb(255 255 255 / 0.07); box-shadow: inset 0 0 0 1px rgb(255 255 255 / calc(0.14 * var(--border-k))); }
 :root[data-material="glass"][data-theme="light"] .i-card, :root[data-material="glass"][data-theme="light"] .i-glass { background: rgb(13 16 23 / 0.05); box-shadow: inset 0 0 0 1px rgb(13 16 23 / calc(0.10 * var(--border-k))); }
 

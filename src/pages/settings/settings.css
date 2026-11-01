@@ -106,12 +106,17 @@ input[type="range"].st-range:focus-visible::-webkit-slider-thumb { box-shadow: 0
 .st-gstyle:hover { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent); }
 .st-gstyle:active { transform: scale(0.985); }
 .st-gstyle[aria-checked="true"] { box-shadow: inset 0 0 0 2px var(--accent); }
-.st-gprev { height: 52px; border-radius: 26px; background-size: cover; position: relative; overflow: hidden; }
-.st-gprev::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
-.st-gprev.crystal { background: linear-gradient(135deg, #4c8dff, #f472b6 60%, #ffb224); }
-.st-gprev.crystal::after { background: linear-gradient(180deg, rgb(255 255 255 / .38), rgb(255 255 255 / .08) 50%, rgb(255 255 255 / .18)); box-shadow: inset 0 1.5px 0 rgb(255 255 255 / .7), inset 0 0 14px rgb(255 255 255 / .25), inset 0 0 0 1px rgb(255 255 255 / .4); backdrop-filter: blur(6px); }
-.st-gprev.clear { background: linear-gradient(135deg, #4c8dff, #f472b6 60%, #ffb224); }
-.st-gprev.clear::after { background: rgb(255 255 255 / .08); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .45); }
+.st-gstyles3 { grid-template-columns: repeat(3, 1fr); }
+/* معاينات: ما يرسمه الأكريليك فعلًا — تدرّج ملوّن مموَّه (filter لا backdrop-filter) + صبغة الأسلوب + حدّ 1px */
+.st-gprev { height: 52px; border-radius: 26px; position: relative; overflow: hidden; background: #0e0f14; }
+.st-gprev::before { content: ""; position: absolute; inset: -14px; background: linear-gradient(135deg, #4c8dff, #f472b6 55%, #ffb224); filter: blur(9px); }
+.st-gprev::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .28), inset 0 1px 0 rgb(255 255 255 / .45); }
+.st-gprev.crystal::after { background: rgb(0 0 0 / .52); }
+.st-gprev.clear::after { background: rgb(0 0 0 / .22); }
+.st-gprev.solid::before { display: none; }
+.st-gprev.solid::after { background: #000; }
+:root[data-theme="light"] .st-gprev.crystal::after { background: rgb(236 239 243 / .66); box-shadow: inset 0 0 0 1px rgb(13 16 23 / .12); }
+:root[data-theme="light"] .st-gprev.clear::after { background: rgb(255 255 255 / .27); box-shadow: inset 0 0 0 1px rgb(13 16 23 / .12); }
 .st-kbd { min-width: 11rem; height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding-inline: var(--space-3); border-radius: var(--radius-control); background: var(--c-surface); box-shadow: inset 0 0 0 1px var(--c-border); font-size: var(--fs-13); font-variant-numeric: tabular-nums; outline: none; transition: box-shadow var(--dur-fast) var(--ease); }
 .st-kbd:hover { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c-text-primary) 28%, transparent); }
 .st-kbd[data-rec="true"] { box-shadow: inset 0 0 0 1.5px var(--accent), 0 0 0 3px var(--accent-soft); color: var(--accent); }

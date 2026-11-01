@@ -76,7 +76,7 @@ const SPY = `(() => { window.__osc = 0; const AC = window.AudioContext; if (AC) 
     await page.addInitScript(bridge({ settings: { language: "en" } }));
     await page.goto(`${BASE}/settings.html`); await page.waitForTimeout(900);
     const labels = []; const missing = [];
-    const NEED = ["Spring style", "Reduce motion", "Density", "Glass tint strength", "Glass blur (CSS)", "Glass saturation", "Border strength", "Shadow strength", "Eco mode", "Opacity at rest", "Position", "Horizontal offset", "Vertical offset", "Auto-hide", "Hide in fullscreen", "Animation speed", "Corner style", "Font size"];
+    const NEED = ["Spring style", "Reduce motion", "Density", "Glass tint strength", "Border strength", "Shadow strength", "Eco mode", "Opacity at rest", "Position", "Horizontal offset", "Vertical offset", "Auto-hide", "Hide in fullscreen", "Animation speed", "Corner style", "Font size"];
     for (const g of ["general", "island", "appearance", "motion", "modules", "notifications", "shortcuts", "perf", "updates", "about"]) {
       await page.locator(`[data-nav="${g}"]`).click(); await page.waitForTimeout(350);
       labels.push(...await page.evaluate(() => [...document.querySelectorAll("[aria-label]")].map((e) => e.getAttribute("aria-label"))));

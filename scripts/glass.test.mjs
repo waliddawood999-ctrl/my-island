@@ -1,56 +1,66 @@
-// اختبار طبقة الزجاج CSS: node scripts/glass.test.mjs (أو npm run test:glass)
+// اختبار نموذج الزجاج (T04): node scripts/glass.test.mjs (أو npm run test:glass)
+//  · لا backdrop-filter في island.css ولا في أي مكوّن للجزيرة · الأسلوبان يطلبان الأكريليك الأصلي · الإعدادات المسبقة أربعة حقيقية بلا blur/saturation.
 import { build } from "esbuild";
 import { pathToFileURL } from "node:url";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 const dir = mkdtempSync(join(tmpdir(), "glass-"));
-const out = join(dir, "glass.mjs");
-await build({ entryPoints: ["src/glass.ts"], bundle: true, format: "esm", outfile: out, logLevel: "warning" });
-const g = await import(pathToFileURL(out).href);
-const settingsSrc = readFileSync("src/settings.ts", "utf8");
+const load = async (f) => { const out = join(dir, f.replace(/\W/g, "_") + ".mjs"); await build({ entryPoints: [f], bundle: true, format: "esm", outfile: out, logLevel: "warning" }); return import(pathToFileURL(out).href); };
+const A = await load("src/appearance.ts");
+const G = await load("src/glass.ts");
 let fail = 0;
 const eq = (n, got, want) => { if (JSON.stringify(got) !== JSON.stringify(want)) { fail++; console.log(`✗ ${n}\n  got:  ${JSON.stringify(got)}\n  want: ${JSON.stringify(want)}`); } };
+const strip = (c) => c.replace(/\/\*[\s\S]*?\*\//g, "");
 
-// المفتاحان وافتراضياهما في settings.ts
-eq("glassBlur default 24", /glassBlur:\s*24\b/.test(settingsSrc), true);
-eq("glassSaturation default 180", /glassSaturation:\s*180\b/.test(settingsSrc), true);
-eq("types declared", /glassBlur:number/.test(settingsSrc) && /glassSaturation:number/.test(settingsSrc), true);
-// state.rs يحمل نفس الافتراضيين
-const rs = readFileSync("src-tauri/src/state.rs", "utf8");
-eq("state.rs defaults", /"glassBlur": 24/.test(rs) && /"glassSaturation": 180/.test(rs), true);
+const css = strip(readFileSync("src/pages/island/island.css", "utf8"));
+const rawCss = readFileSync("src/pages/island/island.css", "utf8");
+// ── CSS: لا backdrop-filter، سطح واحد، ولا طبقات إضافية
+eq("island.css has NO backdrop-filter anywhere", /backdrop-filter/.test(css), false);
+eq("island.css has no ::after on the island body and no background-image on it", !/island-body::after/.test(css) && !/\.island-body[^{]*\{[^}]*background-image/.test(css), true);
+eq("body background uses background-color with a 160ms transition", /\.island-body \{[^}]*background-color: var\(--island-bg\)[^}]*transition: background-color 160ms/.test(css), true);
+eq("win10 (acrylic applied) ⇒ transparent body for both themes", /data-backdrop="win10"\][^{]*\{ --island-bg: transparent; \}/.test(css) && css.includes('[data-backdrop="win10"][data-theme="light"] { --island-bg: transparent; }'), true);
+eq("pending surface: dark rgb(14 15 20 / .92), light rgb(236 239 243 / .94)", css.includes('{ --island-bg: rgb(14 15 20 / 0.92)') && css.includes("--island-bg: rgb(236 239 243 / 0.94)"), true);
+eq("none/fallback surface: dark .94, light .96 (never a low-alpha fill)", css.includes("rgb(14 15 20 / 0.94)") && css.includes("rgb(236 239 243 / 0.96)"), true);
+eq("no low-alpha glass fill: every glass --island-bg alpha is ≥ .9 or transparent", [...css.matchAll(/data-(?:material="glass"|fallback="solid")[^{]*\{[^}]*--island-bg: ([^;}]+)[;}]/g)].every((m) => m[1].trim() === "transparent" || /\/ 0\.(9\d)\)/.test(m[1])), true);
+eq("Frosted spec highlight + Clear spec highlight (inset only)", css.includes("inset 0 1px 0 var(--glass-spec)") && css.includes('[data-glass="clear"] .island-body { box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22)'), true);
+eq("1px rim via mask-composite kept", css.includes("padding: 1px") && css.includes("mask-composite") && css.includes(".island-body::before"), true);
+eq("inner cards flat: .i-glass like .i-card (.07 / light .05)", css.includes(".i-glass { background: rgb(255 255 255 / 0.07); }") && css.includes('[data-theme="light"] .i-glass { background: rgb(13 16 23 / 0.05); }'), true);
+// لا backdrop-filter/backdrop-blur في أي ملف للجزيرة
+const walk = (d) => readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(d, e.name)) : [join(d, e.name)]));
+const islandFiles = walk("src/pages/island").filter((f) => /\.(tsx|ts|css)$/.test(f));
+eq("no backdrop-filter / backdrop-blur in any island file", islandFiles.filter((f) => /backdrop-(filter|blur)/.test(strip(readFileSync(f, "utf8")))), []);
+eq("glass CSS variables removed (tokens.css, useSettings.ts)", /--glass-blur|--glass-saturate/.test(readFileSync("src/tokens.css", "utf8")) || /--glass-blur|--glass-saturate/.test(readFileSync("src/useSettings.ts", "utf8")), false);
 
-// الحدود والنهايات
-eq("blur 0", g.glassVars(0, 100, false), { blur: "0px", saturate: "1" });
-eq("blur 40", g.glassVars(40, 200, false), { blur: "40px", saturate: "2" });
-eq("blur over", g.glassVars(99, 999, false), { blur: "40px", saturate: "2" });
-eq("blur under", g.glassVars(-5, 10, false), { blur: "0px", saturate: "1" });
-eq("defaults", g.glassVars(24, 180, false), { blur: "24px", saturate: "1.8" });
-eq("invalid ⇒ defaults", g.glassVars(NaN, "x", false), { blur: "24px", saturate: "1.8" });
-eq("undefined ⇒ defaults", g.glassVars(undefined, undefined, false), { blur: "24px", saturate: "1.8" });
-eq("legacy 14/100", g.glassVars(14, 100, false), { blur: "14px", saturate: "1" });
-eq("rounding", g.glassVars(12.6, 150.4, false), { blur: "13px", saturate: "1.5" });
-// Eco: blur ≤ 8 وsaturation = 100
-eq("eco caps blur", g.glassVars(40, 200, true), { blur: "8px", saturate: "1" });
-eq("eco keeps lower blur", g.glassVars(3, 150, true), { blur: "3px", saturate: "1" });
-eq("eco default", g.glassVars(24, 180, true), { blur: "8px", saturate: "1" });
-// الوصفة في CSS
-const css = readFileSync("src/pages/island/island.css", "utf8");
-eq("css recipe filter", css.includes("blur(var(--glass-blur)) saturate(var(--glass-saturate))"), true);
-eq("css: ONE surface stack — no white gradient overlays or ::after on the glass body", !/data-glass="crystal"\] \.island-body \{[^}]*background-image/.test(css) && !/island-body::after/.test(css.replace(/\/\*.*?\*\//gs, "")), true);
-eq("css: inner cards are flat (no backdrop-filter, no gradient)", /\.i-card, :root\[data-material="glass"\] \.i-glass \{ background: rgb\(255 255 255 \/ 0\.07\); box-shadow/.test(css), true);
-eq("css body covered by glass vars (crystal)", /data-glass="crystal"\] \.island-body\s*\{[^}]*blur\(var\(--glass-blur\)\) saturate\(var\(--glass-saturate\)\)/.test(css), true);
-eq("css clear style has no backdrop-filter (cannot see the desktop anyway)", !/data-glass="clear"\] \.island-body \{[^}]*backdrop-filter/.test(css), true);
-eq("css no backdrop exemption for body", /data-backdrop="win1[01]"\] \.island-body\s*\{[^}]*backdrop-filter:\s*none/.test(css), false);
-eq("css 1px rim via mask-composite", css.includes("padding: 1px") && css.includes("mask-composite") && css.includes(".island-body::before"), true);
+// ── الأسلوبان يطلبان الأكريليك الأصلي
+const pill = readFileSync("src/pages/island/Pill.tsx", "utf8");
+eq("Pill requests native acrylic for clear too (no glassStyle !== 'clear' exclusion)", /glassStyle !== "clear"|glassStyle === "clear" && false/.test(pill), false);
+eq("Pill passes style frosted|clear and ready = settled && !hidden && opacity > 0", pill.includes("style: glassStyle") && pill.includes("ready: settled && !hidden && opacity > 0"), true);
+const ub = readFileSync("src/pages/island/useBackdrop.ts", "utf8");
+eq("useBackdrop: pending while waiting, none only on none/reject", ub.includes('"pending"') && ub.includes('m === "win10" ? "win10" : "none"') && ub.includes('catch(() => { if (alive) root.dataset.backdrop = "none"'), true);
+eq("useBackdrop sends the style argument", /style: o\.style/.test(ub), true);
 
-// INSERT M: لا طبقة صبغة صفحة ثانية فوق الأكريليك الأصلي، وأشرطة التمرير مخفية، وحدّ/لمعة جسم الحبة
-eq("no win11 page tint", css.includes('data-backdrop="win11"'), false);
-eq("native tint only", css.includes('[data-backdrop="win10"] { --island-bg: transparent; }'), true);
-eq("crystal specular + light inner glow + depth (inset only)", /data-glass="crystal"\] \.island-body \{[^}]*inset 0 1px 0 var\(--glass-spec\)[^}]*inset 0 0 12px[^}]*inset 0 -10px 20px/.test(css), true);
-const base = readFileSync("src/index.css", "utf8");
-eq("scrollbars hidden (firefox/webview)", base.includes("scrollbar-width: none !important"), true);
-eq("scrollbars hidden (webkit)", base.includes("::-webkit-scrollbar { display: none"), true);
-eq("rust single mechanism", !/Win11/.test(readFileSync("src-tauri/src/backdrop.rs", "utf8")), true);
+// ── الإعدادات المسبقة: أربعة فقط، حقيقية، بلا blur/saturation
+eq("presets = frosted/smoked/clear/minimal", A.STYLE_PRESETS.map((p) => p.id), ["frosted", "smoked", "clear", "minimal"]);
+eq("presets: glass tints 45 / 68 / 25 and styles", A.STYLE_PRESETS.slice(0, 3).map((p) => [p.values.glassStyle, p.values.glassTint]), [["crystal", 45], ["crystal", 68], ["clear", 25]]);
+eq("minimal is solid dark", [A.STYLE_PRESETS[3].values.themeMaterial, A.STYLE_PRESETS[3].values.themeMode], ["solid", "dark"]);
+eq("no preset (or style value) sets glassBlur/glassSaturation", [...A.STYLE_PRESETS.map((p) => p.values), ...Object.values(A.GLASS_STYLE_VALUES)].some((v) => "glassBlur" in v || "glassSaturation" in v), false);
+eq("GLASS_STYLE_VALUES = tint only", A.GLASS_STYLE_VALUES, { crystal: { glassStyle: "crystal", themeMaterial: "glass", glassTint: 45 }, clear: { glassStyle: "clear", themeMaterial: "glass", glassTint: 25 } });
+eq("blur/saturation removed from the appearance section map", A.SECTION_KEYS.appearance.includes("glassBlur") || A.SECTION_KEYS.appearance.includes("glassSaturation"), false);
+// الإبقاء على المفتاحين (مهجوران) في settings.ts وstate.rs ليبقى kv القديم والاستيراد صالحين
+const settingsSrc = readFileSync("src/settings.ts", "utf8"), rs = readFileSync("src-tauri/src/state.rs", "utf8");
+eq("deprecated keys kept (settings.ts + state.rs)", /glassBlur:\s*24\b/.test(settingsSrc) && /glassSaturation:\s*180\b/.test(settingsSrc) && /"glassBlur": 24/.test(rs) && /"glassSaturation": 180/.test(rs), true);
+eq("glass.ts still exports glassVars for compatibility", typeof G.glassVars, "function");
+// خريطة ألفا الأسلوب (مرآة Rust)
+eq("styleAlpha frosted dark/light @45", [A.styleAlpha("frosted", false, 45), A.styleAlpha("frosted", true, 45)].map((x) => +x.toFixed(4)), [0.6175, 0.6575]);
+eq("styleAlpha clear dark/light @25", [A.styleAlpha("clear", false, 25), A.styleAlpha("clear", true, 25)].map((x) => +x.toFixed(4)), [0.225, 0.265]);
+eq("styleAlpha clear caps (light .60)", A.styleAlpha("clear", true, 200), 0.54);
+eq("tintForOpacity: opacity 1 keeps tint; <1 lowers it (never below 0)", [A.tintForOpacity("frosted", false, 45, 1), A.tintForOpacity("frosted", false, 45, 0.8) < 45, A.tintForOpacity("clear", false, 25, 0.3) >= 0], [45, true, true]);
+// ترحيل v3
+eq("migration: glassStyle missing ⇒ crystal, glassTint untouched, idempotent", [A.migrateSettings({ settingsVersion: 2, glassTint: 70 }).glassStyle, "glassTint" in A.migrateSettings({ settingsVersion: 2, glassTint: 70 }), Object.keys(A.migrateSettings({ settingsVersion: 3 })).length], ["crystal", false, 0]);
+// Rust: مصدر واحد وأسلوبان
+const bd = readFileSync("src-tauri/src/backdrop.rs", "utf8").split("\n").filter((l) => !/^\s*\/\//.test(l)).join("\n");
+eq("rust: single mechanism (no Mica/DWMSBT), Style enum + style_alpha", !/Win11|DWMSBT|DwmSetWindowAttribute/.test(bd) && /pub enum Style/.test(bd) && /pub fn style_alpha/.test(bd), true);
+
 console.log(fail ? `FAIL (${fail})` : "OK glass");
 process.exit(fail ? 1 : 0);
