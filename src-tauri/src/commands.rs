@@ -77,6 +77,12 @@ pub fn release_focus(app: AppHandle, restore: Option<bool>) {
     }
 }
 
+/// ينهي عملية التطبيق كاملة بنظافة (app.exit يمرّ بدورة الإغلاق العادية فتُحرَّر الاختصارات وتُغلق النوافذ). لا يمسّ autostart.
+#[tauri::command]
+pub fn app_quit(app: AppHandle) {
+    app.exit(0);
+}
+
 /// يفتح نافذة الإعدادات (تُنشأ عند أول طلب ثم تُعرض وتُركَّز؛ هي نافذة عادية لا NOACTIVATE). async كي لا يُبنى الـwebview على الخيط الرئيسي.
 #[tauri::command]
 pub async fn open_settings(app: AppHandle) {

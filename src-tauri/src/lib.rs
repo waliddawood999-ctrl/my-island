@@ -149,6 +149,7 @@ pub fn run() {
             commands::take_focus,
             commands::release_focus,
             commands::open_settings,
+            commands::app_quit,
             commands::monitors_list,
             watchdog::page_pong,
             clipboard::clip_list,

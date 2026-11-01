@@ -77,6 +77,24 @@ function UpdateCheck() {
   );
 }
 
+/** «إغلاق الجزيرة»: تأكيد على خطوتين داخل الزر نفسه (نقرة أولى ⇒ «متأكد؟ إغلاق»، ثانية ⇒ app_quit). يعود تلقائيًا بعد 4 ثوانٍ أو بفقد التركيز. */
+function QuitButton() {
+  const [sure, setSure] = useState(false);
+  useEffect(() => {
+    if (!sure) return;
+    const t = window.setTimeout(() => setSure(false), 4000);
+    return () => window.clearTimeout(t);
+  }, [sure]);
+  return (
+    <button
+      data-testid="quit-btn" data-armed={sure ? "true" : "false"}
+      onClick={() => { if (sure) invoke("app_quit").catch(() => {}); else setSure(true); }}
+      onBlur={() => setSure(false)}
+      className={`ms-auto rounded-md px-3 py-1 text-xs font-semibold ${sure ? "bg-red-600 text-white" : "bg-white/10 text-white hover:bg-white/20"}`}
+    >{sure ? i("متأكد؟ إغلاق", "Sure? Quit") : i("إغلاق الجزيرة", "Quit island")}</button>
+  );
+}
+
 function App() {
   const s = useSettings();
   const [monitors, setMonitors] = useState<MonitorInfo[]>([]);
@@ -91,7 +109,10 @@ function App() {
 
   return (
     <div dir="auto" className="mx-auto max-w-3xl px-5 pb-8 text-white">
-      <h1 className="pt-5 text-xl font-bold">{i("الإعدادات", "Settings")}</h1>
+      <header className="sticky top-0 z-20 -mx-5 flex h-12 items-center gap-3 bg-[var(--app-bg)] px-5" data-testid="settings-bar">
+        <h1 className="text-xl font-bold">{i("الإعدادات", "Settings")}</h1>
+        <QuitButton />
+      </header>
 
       <Nav
         items={[

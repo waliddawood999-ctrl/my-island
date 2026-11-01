@@ -33,7 +33,7 @@ export function Nav({ items }: { items: { id: string; label: string }[] }) {
       const vis = es.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
       const id = vis?.target.getAttribute("data-group");
       if (id) setCur(id);
-    }, { rootMargin: "-56px 0px -65% 0px" });
+    }, { rootMargin: "-104px 0px -65% 0px" });
     items.forEach((x) => { const el = document.getElementById(`grp-${x.id}`); if (el) io.observe(el); });
     return () => io.disconnect();
   }, [items.map((x) => x.id).join("|")]);
@@ -42,7 +42,7 @@ export function Nav({ items }: { items: { id: string; label: string }[] }) {
     document.getElementById(`grp-${id}`)?.scrollIntoView({ behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
   };
   return (
-    <nav aria-label="Settings sections" className="sticky top-0 z-10 -mx-5 mt-3 flex gap-1 border-b border-white/10 bg-[var(--app-bg)] px-5 py-2">
+    <nav aria-label="Settings sections" className="sticky top-12 z-10 -mx-5 flex gap-1 border-b border-white/10 bg-[var(--app-bg)] px-5 py-2">
       {items.map((x) => (
         <button
           key={x.id}

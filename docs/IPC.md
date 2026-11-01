@@ -3,7 +3,7 @@
 ## أوامر Tauri (invoke)
 النافذة: set_island_hidden, through_toggle, report_island_rect,
 report_page_scale, take_focus, release_focus, restart_island,
-runs_as_admin, open_settings, open_path, open_captures, monitors_list,
+runs_as_admin, open_settings, app_quit, open_path, open_captures, monitors_list,
 prtsc_taken
 إعدادات: settings_get, settings_set, settings_target
 نبض: page_pong
@@ -70,7 +70,7 @@ clip_paste(id) → "pasted" | "clipboard" — يضع العنصر (نص أو ص�
 take_focus() · release_focus() — تعطيل/إعادة WS_EX_NOACTIVATE؛ تُستعملان لحقل بحث تبويب الحافظة فقط (onFocus/onBlur)؛ release_focus يردّ الفوكس لآخر نافذة تطبيق. لا أحداث جديدة.
 
 ### مضاف في الجلسة 1.3
-open_settings() — يُظهر نافذة settings ويمنحها الفوكس (نافذة عادية)؛ إغلاقها يخفيها فقط (CloseRequested ⇒ hide) · monitors_list() → [{index, name, width, height, primary}] بنفس فهرس `monitor` في win::position_main.
+app_quit() — ينهي عملية التطبيق كاملة بنظافة (`app.exit(0)`: دورة الإغلاق العادية)؛ يُستدعى من زر «إغلاق الجزيرة» المثبّت أعلى الإعدادات بعد تأكيد على خطوتين داخل الزر. لا يغيّر autostart (التشغيل مع تسجيل الدخول كما هو). · open_settings() — يُظهر نافذة settings ويمنحها الفوكس (نافذة عادية)؛ إغلاقها يخفيها فقط (CloseRequested ⇒ hide) · monitors_list() → [{index, name, width, height, primary}] بنفس فهرس `monitor` في win::position_main.
 settings_set لمفتاح `autostart` يكتب/يحذف قيمة MyIsland في HKCU\...\Run (autostart.rs). لا أحداث جديدة: تبديل `language` يصل كل النوافذ عبر settings:changed ويعيد رسمها.
 
 ### مضاف في الجلسة 2.1 (media.rs — حسب المخطط §7/media)
