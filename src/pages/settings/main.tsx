@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { invoke } from "@tauri-apps/api/core";
+import { getVersion } from "@tauri-apps/api/app";
 import "../../index.css";
 import { i } from "../../i18n";
 import { saveSettings, useSettings } from "../../useSettings";
@@ -51,6 +52,32 @@ function MeetingsKey() {
 }
 
 /** زر «التحقق من التحديثات»: الحالة تُعرض في مكانها (يتحقق… / أنت على أحدث إصدار / تعذّر التحقق / يوجد إصدار). */
+const RELEASES_REPO = "https://github.com/waliddawood999-ctrl/my-island-releases";
+
+/** «حول»: الإصدار من حزمة التطبيق (نفس رقم CI في tauri.conf.json) + المطوّر + روابط المستودع العام للإصدارات. عرض فقط. */
+function AboutSection() {
+  const [ver, setVer] = useState("");
+  useEffect(() => {
+    getVersion().then(setVer).catch(() => {});
+  }, []);
+  const open = (url: string) => () => { invoke("open_path", { path: url }).catch(() => {}); };
+  const link = "rounded-lg bg-white/10 px-3 py-1.5 text-xs hover:bg-white/20";
+  return (
+    <Section title={i("حول", "About")}>
+      <Row label={i("الإصدار الحالي", "Current version")}>
+        <span dir="ltr" className="text-sm tabular-nums text-white/80" data-testid="about-version">{ver || "—"}</span>
+      </Row>
+      <Row label={i("طُوِّر بواسطة وليد", "Developed by Walid")}>
+        <span />
+      </Row>
+      <div className="flex gap-2">
+        <button className={link} data-testid="about-whatsnew" onClick={open(`${RELEASES_REPO}/releases`)}>{i("ما الجديد", "What's new")}</button>
+        <button className={link} data-testid="about-github" onClick={open(RELEASES_REPO)}>GitHub</button>
+      </div>
+    </Section>
+  );
+}
+
 function UpdateCheck() {
   const [st, setSt] = useState<ManualStatus>("idle");
   const [ver, setVer] = useState("");
@@ -137,6 +164,7 @@ function App() {
         </Row>
         <UpdateCheck />
       </Section>
+      <AboutSection />
       <Section title={i("التشغيل والموضع", "Startup & position")}>
         <Row label={i("التشغيل مع ويندوز", "Start with Windows")}>
           <Toggle label={i("التشغيل مع ويندوز", "Start with Windows")} value={s.autostart ?? false} onChange={(v) => saveSettings({ autostart: v })} />
