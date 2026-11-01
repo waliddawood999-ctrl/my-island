@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { motion } from "motion/react";
 import { spring, tap } from "../../motion";
 
@@ -7,7 +7,8 @@ import { spring, tap } from "../../motion";
  * الحافة القائدة (باتجاه الحركة) نابضها أسرع فيتمدد المؤشر أولًا ثم تلحق التابعة.
  * الحاوية LTR بنيويًا فاليمين/اليسار فيزيائيان.
  */
-export function TabBar({ labels, active, onSelect, onHint }: { labels: string[]; active: number; onSelect: (n: number) => void; onHint?: (n: number) => void }) {
+export type TabsStyle = "labels" | "icons" | "dots";
+export function TabBar({ labels, icons, variant = "labels", active, onSelect, onHint }: { labels: string[]; icons?: ReactNode[]; variant?: TabsStyle; active: number; onSelect: (n: number) => void; onHint?: (n: number) => void }) {
   const box = useRef<HTMLDivElement>(null);
   const btns = useRef<(HTMLButtonElement | null)[]>([]);
   const prev = useRef(active);
@@ -37,7 +38,7 @@ export function TabBar({ labels, active, onSelect, onHint }: { labels: string[];
 
   return (
     <div ref={box} dir="ltr" role="tablist" className="relative flex gap-1">
-      {edge && (
+      {edge && variant !== "dots" && (
         <motion.div
           aria-hidden
           className="absolute inset-y-0 rounded-full"
@@ -62,9 +63,16 @@ export function TabBar({ labels, active, onSelect, onHint }: { labels: string[];
           onFocus={() => onHint?.(n)}
           whileTap={tap.whileTap}
           transition={tap.transition}
-          className={`relative z-10 rounded-full px-3.5 py-1.5 text-[13px] ${active === n ? "text-white" : "text-white/60 hover:text-white"}`}
+          aria-label={variant === "labels" ? undefined : label}
+          title={variant === "labels" ? undefined : label}
+          className={variant === "labels"
+            ? `relative z-10 rounded-full px-3.5 py-1.5 text-[13px] ${active === n ? "text-white" : "text-white/60 hover:text-white"}`
+            : variant === "icons"
+              ? `relative z-10 grid h-[30px] w-[30px] place-items-center rounded-full ${active === n ? "text-white" : "text-white/60 hover:text-white"}`
+              : "relative z-10 h-[7px] self-center rounded-full"}
+          style={variant === "dots" ? { width: active === n ? 18 : 7, background: active === n ? "currentColor" : "color-mix(in srgb, currentColor 35%, transparent)", transition: "width 200ms ease, background-color 200ms ease" } : undefined}
         >
-          {label}
+          {variant === "labels" ? label : variant === "icons" ? icons?.[n] : null}
         </motion.button>
       ))}
     </div>

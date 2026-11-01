@@ -23,6 +23,8 @@ import { stopwatch, useStopwatchNow } from "../../useStopwatch";
 import type { BatSample } from "../../useBatteryHistory";
 import { fmtDuration } from "../../useAttention";
 import { MediaSection } from "./MediaSection";
+import { PlayerPanel } from "./Player";
+import type { Settings } from "../../settings";
 import { ICON, Ring, STROKE } from "./primitives";
 
 export const KIND_META: Record<ActivityKind, { icon: LucideIcon; label: () => string }> = {
@@ -290,7 +292,9 @@ function UpdateCard({ u, onInstall }: { u: UpdateState; onInstall: () => void })
   );
 }
 
-function MediaCard({ media }: { media: MediaView }) {
+function MediaCard({ media, player }: { media: MediaView; player?: LiveData["player"] }) {
+  // T03: المشغّل الجديد (PlayerPanel) بلا ترويسة الشارة — يملأ اللوحة بتخطيط compact/large/minimal.
+  if (player) return <div data-testid="activity-media" className="h-full"><PlayerPanel media={media} s={player.s} accent={player.accent} reduce={player.reduce} visible={player.visible} /></div>;
   return (
     <ActivityShell kind="media">
       <MediaSection media={media} />
@@ -326,6 +330,7 @@ export interface LiveData {
   timer: TimerState | null;
   remaining: number | null;
   media: MediaView;
+  player?: { s: Partial<Settings>; accent: string; reduce: boolean; visible: boolean };
   battery: Battery | null;
   batteryHist: BatSample[];
   meeting: UpcomingMeeting<Meeting> | null;
@@ -338,7 +343,7 @@ function Card({ kind, d }: { kind: ActivityKind; d: LiveData }) {
     case "rec": return <RecCard elapsed={d.rec.elapsed} />;
     case "timer": return d.timer && d.remaining != null ? <TimerCard timer={d.timer} remaining={d.remaining} /> : null;
     case "stopwatch": return <StopwatchCard />;
-    case "media": return <MediaCard media={d.media} />;
+    case "media": return <MediaCard media={d.media} player={d.player} />;
     case "meeting": return d.meeting ? <MeetingCard m={d.meeting} /> : null;
     case "battery": return d.battery ? <BatteryCard b={d.battery} hist={d.batteryHist} /> : null;
     case "update": return <UpdateCard u={d.update} onInstall={d.onInstallUpdate} />;

@@ -4,7 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 import { LottieIcon, LottieShownProvider } from "../../lottie";
 import { Coffee, Settings as SettingsIcon, Timer as TimerIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { alertShake, dur, ease, paletteVariants, useMotionLevel, sectionVariants, spring, swapVariants, tap } from "../../motion";
+import { alertShake, dur, ease, islandSpring, paletteVariants, useMotionLevel, sectionVariants, spring, swapVariants, tap } from "../../motion";
 import { i } from "../../i18n";
 import { clampTint, useResolvedTheme, useSettings } from "../../useSettings";
 import { PANEL as PANEL_TOKEN, PANEL_PALETTE, PILL as PILL_TOKEN } from "../../tokens";
@@ -28,6 +28,12 @@ import { useLauncher } from "../../useLauncher";
 const importNote = () => import("./NoteTab").then((m) => ({ default: m.NoteTab }));
 const makeNoteTab = () => lazy(importNote);
 import { normSound, normVolume, playSound } from "../../sounds";
+import { IslandMachine, normCardOrder, realSched } from "../../islandMachine";
+import { crossfade, normSpeed, resolveReduce } from "../../islandMotion";
+import { PeekView } from "./PeekView";
+import { PillMedia, PlayerPanel, useAccent } from "./Player";
+import { scrollsFurther } from "./wheel";
+import { Bell as BellIcon, Calendar as CalendarIcon, ClipboardList, Grid2x2, Home as HomeIcon, Layers as LayersIcon, Notebook, Wrench, Cpu as CpuIcon, MessageCircle, Rocket, Users } from "lucide-react";
 import { fmtCountdown, TIMER_NEAR_MS, useNoteAlert, useTimer } from "../../useNote";
 import { MediaSection } from "./MediaSection";
 import { TodaySection } from "./TodaySection";
@@ -64,6 +70,13 @@ function fmtTime(fmt: string): string {
     hour: "2-digit", minute: "2-digit", hour12,
   });
 }
+
+/** أيقونة كل تبويب (نمط icons في panelTabsStyle). */
+const TAB_ICONS: Record<string, React.ReactNode> = {
+  home: <HomeIcon size={15} />, clip: <ClipboardList size={15} />, shelf: <LayersIcon size={15} />, launcher: <Grid2x2 size={15} />, note: <Notebook size={15} />,
+  tools: <Wrench size={15} />, meetings: <Users size={15} />, system: <CpuIcon size={15} />, chat: <MessageCircle size={15} />,
+};
+void BellIcon; void CalendarIcon; void Rocket;
 
 /** التبويبات؛ الرفّ يظهر فقط إن كان moduleShelf مفعّلًا (غياب المفتاح = مفعّل) وعدّاده بجانب الاسم. */
 const tabDefs = (shelfOn: boolean, shelfCount: number, launcherOn: boolean, meetingsOn: boolean) => [
@@ -131,7 +144,14 @@ export function Pill() {
   const [time, setTime] = useState(() => fmtTime(fmt));
   const [hover, setHover] = useState(false);
   const [hidden, setHidden] = useState(false);
-  const [open, setOpen] = useState(false);
+  // آلة الحالات (pill/peek/panel): المؤقتات والعجلة والخنق في islandMachine.ts؛ هنا فقط ربط بالواجهة.
+  const [, bump] = useState(0);
+  const machine = useRef<IslandMachine | null>(null);
+  if (!machine.current) machine.current = new IslandMachine(realSched, {}, () => bump((n) => n + 1));
+  const M = machine.current;
+  const mode = M.mode;
+  const open = mode === "panel";
+  const peek = mode === "peek";
   const [tabId, setTabId] = useState("home");
   const [NoteTab, setNoteTab] = useState(makeNoteTab);
   const [retryN, setRetryN] = useState(0);
@@ -145,6 +165,9 @@ export function Pill() {
   const paletteRef = useRef<{ wasHidden: boolean } | null>(null);
   const moduleMedia = settings.moduleMedia ?? true;
   const media = useMedia(moduleMedia);
+  const trackKey = `${media.info.source}|${media.info.title}|${media.info.artist}|${media.info.album}`;
+  const accent = useAccent(media.cover, trackKey, settings);
+  const reduceUI = motion_level !== "full" || resolveReduce(settings.reduceMotion, false);
   // mediaPill: "off"/"clock" = تبقى الساعة؛ غير ذلك (الافتراضي) = العنوان المتحرك أثناء التشغيل فقط.
   const pillTitle =
     moduleMedia && !["off", "clock"].includes(settings.mediaPill ?? "") && media.info.session && media.info.playing && media.info.title
@@ -202,7 +225,7 @@ export function Pill() {
   });
   const shownPanel = shownKind(panelKinds, pinPanel);
   const liveData: LiveData = {
-    rec: { recording: rec.recording, elapsed: rec.elapsed }, timer, remaining, media,
+    rec: { recording: rec.recording, elapsed: rec.elapsed }, timer, remaining, media, player: { s: settings, accent, reduce: reduceUI, visible: mode === "panel" },
     battery, batteryHist: batHist, meeting: upMeeting, update: upd, onInstallUpdate: installUpdate,
   };
   const cycleCap = () => setPinCap(nextKind(capKinds, shownCap));
@@ -217,7 +240,11 @@ export function Pill() {
   const collapseT = useRef<number | undefined>(undefined);
   const shrinkT = useRef<number | undefined>(undefined);
   const shrinkPending = useRef(false);
-  const [panel, setPanel] = useState(panelSize);
+  const panel = { w: clampN(settings.panelWidth, 420, 720, 520), h: clampN(settings.panelHeight, 220, 420, 290) };
+  const peekSz = { w: clampN(settings.peekWidth, 240, 560, 400), h: clampN(settings.peekHeight, 72, 200, 120) };
+  const peekR = clampN(settings.peekRadius, 12, 60, 30), panelR = clampN(settings.panelRadius, 16, 60, 34);
+  const speed = normSpeed(settings.motionSpeed);
+  const hoverZoneKey = settings.hoverZone ?? "island";
 
   // الساعة HH:MM: مؤقّت واحد يصحو عند بداية كل دقيقة (لا مؤقّت ثانية بثانية) ويتوقف مع إخفاء الصفحة.
   useEffect(() => {
@@ -237,9 +264,9 @@ export function Pill() {
 
   // آخر مقاس أُبلغت به النافذة (لتمييز النمو الذي يسبق الحركة عن الانكماش الذي يليها).
   const reported = useRef({ w: 0, h: 0 });
-  const report = (w: number, h: number) => {
+  const report = (w: number, h: number, r?: number) => {
     reported.current = { w, h };
-    return invoke("report_island_rect", { width: w, height: h }).catch(() => {});
+    return invoke("report_island_rect", { width: w, height: h, radius: r ?? h / 2 }).catch(() => {});
   };
   // مقاس النافذة الاستراحي الحالي (يُحدَّث في العرض): الحبة · مدمجة منقسمة · تنبيه · أو ارتفاع شريط التبويبات عند الإرساء.
   const restWinRef = useRef({ w: 0, h: 0 });
@@ -250,8 +277,8 @@ export function Pill() {
     shrinkPending.current = false;
     window.clearTimeout(shrinkT.current);
     const rest = restWinRef.current;
-    // الاستقرار (للزجاج الحقيقي) بعد أن تُقاس النافذة فعلًا: وإلا تُطبَّق المنطقة على حجم قديم.
-    report(rest.w, rest.h).finally(settleNow);
+    // الاستقرار (للزجاج الحقيقي) بعد أن تُضبط المنطقة فعلًا: وإلا يُطبَّق الأكريليك على شكل قديم.
+    report(rest.w, rest.h, (rest as { r?: number }).r).finally(settleNow);
     return true;
   };
   const scheduleShrink = () => {
@@ -268,8 +295,8 @@ export function Pill() {
     window.clearTimeout(hoverT.current);
     window.clearTimeout(collapseT.current);
     cancelShrink();
-    setOpen(false);
-    report(PALETTE.w, PALETTE.h);
+    M.collapse();
+    report(PALETTE.w, PALETTE.h, 24);
     paletteRef.current = { wasHidden };
     setPalette({ wasHidden });
   };
@@ -293,24 +320,15 @@ export function Pill() {
     return () => { un.then((f) => f()); };
   }, [closePalette]);
 
-  const expand = () => {
-    cancelShrink();
-    const p = panelSize();
-    setPanel(p);
-    report(p.w, p.h); // النافذة أولًا ثم الأنيميشن
-    setOpen(true);
-  };
-  const collapse = () => {
-    setOpen(false);
-    scheduleShrink();
-  };
+  /** النقر: لوحة كاملة (المنطقة أولًا ثم الحركة تتم في layout effect أدناه). */
+  const expand = () => { cancelShrink(); M.click(); };
+  const collapse = () => { M.collapse(); };
 
   // إفلات ملفات من المستكشف: الدخول يفتح اللوحة على تبويب الرفّ، الإفلات يضيف فورًا، المغادرة تنكمش.
   const dnd = useRef({ enter: () => {}, leave: () => {}, drop: (_p: string[]) => {} });
   dnd.current.enter = () => {
     if (!shelfOn || paletteRef.current) return;
     window.clearTimeout(collapseT.current);
-    window.clearTimeout(hoverT.current);
     setTabId("shelf");
     setDragging(true);
     if (!open) expand();
@@ -318,8 +336,7 @@ export function Pill() {
   dnd.current.leave = () => {
     setDragging(false);
     if (paletteRef.current || !open) return;
-    window.clearTimeout(collapseT.current);
-    collapseT.current = window.setTimeout(collapse, settings.collapseDelayMs ?? 350);
+    M.leave();
   };
   dnd.current.drop = (paths) => {
     setDragging(false);
@@ -341,17 +358,12 @@ export function Pill() {
     setHover(true);
     if (paletteRef.current) return;
     window.clearTimeout(collapseT.current);
-    if (open) return;
-    window.clearTimeout(hoverT.current);
-    hoverT.current = window.setTimeout(expand, settings.hoverDelayMs ?? 250);
+    M.enter(); // لمحة بعد hoverDelayMs؛ الأحداث تصل فقط من شكل الجزيرة نفسه (منطقة النافذة)
   };
   const onLeave = () => {
     setHover(false);
     if (paletteRef.current) return;
-    window.clearTimeout(hoverT.current);
-    if (!open) return;
-    window.clearTimeout(collapseT.current);
-    collapseT.current = window.setTimeout(collapse, settings.collapseDelayMs ?? 350);
+    M.leave(); // إغلاق بعد 300ms (لمحة) / 500ms (لوحة)؛ العودة تلغيه
   };
 
   // الحالة الاستراحية: تنبيه/نشاط مدمج/ارتفاع الشريط عند الإرساء.
@@ -360,24 +372,25 @@ export function Pill() {
   const restContent = pill;
   const restWin = restContent;
   const restBody = restContent;
-  restWinRef.current = restWin;
-  // تغيّر المقاس الاستراحي والحبة منكمشة: النمو ⇒ تكبير النافذة قبل الحركة؛ الانكماش ⇒ تصغيرها بعد انتهاء الحركة.
-  useEffect(() => {
-    if (open || paletteRef.current || !settings.loaded) return; // لا مقاس قبل وصول الإعدادات: الحبة لا تقفز من الافتراضي إلى مقاس المستخدم
-    const grow = restWin.w > reported.current.w || restWin.h > reported.current.h;
-    if (grow) { cancelShrink(); report(restWin.w, restWin.h); }
+  const size = palette ? PALETTE : open ? panel : peek ? peekSz : restBody;
+  const targetR = palette ? 24 : open ? panelR : peek ? Math.min(peekR, size.h / 2) : pillR;
+  restWinRef.current = { ...(size), r: targetR } as { w: number; h: number; r: number };
+  // تغيّر الشكل الهدف (حبة/لمحة/لوحة أو إعدادات المقاس): النمو ⇒ ضبط منطقة النافذة قبل الحركة (layout effect)؛ الانكماش ⇒ بعد انتهائها.
+  // النافذة الأصلية ثابتة دائمًا (800×500)؛ ما يتغيّر هو المنطقة (اختبار الإصابة + الأكريليك) فقط.
+  useLayoutEffect(() => {
+    if (paletteRef.current || !settings.loaded) return; // لا مقاس قبل وصول الإعدادات: الحبة لا تقفز من الافتراضي إلى مقاس المستخدم
+    const grow = size.w > reported.current.w || size.h > reported.current.h;
+    if (grow) { cancelShrink(); report(size.w, size.h, targetR); }
     else scheduleShrink();
-  }, [restWin.w, restWin.h, settings.loaded]);
-
-  const size = palette ? PALETTE : open ? panel : restBody;
+  }, [size.w, size.h, targetR, settings.loaded, hoverZoneKey]);
   // الشفافية من الإعدادات؛ autoHide يخفي الحبة في الراحة (النافذة تبقى تستقبل المرور فتظهر عند الهوفر).
   const rest = (settings.opacityRest ?? 100) / 100;
   const opened = (settings.opacityOpen ?? 100) / 100;
   const opacity = hidden ? 0 : palette ? 1 : open ? opened : settings.autoHide && !hover ? 0 : rest;
 
   // كبسولة كاملة الاستدارة؛ مرسيّة في شريط المتصفح: زوايا علوية مدوّرة وقاع مسطّح (هيئة تبويب).
-  const rTop = palette ? 24 : open ? 28 : pillR;
-  const rBot = palette ? 24 : open ? 28 : pillR;
+  const rTop = targetR;
+  const rBot = targetR;
   const radius = rTop;
   // مفتاح الحجم المستهدف؛ أول عرض = مستقر. مؤقّت احتياطي أحادي إن لم يصل رد الاكتمال (كحارس التصغير).
   const sizeKey = `${size.w}x${size.h}`;
@@ -396,11 +409,28 @@ export function Pill() {
     light: theme === "light",
     ready: settled && !hidden && opacity >= 0.99,
     radius,
-    tint: clampTint(settings.glassTint),
+    // الأكريليك الأصلي ألفاه = 0.28 + 0.0075·t؛ الكثافة تضرب الألفا (الحدّ الأدنى 0.28 من النظام).
+    tint: clampTint(((0.28 + 0.0075 * clampTint(settings.glassTint)) * clampN(settings.backgroundOpacity, 0.3, 1, 1) - 0.28) / 0.0075),
   });
+  M.setCfg({ hoverDelayMs: clampN(settings.hoverDelayMs, 0, 800, 250), wheelCycle: settings.peekWheelCycle ?? true, panelPaging: settings.panelWheelPaging ?? true, cards: normCardOrder(settings.peekCardOrder), slowMo: Number((globalThis as { __slowmo?: number }).__slowmo) || 1 });
+  const upcomingForPeek = upMeeting ? { title: upMeeting.item.title, start: upMeeting.item.start } : null;
+  // Esc: لوحة ⇒ لمحة (إغلاق بنابض close بلا ارتداد).
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: KeyboardEvent) => { if (e.key === "Escape") M.back(); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  const cf = crossfade(speed, reduceUI);
+  // نابض الحجم: فتح لمحة (d,b) · فتح لوحة (d×1.1,b) · أي إغلاق (d×0.9، بلا ارتداد). التقليل ⇒ قفز فوري + تلاشٍ 150ms.
+  const rank = { pill: 0, peek: 1, panel: 2 } as const;
+  const prevMode = useRef<"pill" | "peek" | "panel">("pill");
+  const kind = palette ? "open" : rank[mode] > rank[prevMode.current] ? (mode === "panel" ? "panel" : "open") : rank[mode] < rank[prevMode.current] ? "close" : "open";
+  useEffect(() => { prevMode.current = mode; }, [mode]);
   const tabs = tabDefs(shelfOn, shelf.items.length, launcherOn, meetingsOn);
   const tab = Math.max(0, tabs.findIndex((t) => t.id === tabId));
   const curTab = tabs[tab].id;
+  M.setPages(tabs.length); M.page = tab; // الصفحة = التبويب الحالي (العجلة في اللوحة)
   // حارس التبديل: AnimatePresence(mode="wait") لا يركّب التبويب الجديد إلا بعد اكتمال حركة خروج القديم؛ إن لم تكتمل (إطارات متوقفة/نافذة
   // مخنوقة) بقي العرض القديم رغم تحديد التبويب الجديد. بعد tabSwitchGuard نعيد تركيب AnimatePresence فيُسقَط الخارج ويُركَّب الجديد.
   // مؤقّت واحد لكل تبديل فقط (لا شيء في الخمول).
@@ -427,15 +457,15 @@ export function Pill() {
 
   return (
     <LottieShownProvider shown={!hidden && opacity > 0}>
-    <div className="flex w-full justify-center">
+    <div className={`flex w-full ${settings.pillPosition === "left" ? "justify-start" : settings.pillPosition === "right" ? "justify-end" : "justify-center"}`}>
       <motion.div
         onMouseEnter={onEnter}
         onMouseLeave={onLeave}
         onClick={() => {
           if (performance.now() - lastPanAt.current < 300) return; // سحب التبديل بين النشاطين لا يُحتسب نقرة
           if (alert) dismiss();
-          else if (rec.recording && !open && !palette) invoke("record_stop").catch(() => {});
-          else if (!open && !palette) { window.clearTimeout(hoverT.current); expand(); } // الضغط يفتح اللوحة فورًا (في وضع التبويب أيضًا)
+          else if (rec.recording && mode === "pill" && !palette) invoke("record_stop").catch(() => {});
+          else if (!open && !palette) expand(); // النقر على الحبة أو اللمحة يفتح اللوحة
         }}
         onContextMenu={(e) => { e.preventDefault(); invoke("open_settings").catch(() => {}); }}
         initial={false}
@@ -443,9 +473,16 @@ export function Pill() {
           opacity, width: size.w, height: size.h, y: 0,
           borderTopLeftRadius: rTop, borderTopRightRadius: rTop, borderBottomLeftRadius: rBot, borderBottomRightRadius: rBot,
         }}
-        transition={{ default: spring.island, opacity: { duration: dur.base, ease: ease.out } }}
+        transition={{ default: kind === "close" ? islandSpring.close : kind === "panel" ? islandSpring.panel : islandSpring.open, opacity: { duration: reduceUI ? 0.15 : dur.base, ease: ease.out } }}
         onAnimationComplete={() => { if (!flushShrink()) settleNow(); }}
         data-open={open || palette ? "true" : "false"}
+        data-mode={palette ? "palette" : mode}
+        data-spring={JSON.stringify(kind === "close" ? islandSpring.close : kind === "panel" ? islandSpring.panel : islandSpring.open)}
+        onWheel={(e) => {
+          if (palette) return;
+          const handled = M.wheel(e.deltaY, { scrollsFurther: scrollsFurther(e.target, e.deltaY, e.currentTarget) });
+          if (handled && M.mode === "panel" && M.page !== tab) setTabId(tabs[M.page]?.id ?? "home");
+        }}
         className="island-body relative overflow-hidden"
       >
         <Liquid
@@ -470,12 +507,37 @@ export function Pill() {
             {privacy.mic && <span className="h-2 w-2 rounded-full bg-[var(--c-warning)] shadow-[0_0_6px_var(--c-warning)]" />}
           </div>
         )}
+        {media.cover && (settings.artworkBackdrop ?? true) && (settings.playerLayout ?? "compact") !== "minimal" && (
+          <>
+            <div aria-hidden data-testid="artwork-backdrop" style={{
+              position: "absolute", inset: -40, backgroundImage: `url(${media.cover})`, backgroundSize: "cover", backgroundPosition: "center", filter: "blur(30px) saturate(1.5)", pointerEvents: "none",
+              opacity: (peek && M.currentCard === "player") || (open && curTab === "home") ? ((settings.themeMaterial ?? "glass") === "solid" ? 0.45 : 0.35) : 0,
+              transition: `opacity ${reduceUI ? 150 : 360}ms ease`,
+            }} />
+            <div aria-hidden style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,.35))", opacity: (peek && M.currentCard === "player") || (open && curTab === "home") ? 1 : 0, transition: `opacity ${reduceUI ? 150 : 360}ms ease` }} />
+          </>
+        )}
+        <AnimatePresence>
+          {peek && !palette && (
+            <motion.div
+              key="peek" variants={cf} initial="hidden" animate="shown" exit="hidden" data-testid="peek-layer"
+              style={{ width: peekSz.w, height: peekSz.h }}
+              className="absolute left-1/2 top-0 -translate-x-1/2"
+            >
+              <PeekView
+                cards={M.cfg.cards} index={M.card} dir={M.dir} s={settings} media={media} accent={accent} reduce={reduceUI} speed={speed}
+                timer={timer} remaining={remaining} nextMeeting={upcomingForPeek}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
         <motion.div
           aria-label={i("الساعة", "Clock")}
           initial={false}
-          animate={{ opacity: open || palette ? 0 : 1 }}
-          transition={{ duration: dur.base, ease: ease.out }}
-          style={{ height: restBody.h, fontSize: 13 * k }}
+          variants={cf}
+          animate={mode === "pill" && !palette ? "shown" : "hidden"}
+          data-testid="pill-layer"
+          style={{ height: restBody.h, fontSize: 13 * k, pointerEvents: mode === "pill" && !palette ? "auto" : "none" }}
           className="absolute inset-x-0 top-0 flex items-center justify-center font-medium tabular-nums"
         >
           <AnimatePresence mode="wait" initial={false}>
@@ -512,11 +574,7 @@ export function Pill() {
               ) : pillKey === "stopwatch" ? (
                 <CapsuleSplit kind="stopwatch" k={k} dots={dots} left={i("ساعة إيقاف", "Stopwatch")} value={fmtStopwatch(swMs, false)} />
               ) : pillKey === "media" && pillTitle ? (
-                <CapsuleSplit
-                  kind="media" k={k} dots={dots}
-                  left={<PillTitle text={media.info.title} inset={0} />}
-                  value={media.info.artist ? <span dir="auto" className="max-w-[7.5em] truncate text-white/60">{media.info.artist}</span> : null}
-                />
+                <PillMedia media={media} accent={accent} reduce={reduceUI} visible={mode === "pill" && !hidden} k={k} viz={settings.visualizer ?? "bars"} dots={dots} />
               ) : pillKey === "meeting" && upMeeting ? (
                 <CapsuleSplit
                   kind="meeting" k={k} dots={dots}
@@ -546,7 +604,7 @@ export function Pill() {
                     className="flex items-center gap-2.5"
                     style={{ flexDirection: rowReversed(settings.language === "en" ? "en" : "ar") ? "row-reverse" : "row" }}
                   >
-                    <Eyes islandHidden={hidden} k={k} />
+                    <Eyes islandHidden={hidden || mode !== "pill" || !!palette} k={k} />
                     {(settings.showClock ?? true) && <span dir="ltr">{time}</span>}
                   </span>
                 ) : (
@@ -576,18 +634,21 @@ export function Pill() {
         </AnimatePresence>
         <motion.div
           initial={false}
-          animate={{ opacity: open ? 1 : 0 }}
-          transition={{ duration: dur.base, ease: ease.out, delay: open ? 0.08 : 0 }}
+          variants={cf}
+          animate={open ? "shown" : "hidden"}
+          data-testid="panel-layer"
           style={{ width: panel.w, height: panel.h, padding: "var(--island-pad)", pointerEvents: open ? "auto" : "none" }}
           className="absolute left-1/2 top-0 flex -translate-x-1/2 flex-col"
         >
           <div className="flex shrink-0 items-center gap-2">
-            <TabBar
+            {(settings.panelTabsStyle ?? "icons") !== "hidden" && <div className="min-w-0 overflow-x-auto"><TabBar
               labels={tabLabels}
+              icons={tabs.map((t) => TAB_ICONS[t.id])}
+              variant={(settings.panelTabsStyle ?? "icons") as "labels" | "icons" | "dots"}
               active={tab}
               onSelect={(n) => setTabId(tabs[n]?.id ?? "home")}
               onHint={(n) => { if (tabs[n]?.id === "note") void importNote().catch(() => {}); }}
-            />
+            /></div>}
             <motion.button
               aria-label={i("الإعدادات", "Settings")}
               title={i("الإعدادات", "Settings")}
@@ -595,7 +656,7 @@ export function Pill() {
               whileHover={tap.whileHover}
               whileTap={tap.whileTap}
               transition={tap.transition}
-              className="i-btn ms-auto p-1.5"
+              className="i-btn ms-auto shrink-0 p-1.5"
             >
               <SettingsIcon size={16} />
             </motion.button>
@@ -631,13 +692,14 @@ export function Pill() {
               >
                 {curTab === "home" && (
                   // بطاقة النشاط الحي الأعلى أولوية تتصدّر الرئيسية (أو حالة الميديا الفارغة)؛ تحتها صف بلاطات «لمحة» الشرطية. لا شيء آخر.
-                  <div className="flex min-h-0 flex-1 flex-col" style={{ gap: "var(--island-section-gap)" }}>
+                  // الرئيسية: عمود يمرّر داخليًا إن لم يتّسع المحتوى (لا تداخل أبدًا): بطاقة النشاط/المشغّل بحدّ أدنى لمحتواها، وتحتها البلاطات.
+                  <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden" style={{ gap: "var(--island-section-gap)" }}>
                     {(shownPanel || moduleMedia) && (
-                      <motion.div custom={0} variants={sectionVariants} initial="initial" animate="animate" className="min-h-0 min-w-0 flex-1">
+                      <motion.div custom={0} variants={sectionVariants} initial="initial" animate="animate" className="min-w-0 flex-1 shrink-0 [min-height:min-content]">
                         {shownPanel ? (
                           <ActivityStack kinds={panelKinds} shown={shownPanel} onPin={setPinPanel} data={liveData} />
                         ) : (
-                          <MediaSection media={media} />
+                          <PlayerPanel media={media} s={settings} accent={accent} reduce={reduceUI} visible={open} />
                         )}
                       </motion.div>
                     )}
