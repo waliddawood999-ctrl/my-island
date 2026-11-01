@@ -104,6 +104,10 @@ export interface Settings {
   weatherAlerts:boolean,
   showToday:boolean,     // قسم «اليوم» في الرئيسية (هجري + مواقيت صلاة + طقس)
   prayerCity:string,     // معرّف مدينة سعودية من جدول today.rs (riyadh, makkah, ...)
+  showCountdowns:boolean,  // «اليوم»: عدّادات أحداث المستخدم (أقرب حدثين)؛ مطفأ ⇒ لا حساب ولا عرض
+  countdowns:Array<{id:string,name:string,date:string}>, // [{id,name,date:YYYY-MM-DD}] حتى 12؛ تُخزَّن في kv ضمن الإعدادات
+  showWorldClock:boolean,  // «اليوم»: ساعة عالمية مصغّرة لمدينة أو مدينتين؛ مطفأ ⇒ لا حساب ولا عرض
+  worldClocks:string[],    // أسماء IANA (حتى 2) من قائمة today.ts::WORLD_CITIES
   prayerAlerts:boolean,  // تنبيه قبل الصلاة 10د وعند دخول الوقت (بصوت alertSound إن ضُبط)
   aiBaseUrl:string,
   aiModels:string[],
@@ -167,4 +171,8 @@ export const DEFAULTS: Partial<Settings> = {
   showToday: true,       // محلي بلا شبكة؛ الطقس نفسه خلف showWeather (افتراضيًا معطّل)
   prayerCity: "riyadh",
   prayerAlerts: true,
+  showCountdowns: true,
+  countdowns: [],
+  showWorldClock: false,
+  worldClocks: [],
 };

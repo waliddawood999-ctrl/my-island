@@ -13,6 +13,7 @@
     "test:tabs": "node scripts/tabs.regression.cjs",
     "test:eyes": "node scripts/eyes.test.mjs",
     "test:wow": "node scripts/wow.test.mjs",
+    "test:today": "node scripts/today.test.mjs",
     "test:clip": "node scripts/clipActions.test.mjs"
   },
   "dependencies": {

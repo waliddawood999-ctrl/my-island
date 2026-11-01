@@ -6,6 +6,7 @@ import { i } from "../../i18n";
 import { saveSettings, useSettings } from "../../useSettings";
 import { EcoIndicator, RamUsage } from "./Perf";
 import { WorkspacesEditor } from "./Workspaces";
+import { CountdownsEditor, WorldClockEditor } from "./TodayExtras";
 import { Group, LinesField, Nav, NumberField, Row, Section, Select, Slider, SubHead, TextField, Toggle } from "./fields";
 
 interface CityOpt { id: string; ar: string; en: string }
@@ -225,6 +226,8 @@ function App() {
             onChange={(v) => saveSettings({ weatherUnits: v })}
           />
         </Row>
+        <CountdownsEditor s={s} />
+        <WorldClockEditor s={s} />
         <Row label={i("صوت التنبيه", "Alert sound")} hint={i("مسار WAV أو default · فارغ/off = صامت", "WAV path or default · empty/off = silent")}>
           <TextField label={i("صوت التنبيه", "Alert sound")} value={s.alertSound ?? ""} onCommit={(v) => saveSettings({ alertSound: v })} />
         </Row>

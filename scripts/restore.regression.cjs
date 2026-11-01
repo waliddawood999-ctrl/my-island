@@ -63,6 +63,59 @@ const SECRET_URL = "https://calendar.google.com/calendar/ical/secret-token-123/b
     await ctx.close();
   }
 
+  // ---- أ/ب: الساعة الذهبية + عدّادات الأحداث + الساعة العالمية (كلها محلية) ----
+  {
+    const t0 = Date.now(), M = 60e3;
+    const civil = (off) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Riyadh", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(t0 + off * 86400e3));
+    const pr = (riseMin, setMin) => [["fajr", -300], ["sunrise", riseMin], ["dhuhr", 400], ["asr", 600], ["maghrib", setMin], ["isha", setMin + 90], ["fajr", 1500]].map(([id, m]) => ({ id, at: t0 + m * M }));
+    const run = async (label, prayersList, settings, check) => {
+      const { ctx, page, errs } = await fresh(browser, { settings, extra: { today_get: { ...TODAY, prayers: prayersList, next_day_at: t0 + 3 * 86400e3 }, today_cities: [TODAY.city] } });
+      await open(page);
+      await check(page);
+      ok(`${label}: لا أخطاء صفحة`, errs.length === 0, errs.join("|"));
+      await ctx.close();
+    };
+    await run("ذهبية", pr(20, 600), {}, async (page) => {
+      const t = await page.locator('[data-testid="golden-hour"]').textContent().catch(() => "");
+      ok("ذهبية: صباحية قادمة قبل الشروق بـ20 د", /Morning golden hour/.test(t), t);
+      await shot(page, "golden");
+    });
+    await run("ذهبية", pr(-10, 600), {}, async (page) => {
+      ok("ذهبية: «الآن» بعد الشروق بـ10 د", /Golden hour now/.test(await page.locator('[data-testid="golden-hour"]').textContent().catch(() => "")));
+    });
+    await run("ذهبية", pr(-300, 5), {}, async (page) => {
+      ok("ذهبية: المغرب بعد 5 د ⇒ المسائية الآن", /Golden hour now/.test(await page.locator('[data-testid="golden-hour"]').textContent().catch(() => "")));
+    });
+    await run("ذهبية", pr(-600, -30), {}, async (page) => {
+      ok("ذهبية: النافذتان انتهتا ⇒ لا سطر", (await page.locator('[data-testid="golden-hour"]').count()) === 0);
+    });
+    const cds = [
+      { id: "a", name: "Eid", date: civil(3) }, { id: "b", name: "Exam", date: civil(1) }, { id: "c", name: "Far", date: civil(40) }, { id: "p", name: "Past", date: civil(-4) },
+    ];
+    await run("عدّادات", pr(20, 600), { countdowns: cds }, async (page) => {
+      const t = await page.locator('[data-testid="countdowns"]').textContent().catch(() => "");
+      ok("عدّادات: أقرب حدثين فقط بالترتيب (Exam غدًا ثم Eid 3 أيام)", /Exam.*Tomorrow.*Eid.*3 days/.test(t) && !/Far|Past/.test(t), t);
+      await shot(page, "countdowns");
+    });
+    await run("عدّادات", pr(20, 600), { countdowns: cds, showCountdowns: false }, async (page) => {
+      ok("عدّادات: مفتاح العرض مطفأ ⇒ لا قائمة", (await page.locator('[data-testid="countdowns"]').count()) === 0);
+    });
+    await run("عدّادات", pr(20, 600), { countdowns: "garbage" }, async (page) => {
+      ok("عدّادات: قيمة تالفة ⇒ تُتجاهل بلا خطأ", (await page.locator('[data-testid="countdowns"]').count()) === 0);
+    });
+    await run("ساعة عالمية", pr(20, 600), { showWorldClock: true, worldClocks: ["Europe/London", "Asia/Tokyo", "Asia/Dubai"] }, async (page) => {
+      const t = await page.locator('[data-testid="world-clock"]').textContent().catch(() => "");
+      ok("ساعة عالمية: مدينتان فقط (London, Tokyo)", /London/.test(t) && /Tokyo/.test(t) && !/Dubai/.test(t), t);
+      const fmtL = (at) => new Intl.DateTimeFormat("en-US", { timeZone: "Europe/London", hour: "numeric", minute: "2-digit", hour12: true }).format(new Date(at)).replace(/\s/g, "");
+      const flat = t.replace(/\s/g, "");
+      ok("ساعة عالمية: وقت لندن صحيح (تسامح دقيقة عند الحدّ)", [t0, t0 + 60e3, t0 + 120e3].some((a) => flat.includes(fmtL(a))), `${t}`);
+      await shot(page, "world-clock");
+    });
+    await run("ساعة عالمية", pr(20, 600), { showWorldClock: false, worldClocks: ["Europe/London"] }, async (page) => {
+      ok("ساعة عالمية: مفتاح العرض مطفأ ⇒ لا عنصر", (await page.locator('[data-testid="world-clock"]').count()) === 0);
+    });
+  }
+
   // ---- L2: إجراءات الحافظة ----
   {
     const clips = [
