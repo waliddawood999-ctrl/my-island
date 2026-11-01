@@ -16,12 +16,12 @@ const ok = (n, c, extra = "") => { if (!c) fails++; console.log(`${c ? "✓" : "
     const btn = page.locator('[data-testid="quit-btn"]');
     const L = lang === "en" ? ["Quit island", "Sure? Quit"] : ["إغلاق الجزيرة", "متأكد؟ إغلاق"];
     ok(`[${lang}] button exists with label`, (await btn.innerText()) === L[0], await btn.innerText());
-    const top = await btn.evaluate((b) => { const r = b.getBoundingClientRect(); const first = document.querySelector("section")?.getBoundingClientRect().top ?? 1e9; return { y: r.top, h: r.height, first }; });
-    ok(`[${lang}] sits in the top bar, above every section`, top.y >= 0 && top.y < 40 && top.y + top.h < top.first, JSON.stringify(top));
-    await page.evaluate(() => window.scrollTo(0, 2500)); await page.waitForTimeout(300);
-    const after = await btn.evaluate((b) => b.getBoundingClientRect().top);
-    ok(`[${lang}] still pinned & visible after scrolling far down`, after >= 0 && after < 40, String(after));
-    ok(`[${lang}] section nav is pinned below the bar (not overlapping)`, await page.locator("nav").evaluate((n, bh) => n.getBoundingClientRect().top >= bh - 1, 48));
+    const top = await btn.evaluate((b) => { const r = b.getBoundingClientRect(); const side = document.querySelector(".st-side").getBoundingClientRect(); const list = document.querySelector("nav").getBoundingClientRect(); return { y: r.top, h: r.height, gap: side.bottom - r.bottom, belowList: r.top >= list.bottom - 1, inSide: !!b.closest(".st-side") }; });
+    ok(`[${lang}] sits at the very bottom of the sidebar, below the list (not in a top bar)`, top.inSide && top.belowList && top.gap < 24, JSON.stringify(top));
+    await page.evaluate(() => document.querySelector(".st-main").scrollTo(0, 2500)); await page.waitForTimeout(300);
+    const after = await btn.evaluate((b) => document.querySelector(".st-side").getBoundingClientRect().bottom - b.getBoundingClientRect().bottom);
+    ok(`[${lang}] still pinned & visible after scrolling the content far down`, after >= 0 && after < 24, String(after));
+    ok(`[${lang}] the button is red (destructive)`, await btn.evaluate((b) => { const m = getComputedStyle(b).color.match(/\d+/g).map(Number); return m[0] > 180 && m[1] < 140 && m[2] < 140; }));
     ok(`[${lang}] step 0: not armed`, (await btn.getAttribute("data-armed")) === "false");
     await btn.click();
     ok(`[${lang}] step 1: label becomes confirm, armed`, (await btn.innerText()) === L[1] && (await btn.getAttribute("data-armed")) === "true", await btn.innerText());

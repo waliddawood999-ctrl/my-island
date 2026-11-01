@@ -1,94 +1,75 @@
-import { isValidElement, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { ChevronDown } from "lucide-react";
+import { createContext, useContext, useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { motion } from "motion/react";
+import { ChevronDown, Keyboard, X } from "lucide-react";
+import { spring } from "../../motion";
+import { i } from "../../i18n";
+import { ACCENT_PRESETS } from "../../appearance";
 
-/*
- * نمط shadcn/ui (zinc) على رموز ثيمنا: نصف قطر 0.5rem (rounded-lg) وحدود/خفوت بشفافية white/N — فتنعكس تلقائيًا
- * في الفاتح (--color-white مُعاد ربطه) ولا تكسر الزجاج (لا خلفيات صلبة جديدة). عرض فقط؛ لا مفاتيح ولا سلوك.
- */
-export const inputCls = "h-9 rounded-md border border-white/15 bg-[var(--app-field)] px-3 text-sm shadow-xs outline-none placeholder:text-white/40 focus-visible:ring-2 focus-visible:ring-white/30";
-/** أزرار shadcn: أساسي (مملوء بلون النص) / outline (حدّ) / destructive. */
-export const btnPrimary = "inline-flex h-9 items-center justify-center rounded-md bg-white px-4 text-sm font-medium text-black shadow-xs hover:bg-white/90 disabled:pointer-events-none disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-white/30 outline-none";
-export const btnOutline = "inline-flex h-9 items-center justify-center rounded-md border border-white/15 bg-transparent px-4 text-sm font-medium shadow-xs hover:bg-white/10 disabled:pointer-events-none disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-white/30 outline-none";
+/** عناصر الإعدادات (نظام التصميم الموحّد): كل الأنماط في settings.css من رموز tokens.css. عرض فقط؛ لا مفاتيح ولا سلوك هنا. */
+export const inputCls = "st-input";
+export const btnPrimary = "st-btn st-btn-primary";
+export const btnOutline = "st-btn";
 
-/** مجموعة رئيسية في الإعدادات (عام · المظهر والميديا · الوحدات · الأداء): عنوان واحد متّسق ثم أقسامها بتباعد ثابت. */
-export function Group({ id, title, desc, children }: { id: string; title: string; desc?: string; children: ReactNode }) {
-  return (
-    <div id={`grp-${id}`} data-group={id} className="space-y-6">
-      <div className="space-y-1">
-        <h2 className="text-2xl font-semibold tracking-tight text-white">{title}</h2>
-        {desc && <p dir="auto" className="text-sm text-white/50">{desc}</p>}
-      </div>
-      <div role="separator" className="h-px w-full bg-white/10" />
-      <div className="flex flex-col gap-8 [&>section+section]:border-t [&>section+section]:border-white/10 [&>section+section]:pt-8">{children}</div>
-    </div>
-  );
-}
+/** الاتجاه الفعلي (rtl بالعربية) لعناصر تعتمد الإزاحة المادية (مفتاح التبديل). */
+export const DirCtx = createContext<"ltr" | "rtl">("ltr");
+/** نص البحث الحي: الصفوف غير المطابقة تُخفى (hidden) والبطاقات/الأقسام الخالية تُخفى بـ:has في CSS. */
+export const SearchCtx = createContext("");
 
 export function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="space-y-4">
-      <h3 className="text-lg font-medium text-white">{title}</h3>
-      <div className="flex flex-col gap-4">{children}</div>
+    <section className="st-sec">
+      <h3 dir="auto" className="st-sec-title">{title}</h3>
+      <div className="st-card">{children}</div>
     </section>
   );
 }
 
-/** عنوان فرعي لتجميع مفاتيح مرتبطة داخل قسم. */
+/** فاصل فرعي داخل البطاقة (لتجميع صفوف مرتبطة). */
 export function SubHead({ children }: { children: ReactNode }) {
-  return <div dir="auto" className="border-t border-white/10 pt-4 text-sm font-medium text-white/50 first:border-t-0 first:pt-0">{children}</div>;
+  return <div role="presentation" dir="auto" className="st-note" style={{ fontWeight: 700, paddingBlock: 8, borderTop: "1px solid var(--c-border)" }}>{children}</div>;
 }
 
-/** شريط جانبي لقائمة الأقسام: قسم واحد نشط في كل مرة (تنقّل بالقائمة لا تمرير). */
-export function SideNav({ items, current, onSelect }: { items: { id: string; label: string; icon: ReactNode }[]; current: string; onSelect: (id: string) => void }) {
+export function Row({ label, hint, icon, children, col }: { label: string; hint?: string; icon?: ReactNode; children?: ReactNode; col?: boolean }) {
+  const q = useContext(SearchCtx).trim().toLowerCase();
+  const hit = !q || `${label} ${hint ?? ""}`.toLowerCase().includes(q);
   return (
-    <nav aria-label="Settings sections" className="sticky top-12 flex w-48 shrink-0 flex-col gap-1 self-start py-2">
-      {items.map((x) => (
-        <button
-          key={x.id}
-          data-nav={x.id}
-          onClick={() => onSelect(x.id)}
-          aria-current={current === x.id ? "true" : undefined}
-          className={`flex h-9 items-center gap-2 rounded-md px-3 text-start text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${current === x.id ? "bg-white/10 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"}`}
-        >
-          <span aria-hidden className="shrink-0">{x.icon}</span>
-          <span dir="auto" className="min-w-0 truncate">{x.label}</span>
-        </button>
-      ))}
-    </nav>
-  );
-}
-
-export function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
-  // صف المفتاح (Switch) = بطاقة بحدود على نمط صفحة Notifications؛ بقية الصفوف FormItem مسطّح.
-  const card = isValidElement(children) && children.type === Toggle;
-  return (
-    <div className={`flex items-center justify-between gap-4 ${card ? "rounded-lg border border-white/10 p-4" : ""}`}>
-      <div className="min-w-0 space-y-0.5">
-        <div dir="auto" className="text-sm font-medium">{label}</div>
-        {hint && <div dir="auto" className="text-[0.8rem] text-white/50">{hint}</div>}
+    <div className={`st-row${col ? " st-col" : ""}`} hidden={!hit}>
+      {icon && <span aria-hidden className="st-row-tile">{icon}</span>}
+      <div className="st-row-text">
+        <div dir="auto" className="st-row-title">{label}</div>
+        {hint && <div dir="auto" className="st-row-hint">{hint}</div>}
       </div>
-      <div className="shrink-0">{children}</div>
+      {children && <div className="st-row-ctl">{children}</div>}
     </div>
   );
 }
 
 export function Toggle({ value, onChange, label }: { value: boolean; onChange: (v: boolean) => void; label: string }) {
+  const dir = useContext(DirCtx);
+  const x = (dir === "rtl" ? -1 : 1) * 18;
   return (
-    <button
-      role="switch"
-      aria-checked={value}
-      aria-label={label}
-      onClick={() => onChange(!value)}
-      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border border-transparent shadow-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-white/30 ${value ? "bg-white" : "bg-white/20"}`}
-    >
-      <span
-        className={`pointer-events-none absolute top-1/2 h-5 w-5 -translate-y-1/2 rounded-full shadow-sm transition-all ${value ? "start-[22px] bg-black" : "start-0.5 bg-white"}`}
-      />
+    <button role="switch" aria-checked={value} aria-label={label} onClick={() => onChange(!value)} className="st-switch">
+      <motion.span className="st-thumb" initial={false} animate={{ x: value ? x : 0 }} transition={spring.press} />
     </button>
   );
 }
 
-/** منزلق: القيمة محلية أثناء السحب، وتُحفظ عند الإفلات فقط (pointerup/keyup/blur). */
+/** تحكّم مقطعي (segmented) بمؤشر نابض يتحرك بين الخيارات (transform فقط عبر layoutId). */
+export function Segmented<T extends string>(p: { value: T; options: { value: T; label: string }[]; onChange: (v: T) => void; label: string }) {
+  const id = useId();
+  return (
+    <div role="radiogroup" aria-label={p.label} className="st-seg">
+      {p.options.map((o) => (
+        <button key={o.value} role="radio" aria-checked={p.value === o.value} onClick={() => p.onChange(o.value)}>
+          {p.value === o.value && <motion.span layoutId={`seg-${id}`} className="st-seg-ind" transition={spring.press} />}
+          <span style={{ position: "relative" }}>{o.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** منزلق: القيمة حيّة أثناء السحب (تُعرض بجانبه)، وتُحفظ عند الإفلات أو حيًّا عبر onLive. */
 export function Slider(p: {
   value: number; min: number; max: number; step: number;
   onCommit: (v: number) => void; format?: (v: number) => string; label: string;
@@ -113,9 +94,9 @@ export function Slider(p: {
         onChange={(e) => { const n = Number(e.target.value); setDrag(true); setV(n); live(n); }}
         onPointerUp={commit} onKeyUp={commit} onBlur={commit}
         style={{ "--pct": `${p.max > p.min ? ((v - p.min) / (p.max - p.min)) * 100 : 0}%` } as CSSProperties}
-        className="sh-range w-48"
+        className="st-range"
       />
-      <span className="w-14 text-end text-sm tabular-nums text-white/50">{(p.format ?? String)(v)}</span>
+      <span className="st-val">{(p.format ?? String)(v)}</span>
     </div>
   );
 }
@@ -132,11 +113,59 @@ export function Select<T extends string | number>(p: {
           const o = p.options.find((x) => String(x.value) === e.target.value);
           if (o) p.onChange(o.value);
         }}
-        className={`${inputCls} min-w-36 cursor-pointer appearance-none pe-9`}
+        className="st-input"
       >
         {p.options.map((o) => <option key={String(o.value)} value={String(o.value)}>{o.label}</option>)}
       </select>
       <ChevronDown size={16} aria-hidden className="pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 opacity-50" />
+    </div>
+  );
+}
+
+/** منتقي اللون: ألوان جاهزة + مخصّص. */
+export function ColorField({ value, onChange, label }: { value: string; onChange: (hex: string) => void; label: string }) {
+  const cur = value.toLowerCase();
+  return (
+    <div role="radiogroup" aria-label={label} className="flex items-center gap-2">
+      {ACCENT_PRESETS.map((a) => (
+        <button key={a.id} role="radio" aria-checked={cur === a.hex} aria-label={i(a.ar, a.en)} title={i(a.ar, a.en)} className="st-swatch" style={{ "--sw": a.hex } as CSSProperties} onClick={() => onChange(a.hex)} />
+      ))}
+      <input type="color" aria-label={i("لون مخصّص", "Custom color")} className="st-color" value={/^#[0-9a-f]{6}$/i.test(value) ? value : "#4fd1c5"} onChange={(e) => onChange(e.target.value)} />
+    </div>
+  );
+}
+
+const MODS = ["Control", "Alt", "Shift", "Meta"];
+/** يحوّل keydown إلى نص اختصار (Ctrl+Alt+A). مفتاح مفرد من الموديفاير ⇒ null (ينتظر مفتاحًا فعليًا). */
+export function comboFromEvent(e: { key: string; ctrlKey: boolean; altKey: boolean; shiftKey: boolean; metaKey: boolean; code?: string }): string | null {
+  if (MODS.includes(e.key)) return null;
+  const k = e.key === " " ? "Space" : e.key.length === 1 ? e.key.toUpperCase() : e.key.replace(/^Arrow/, "");
+  return [e.ctrlKey && "Ctrl", e.altKey && "Alt", e.shiftKey && "Shift", e.metaKey && "Super", k].filter(Boolean).join("+");
+}
+
+/** مسجّل اختصارات: انقر ثم اضغط التركيبة. Esc يلغي، Backspace يمسح (= معطّل). */
+export function ShortcutField({ value, onCommit, label }: { value: string; onCommit: (v: string) => void; label: string }) {
+  const [rec, setRec] = useState(false);
+  const parts = value ? value.split("+") : [];
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        aria-label={label} data-rec={rec} dir="ltr" className="st-kbd"
+        onClick={() => setRec(true)} onBlur={() => setRec(false)}
+        onKeyDown={(e) => {
+          if (!rec) return;
+          e.preventDefault();
+          if (e.key === "Escape") { setRec(false); return; }
+          if (e.key === "Backspace" || e.key === "Delete") { onCommit(""); setRec(false); return; }
+          const c = e.key === "PrintScreen" ? "PrintScreen" : comboFromEvent(e);
+          if (c) { onCommit(c); setRec(false); }
+        }}
+      >
+        {rec ? <span>{i("اضغط الاختصار…", "Press shortcut…")}</span>
+          : parts.length ? parts.map((p) => <kbd key={p}>{p}</kbd>)
+          : <span style={{ opacity: .5, display: "inline-flex", gap: 6, alignItems: "center" }}><Keyboard size={14} />{i("معطّل", "Off")}</span>}
+      </button>
+      {value && <button aria-label={`${label} — ${i("مسح", "Clear")}`} className="st-btn" style={{ width: 36, paddingInline: 0 }} onClick={() => onCommit("")}><X size={14} /></button>}
     </div>
   );
 }
@@ -176,7 +205,7 @@ export function LinesField(p: { value: string[]; onCommit: (v: string[]) => void
   );
 }
 
-/** حقل نص يحفظ عند الخروج/Enter (مسارات واختصارات). */
+/** حقل نص يحفظ عند الخروج/Enter (مسارات). */
 export function TextField(p: { value: string; onCommit: (v: string) => void; label: string; placeholder?: string }) {
   const [t, setT] = useState(p.value);
   useEffect(() => setT(p.value), [p.value]);

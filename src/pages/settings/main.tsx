@@ -1,8 +1,15 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
+import { AnimatePresence, motion } from "motion/react";
 import { invoke } from "@tauri-apps/api/core";
 import { getVersion } from "@tauri-apps/api/app";
+import {
+  Activity, AppWindow, BatteryCharging, Bell, Blocks, Brush, CalendarClock, Camera, Clapperboard, Clipboard as ClipIcon, Clock, Cloud, Command, Cpu, Download, Eye, Film, FolderOpen,
+  Gauge, Globe, Info, Keyboard, Languages, Layers, LogOut, MapPin, Maximize2, Mic, Monitor, Moon, MousePointer2, Move, MoveVertical, Music, Network, Palette, PanelTop, Percent,
+  PictureInPicture2, Power, RefreshCw, RotateCcw, Ruler, Scan, Search, Settings2, Shield, Sparkles, Square, SunMoon, Timer, Type, Upload, Volume2, Waves, Zap, Hourglass, SlidersHorizontal,
+} from "lucide-react";
 import "../../index.css";
+import "./settings.css";
 import { i } from "../../i18n";
 import { saveSettings, useSettings } from "../../useSettings";
 import { EcoIndicator, RamUsage } from "./Perf";
@@ -11,11 +18,13 @@ import { CountdownsEditor, WorldClockEditor } from "./TodayExtras";
 import { clampGlassBlur, clampGlassSaturation } from "../../glass";
 import { manualCheck } from "../../useUpdater";
 import type { ManualStatus } from "../../updater";
-import { Blocks, Gauge, Palette, SlidersHorizontal } from "lucide-react";
-import { btnOutline, btnPrimary, Group, inputCls, LinesField, NumberField, Row, Section, Select, SideNav, Slider, SubHead, TextField, Toggle } from "./fields";
+import { GLASS_STYLE_VALUES, SECTION_KEYS, STYLE_PRESETS, exportSettings, parseImport, resetPatch } from "../../appearance";
+import { spring } from "../../motion";
+import { btnOutline, btnPrimary, ColorField, DirCtx, inputCls, LinesField, NumberField, Row, SearchCtx, Section, Segmented, Select, ShortcutField, Slider, SubHead, TextField, Toggle } from "./fields";
 
 interface CityOpt { id: string; ar: string; en: string }
 interface MonitorInfo { index: number; name: string; width: number; height: number; primary: boolean }
+const ic = (C: typeof Info) => <C size={16} />;
 
 /** رابط iCal الخاص: سرّ يُحفظ مشفّرًا (DPAPI) في الخلفية؛ الحقل لا يعرض القيمة المحفوظة أبدًا. */
 function MeetingsKey() {
@@ -33,7 +42,7 @@ function MeetingsKey() {
       .catch((e) => setMsg(String(e) === "https_only" ? i("يجب أن يبدأ الرابط بـ https أو webcal", "The link must start with https or webcal") : i("رابط غير صالح", "Invalid link")));
   return (
     <div className="flex flex-col gap-2">
-      <Row label={i("رابط iCal الخاص بالتقويم", "Private iCal link")} hint={isSet ? i("محفوظ ومشفّر — الصق رابطًا جديدًا لاستبداله", "Saved & encrypted — paste a new link to replace it") : i("من إعدادات التقويم: «العنوان السرّي بصيغة iCal»", "From your calendar settings: “Secret address in iCal format”")}>
+      <Row icon={<CalendarClock size={16} />} label={i("رابط iCal الخاص بالتقويم", "Private iCal link")} hint={isSet ? i("محفوظ ومشفّر — الصق رابطًا جديدًا لاستبداله", "Saved & encrypted — paste a new link to replace it") : i("من إعدادات التقويم: «العنوان السرّي بصيغة iCal»", "From your calendar settings: “Secret address in iCal format”")}>
         <div className="flex items-center gap-2">
           <input
             type="password" dir="ltr" autoComplete="off" spellCheck={false}
@@ -51,29 +60,26 @@ function MeetingsKey() {
   );
 }
 
-/** زر «التحقق من التحديثات»: الحالة تُعرض في مكانها (يتحقق… / أنت على أحدث إصدار / تعذّر التحقق / يوجد إصدار). */
+/** زر «التحقق من التحديثات»: الحالة تُعرض في مكانها. */
 const RELEASES_REPO = "https://github.com/waliddawood999-ctrl/my-island-releases";
 
-/** «حول»: الإصدار من حزمة التطبيق (نفس رقم CI في tauri.conf.json) + المطوّر + روابط المستودع العام للإصدارات. عرض فقط. */
+/** «حول»: قسم مستقل بذاته أسفل القائمة — الإصدار من حزمة التطبيق (نفس رقم CI) + المطوّر + ما الجديد + GitHub. عرض فقط. */
 function AboutSection() {
   const [ver, setVer] = useState("");
-  useEffect(() => {
-    getVersion().then(setVer).catch(() => {});
-  }, []);
+  useEffect(() => { getVersion().then(setVer).catch(() => {}); }, []);
   const open = (url: string) => () => { invoke("open_path", { path: url }).catch(() => {}); };
-  const link = btnOutline;
   return (
     <Section title={i("حول", "About")}>
-      <Row label={i("الإصدار الحالي", "Current version")}>
-        <span dir="ltr" className="text-sm tabular-nums text-white/80" data-testid="about-version">{ver || "—"}</span>
+      <Row icon={ic(Info)} label={i("الإصدار الحالي", "Current version")}>
+        <span dir="ltr" className="st-val" data-testid="about-version">{ver || "—"}</span>
       </Row>
-      <Row label={i("طُوِّر بواسطة وليد", "Developed by Walid")}>
-        <span />
+      <Row icon={ic(Sparkles)} label={i("طُوِّر بواسطة وليد", "Developed by Walid")} />
+      <Row icon={ic(Clapperboard)} label={i("ما الجديد", "What's new")} hint={i("ملاحظات الإصدارات على GitHub", "Release notes on GitHub")}>
+        <button className={btnOutline} data-testid="about-whatsnew" onClick={open(`${RELEASES_REPO}/releases`)}>{i("ما الجديد", "What's new")}</button>
       </Row>
-      <div className="flex gap-2">
-        <button className={link} data-testid="about-whatsnew" onClick={open(`${RELEASES_REPO}/releases`)}>{i("ما الجديد", "What's new")}</button>
-        <button className={link} data-testid="about-github" onClick={open(RELEASES_REPO)}>GitHub</button>
-      </div>
+      <Row icon={ic(Globe)} label="GitHub" hint={i("صفحة الإصدارات", "Releases page")}>
+        <button className={btnOutline} data-testid="about-github" onClick={open(RELEASES_REPO)}>GitHub</button>
+      </Row>
     </Section>
   );
 }
@@ -94,7 +100,7 @@ function UpdateCheck() {
     : st === "available" ? i(`يوجد إصدار ${ver} — يظهر في الجزيرة`, `Version ${ver} is available — shown in the island`)
     : "";
   return (
-    <Row label={i("التحقق من التحديثات", "Check for updates")}>
+    <Row icon={<RefreshCw size={16} />} label={i("التحقق من التحديثات", "Check for updates")}>
       <div className="flex items-center gap-2">
         <button
           data-testid="update-check" disabled={st === "checking"} onClick={run}
@@ -106,7 +112,7 @@ function UpdateCheck() {
   );
 }
 
-/** «إغلاق الجزيرة»: تأكيد على خطوتين داخل الزر نفسه (نقرة أولى ⇒ «متأكد؟ إغلاق»، ثانية ⇒ app_quit). يعود تلقائيًا بعد 4 ثوانٍ أو بفقد التركيز. */
+/** «إغلاق الجزيرة»: أسفل الشريط الجانبي، أحمر؛ تأكيد على خطوتين داخل الزر نفسه (نقرة أولى ⇒ «متأكد؟ إغلاق»، ثانية ⇒ app_quit). يعود تلقائيًا بعد 4 ثوانٍ أو بفقد التركيز. */
 function QuitButton() {
   const [sure, setSure] = useState(false);
   useEffect(() => {
@@ -119,10 +125,51 @@ function QuitButton() {
       data-testid="quit-btn" data-armed={sure ? "true" : "false"}
       onClick={() => { if (sure) invoke("app_quit").catch(() => {}); else setSure(true); }}
       onBlur={() => setSure(false)}
-      className={`ms-auto ${sure ? "inline-flex h-9 items-center rounded-md bg-red-600 px-4 text-sm font-medium text-white shadow-xs hover:bg-red-600/90" : btnOutline}`}
-    >{sure ? i("متأكد؟ إغلاق", "Sure? Quit") : i("إغلاق الجزيرة", "Quit island")}</button>
+      className="st-btn st-btn-danger"
+    ><LogOut size={16} className="rtl:-scale-x-100" />{sure ? i("متأكد؟ إغلاق", "Sure? Quit") : i("إغلاق الجزيرة", "Quit island")}</button>
   );
 }
+
+/** نسخ احتياطي: تصدير/استيراد JSON + إعادة ضبط الكل (بتأكيد من خطوتين). لا أسرار في الإعدادات أصلًا (DPAPI منفصل). */
+function Backup({ s }: { s: Parameters<typeof exportSettings>[0] }) {
+  const file = useRef<HTMLInputElement>(null);
+  const [msg, setMsg] = useState("");
+  const [sure, setSure] = useState(false);
+  useEffect(() => { if (!sure) return; const t = window.setTimeout(() => setSure(false), 4000); return () => window.clearTimeout(t); }, [sure]);
+  const doExport = () => {
+    const url = URL.createObjectURL(new Blob([exportSettings(s)], { type: "application/json" }));
+    const a = document.createElement("a"); a.href = url; a.download = "myisland-settings.json"; a.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 2000);
+    setMsg(i("تم التصدير", "Exported"));
+  };
+  const doImport = async (f?: File) => {
+    if (!f) return;
+    const p = parseImport(await f.text(), s);
+    if (!p || !Object.keys(p).length) { setMsg(i("ملف غير صالح", "Invalid file")); return; }
+    saveSettings(p); setMsg(i(`استُورد ${Object.keys(p).length} إعدادًا`, `Imported ${Object.keys(p).length} settings`));
+  };
+  const all = Object.values(SECTION_KEYS).flat();
+  return (
+    <Section title={i("نسخ احتياطي وإعادة ضبط", "Backup & reset")}>
+      <Row icon={ic(Download)} label={i("تصدير الإعدادات", "Export settings")} hint={i("ملف JSON بلا أسرار (المفاتيح السرية تُحفظ مشفّرة بشكل منفصل)", "A JSON file with no secrets (keys are stored encrypted separately)")}>
+        <button className={btnOutline} data-testid="export-btn" onClick={doExport}>{i("تصدير", "Export")}</button>
+      </Row>
+      <Row icon={ic(Upload)} label={i("استيراد الإعدادات", "Import settings")} hint={msg || i("يُطبَّق فورًا؛ المفاتيح غير المعروفة تُتجاهل", "Applied instantly; unknown keys are ignored")}>
+        <input ref={file} type="file" accept="application/json,.json" hidden data-testid="import-file" onChange={(e) => { doImport(e.target.files?.[0]); e.target.value = ""; }} />
+        <button className={btnOutline} data-testid="import-btn" onClick={() => file.current?.click()}>{i("استيراد", "Import")}</button>
+      </Row>
+      <Row icon={ic(RotateCcw)} label={i("إعادة ضبط كل الإعدادات", "Reset all settings")} hint={i("يعيد الافتراضيات (قوائمك مثل العدّادات ومساحات العمل تبقى)", "Restores defaults (your lists like countdowns and workspaces stay)")}>
+        <button className={`st-btn ${sure ? "st-btn-danger" : ""}`} style={sure ? { width: "auto" } : undefined} data-armed={sure} data-testid="reset-all"
+          onClick={() => { if (sure) { saveSettings(resetPatch(all)); setSure(false); setMsg(i("أُعيد الضبط", "Reset done")); } else setSure(true); }} onBlur={() => setSure(false)}>
+          {sure ? i("متأكد؟ إعادة ضبط", "Sure? Reset") : i("إعادة ضبط الكل", "Reset all")}
+        </button>
+      </Row>
+    </Section>
+  );
+}
+
+
+interface Sec { id: string; icon: ReactNode; label: string; desc: string; body: ReactNode }
 
 function App() {
   const s = useSettings();
@@ -133,412 +180,465 @@ function App() {
     invoke<CityOpt[]>("today_cities").then(setCities).catch(() => {});
   }, []);
   const [tab, setTab] = useState("general");
+  const [q, setQ] = useState("");
+  const dir = s.language === "en" ? "ltr" : "rtl";
   const pct = (v: number) => `${v}%`;
   const ms = (v: number) => `${v} ms`;
   const px = (v: number) => `${v} px`;
+  const glassOn = (s.themeMaterial ?? "glass") === "glass";
+  const set = saveSettings;
+
+  const sections: Sec[] = [
+    {
+      id: "general", icon: <Settings2 size={16} />, label: i("عام", "General"), desc: i("التشغيل واللغة والشاشة وسلوك الفتح والإغلاق.", "Startup, language, screen and open/close behavior."),
+      body: (<>
+        <Section title={i("التشغيل", "Startup")}>
+          <Row icon={ic(Power)} label={i("التشغيل مع ويندوز", "Start with Windows")}>
+            <Toggle label={i("التشغيل مع ويندوز", "Start with Windows")} value={s.autostart ?? false} onChange={(v) => set({ autostart: v })} />
+          </Row>
+          <Row icon={ic(Languages)} label={i("اللغة", "Language")}>
+            <Select
+              label={i("اللغة", "Language")} value={s.language === "en" ? "en" : "ar"}
+              options={[{ value: "ar", label: "العربية" }, { value: "en", label: "English" }]}
+              onChange={(v) => set({ language: v })}
+            />
+          </Row>
+          <Row icon={ic(Monitor)} label={i("الشاشة", "Monitor")}>
+            <Select
+              label={i("الشاشة", "Monitor")} value={s.monitor ?? 0}
+              options={(monitors.length ? monitors : [{ index: 0, name: "", width: 0, height: 0, primary: true }]).map((m) => ({
+                value: m.index,
+                label: `${m.index + 1}${m.width ? ` — ${m.width}×${m.height}` : ""}${m.primary ? ` (${i("الرئيسية", "primary")})` : ""}`,
+              }))}
+              onChange={(v) => set({ monitor: v })}
+            />
+          </Row>
+        </Section>
+        <Section title={i("السلوك", "Behavior")}>
+          <Row icon={ic(MousePointer2)} label={i("تأخير الفتح بالمرور", "Hover delay")}>
+            <Slider label={i("تأخير الفتح بالمرور", "Hover delay")} value={s.hoverDelayMs ?? 250} min={0} max={600} step={25} format={ms} onCommit={(v) => set({ hoverDelayMs: v })} />
+          </Row>
+          <Row icon={ic(Hourglass)} label={i("تأخير الانكماش", "Collapse delay")}>
+            <Slider label={i("تأخير الانكماش", "Collapse delay")} value={s.collapseDelayMs ?? 350} min={100} max={1500} step={50} format={ms} onCommit={(v) => set({ collapseDelayMs: v })} />
+          </Row>
+        </Section>
+        <Backup s={s} />
+      </>),
+    },
+    {
+      id: "island", icon: <PictureInPicture2 size={16} />, label: i("الجزيرة", "Island"), desc: i("الحجم والموضع والظهور — الشكل ثابت ولا يتغيّر إلا من هنا.", "Size, position and visibility — the shape is fixed and only changes here."),
+      body: (<>
+        <Section title={i("الحجم والشكل", "Size & shape")}>
+          <Row icon={ic(Ruler)} label={i("عرض الحبة", "Pill width")} hint={i("المحتوى يتدرج مع المقاس تلقائيًا", "Content scales with the size automatically")}>
+            <Slider label={i("عرض الحبة", "Pill width")} value={s.pillWidth ?? 220} min={160} max={280} step={5} format={px} onLive={(v) => set({ pillWidth: v })} onCommit={(v) => set({ pillWidth: v })} />
+          </Row>
+          <Row icon={ic(Ruler)} label={i("ارتفاع الحبة", "Pill height")}>
+            <Slider label={i("ارتفاع الحبة", "Pill height")} value={s.pillHeight ?? 34} min={28} max={44} step={1} format={px} onLive={(v) => set({ pillHeight: v })} onCommit={(v) => set({ pillHeight: v })} />
+          </Row>
+          <Row icon={ic(Square)} label={i("استدارة الحبة", "Pill corner radius")} hint={i("0 = كبسولة كاملة تلقائيًا", "0 = automatic full capsule")}>
+            <Slider label={i("استدارة الحبة", "Pill corner radius")} value={s.pillRadius ?? 0} min={0} max={22} step={1} format={(v) => (v === 0 ? i("تلقائي", "Auto") : `${v} px`)} onCommit={(v) => set({ pillRadius: v })} />
+          </Row>
+        </Section>
+        <Section title={i("الموضع", "Position")}>
+          <Row icon={ic(MapPin)} label={i("موضع الجزيرة", "Position")}>
+            <Segmented label={i("موضع الجزيرة", "Position")} value={s.pillPosition ?? "center"} onChange={(v) => set({ pillPosition: v })}
+              options={[{ value: "left", label: i("يسار", "Left") }, { value: "center", label: i("منتصف", "Center") }, { value: "right", label: i("يمين", "Right") }]} />
+          </Row>
+          <Row icon={ic(Move)} label={i("الإزاحة الأفقية", "Horizontal offset")} hint={i("عن الموضع المختار", "From the chosen position")}>
+            <Slider label={i("الإزاحة الأفقية", "Horizontal offset")} value={s.offsetX ?? 0} min={-800} max={800} step={10} format={px} onCommit={(v) => set({ offsetX: v })} />
+          </Row>
+          <Row icon={ic(MoveVertical)} label={i("الإزاحة الرأسية", "Vertical offset")} hint={i("المسافة عن أعلى الشاشة", "Distance from the top of the screen")}>
+            <Slider label={i("الإزاحة الرأسية", "Vertical offset")} value={s.offsetY ?? 0} min={0} max={60} step={2} format={px} onCommit={(v) => set({ offsetY: v })} />
+          </Row>
+          <Row icon={ic(PanelTop)} label={i("تحت شريط المهام", "Under the taskbar")} hint={i("من حافة الشاشة الفعلية بدل منطقة العمل", "From the physical screen edge instead of the work area")}>
+            <Toggle label={i("تحت شريط المهام", "Under the taskbar")} value={s.underTaskbar ?? false} onChange={(v) => set({ underTaskbar: v })} />
+          </Row>
+        </Section>
+        <Section title={i("الظهور", "Visibility")}>
+          <Row icon={ic(Eye)} label={i("إخفاء تلقائي", "Auto-hide")} hint={i("تختفي الحبة في الراحة وتظهر عند مرور المؤشر (إطفاؤه = ظاهرة دائمًا)", "The pill fades at rest and reappears on hover (off = always visible)")}>
+            <Toggle label={i("إخفاء تلقائي", "Auto-hide")} value={s.autoHide ?? false} onChange={(v) => set({ autoHide: v })} />
+          </Row>
+          <Row icon={ic(Maximize2)} label={i("الإخفاء في وضع ملء الشاشة", "Hide in fullscreen")}>
+            <Toggle label={i("الإخفاء في وضع ملء الشاشة", "Hide in fullscreen")} value={s.hideInFullscreen ?? false} onChange={(v) => set({ hideInFullscreen: v })} />
+          </Row>
+          <Row icon={ic(Percent)} label={i("الشفافية في الراحة", "Opacity at rest")}>
+            <Slider label={i("الشفافية في الراحة", "Opacity at rest")} value={s.opacityRest ?? 100} min={20} max={100} step={5} format={pct} onCommit={(v) => set({ opacityRest: v })} />
+          </Row>
+          <Row icon={ic(Percent)} label={i("الشفافية عند الفتح", "Opacity when open")}>
+            <Slider label={i("الشفافية عند الفتح", "Opacity when open")} value={s.opacityOpen ?? 100} min={20} max={100} step={5} format={pct} onCommit={(v) => set({ opacityOpen: v })} />
+          </Row>
+          <Row icon={ic(Camera)} label={i("إظهار الحبة في اللقطات", "Show the island in captures")} hint={i("مطفأ: الحبة تُستثنى من اللقطات والتسجيل", "Off: the island is excluded from screenshots and recordings")}>
+            <Toggle label={i("إظهار الحبة في اللقطات", "Show the island in captures")} value={s.captureVisible ?? false} onChange={(v) => set({ captureVisible: v })} />
+          </Row>
+        </Section>
+        <Section title={i("المحتوى", "Content")}>
+          <Row icon={ic(Clock)} label={i("إظهار الساعة", "Show clock")}>
+            <Toggle label={i("إظهار الساعة", "Show clock")} value={s.showClock ?? true} onChange={(v) => set({ showClock: v })} />
+          </Row>
+          <Row icon={ic(Clock)} label={i("نظام الساعة", "Clock format")}>
+            <Segmented label={i("نظام الساعة", "Clock format")} value={s.clockFormat ?? "auto"} onChange={(v) => set({ clockFormat: v })}
+              options={[{ value: "auto", label: i("تلقائي", "Auto") }, { value: "24", label: i("24 ساعة", "24-hour") }, { value: "12", label: i("12 ساعة", "12-hour") }]} />
+          </Row>
+          <Row icon={ic(Eye)} label={i("عيون التميمة", "Mascot eyes")} hint={i("عينان بجانب الساعة تتبعان المؤشر؛ تُخفى أثناء الميديا والتوفير", "Eyes beside the clock follow the cursor; hidden during media and eco mode")}>
+            <Toggle label={i("عيون التميمة", "Mascot eyes")} value={s.eyesEnabled ?? true} onChange={(v) => set({ eyesEnabled: v })} />
+          </Row>
+          <Row icon={ic(AppWindow)} label={i("وضع تبويب المتصفح", "Browser tab mode")}
+            hint={i(
+              "حين يكون المتصفح (Chrome/Edge/Firefox/Brave) هو النافذة الأمامية ومكبَّرًا، تتخذ الحبة هيئة تبويب في أعلى شريطه؛ الضغط عليها يفتح اللوحة. إرساء بصري لا تبويب حقيقي، ويتوقف في وضع التوفير.",
+              "When a browser (Chrome/Edge/Firefox/Brave) is the maximized foreground window, the pill takes a tab shape in its tab strip; click it to open the panel. A visual docking, not a real tab; paused in Eco mode.",
+            )}>
+            <Toggle label={i("وضع تبويب المتصفح", "Browser tab mode")} value={s.browserTabMode ?? false} onChange={(v) => set({ browserTabMode: v })} />
+          </Row>
+        </Section>
+      </>),
+    },
+    {
+      id: "appearance", icon: <Palette size={16} />, label: i("المظهر", "Appearance"), desc: i("النمط والزجاج واللون والزوايا والخط والكثافة — تُطبَّق فورًا.", "Theme, glass, color, corners, font and density — applied instantly."),
+      body: (<>
+        <Section title={i("إعدادات مسبقة", "Presets")}>
+          <Row icon={ic(Sparkles)} label={i("أنماط جاهزة", "Style presets")} hint={i("نقرة واحدة تطبّق مجموعة كاملة من القيم", "One click applies a full set of values")} col>
+            <div className="st-chips" data-testid="presets">
+              {STYLE_PRESETS.map((p) => <button key={p.id} className="st-chip" data-preset={p.id} onClick={() => set(p.values)}>{i(p.ar, p.en)}</button>)}
+            </div>
+          </Row>
+        </Section>
+        <Section title={i("النمط والمادة", "Theme & material")}>
+          <Row icon={ic(SunMoon)} label={i("النمط", "Theme")} hint={i("يتبع النظام افتراضيًا ويُطبَّق على الحبة واللوحة ونوافذ البرنامج", "Follows the system by default; applies to the island, panel and app windows")}>
+            <Segmented label={i("النمط", "Theme")} value={s.themeMode ?? "system"} onChange={(v) => set({ themeMode: v })}
+              options={[{ value: "system", label: i("النظام", "System") }, { value: "light", label: i("فاتح", "Light") }, { value: "dark", label: i("داكن", "Dark") }]} />
+          </Row>
+          <Row icon={ic(Layers)} label={i("المادة", "Material")} hint={i("الزجاجية: شفافية مع blur · العادية: سطح مصمت", "Glass: transparency with blur · Solid: an opaque surface")}>
+            <Segmented label={i("المادة", "Material")} value={glassOn ? "glass" : "solid"} onChange={(v) => set({ themeMaterial: v })}
+              options={[{ value: "solid", label: i("عادية (مصمتة)", "Solid") }, { value: "glass", label: i("زجاجية", "Glass") }]} />
+          </Row>
+          {glassOn && (
+            <Row icon={ic(Sparkles)} label={i("أسلوب الزجاج", "Glass style")} hint={i("بلوري: سميك ولامع كالسائل · شفاف: خفيف يُظهر سطح المكتب", "Crystal: thick and luminous · Clear: light, the desktop shows through")} col>
+              <div className="st-gstyles" role="radiogroup" aria-label={i("أسلوب الزجاج", "Glass style")}>
+                {(["crystal", "clear"] as const).map((g) => (
+                  <button key={g} role="radio" aria-checked={(s.glassStyle ?? "crystal") === g} data-glass-style={g} className="st-gstyle" onClick={() => set(GLASS_STYLE_VALUES[g])}>
+                    <span className={`st-gprev ${g}`} />
+                    <span className="st-row-title">{g === "crystal" ? i("الزجاج البلوري", "Crystal glass") : i("الزجاج الشفاف", "Clear glass")}</span>
+                    <span className="st-row-hint">{g === "crystal" ? i("تمويه قوي، حافة لامعة، عمق وتوهّج", "Strong frost, bright rim, depth and glow") : i("تمويه خفيف، حدّ رفيع، رؤية واضحة للخلفية", "Light blur, thin border, clear see-through")}</span>
+                  </button>
+                ))}
+              </div>
+            </Row>
+          )}
+          {glassOn && (
+            <Row icon={ic(Moon)} label={i("قوة تظليل الزجاج", "Glass tint strength")} hint={i("أعلى = لوحة أغمق وتباين نص أوضح فوق المحتوى الفاتح", "Higher = darker panel and clearer text over bright content")}>
+              <Slider label={i("قوة تظليل الزجاج", "Glass tint strength")} value={s.glassTint ?? 45} min={0} max={80} step={1} format={pct} onLive={(v) => set({ glassTint: v })} onCommit={(v) => set({ glassTint: v })} />
+            </Row>
+          )}
+          {glassOn && (
+            <Row icon={ic(Waves)} label={i("تمويه الزجاج (CSS)", "Glass blur (CSS)")} hint={i("طبقة الصفحة فوق الزجاج الأصلي (حتى 40px)؛ يُحدّ في وضع التوفير", "Page layer over the native glass (max 40px); capped in eco mode")}>
+              <Slider label={i("تمويه الزجاج (CSS)", "Glass blur (CSS)")} value={clampGlassBlur(s.glassBlur)} min={0} max={40} step={1} format={px} onLive={(v) => set({ glassBlur: v })} onCommit={(v) => set({ glassBlur: v })} />
+            </Row>
+          )}
+          {glassOn && (
+            <Row icon={ic(Palette)} label={i("تشبّع الزجاج", "Glass saturation")} hint={i("يزيد حيوية الألوان خلف الزجاج؛ 100% = بلا تعزيز", "Boosts colours behind the glass; 100% = no boost")}>
+              <Slider label={i("تشبّع الزجاج", "Glass saturation")} value={clampGlassSaturation(s.glassSaturation)} min={100} max={200} step={5} format={pct} onLive={(v) => set({ glassSaturation: v })} onCommit={(v) => set({ glassSaturation: v })} />
+            </Row>
+          )}
+        </Section>
+        <Section title={i("اللون والتفاصيل", "Color & details")}>
+          <Row icon={ic(Brush)} label={i("لون التمييز", "Accent color")}>
+            <ColorField label={i("لون التمييز", "Accent color")} value={s.accentColor ?? "#4fd1c5"} onChange={(v) => set({ accentColor: v })} />
+          </Row>
+          <Row icon={ic(Square)} label={i("قوة الحدود", "Border strength")}>
+            <Slider label={i("قوة الحدود", "Border strength")} value={s.borderStrength ?? 50} min={0} max={100} step={5} format={pct} onLive={(v) => set({ borderStrength: v })} onCommit={(v) => set({ borderStrength: v })} />
+          </Row>
+          <Row icon={ic(Layers)} label={i("قوة الظلال", "Shadow strength")}>
+            <Slider label={i("قوة الظلال", "Shadow strength")} value={s.shadowStrength ?? 50} min={0} max={100} step={5} format={pct} onLive={(v) => set({ shadowStrength: v })} onCommit={(v) => set({ shadowStrength: v })} />
+          </Row>
+          <Row icon={ic(Square)} label={i("نمط الزوايا", "Corner style")}>
+            <Segmented label={i("نمط الزوايا", "Corner style")} value={s.cornerStyle ?? "rounded"} onChange={(v) => set({ cornerStyle: v })}
+              options={[{ value: "rounded", label: i("مستدير", "Rounded") }, { value: "extra", label: i("مستدير جدًا", "Extra rounded") }]} />
+          </Row>
+          <Row icon={ic(Type)} label={i("حجم الخط", "Font size")} hint={i("يقيس نصوص الواجهة كلها (Almarai)", "Scales all interface text (Almarai)")}>
+            <Slider label={i("حجم الخط", "Font size")} value={s.fontScale ?? 100} min={90} max={120} step={5} format={pct} onLive={(v) => set({ fontScale: v })} onCommit={(v) => set({ fontScale: v })} />
+          </Row>
+          <Row icon={ic(SlidersHorizontal)} label={i("الكثافة", "Density")}>
+            <Segmented label={i("الكثافة", "Density")} value={s.density ?? "comfortable"} onChange={(v) => set({ density: v })}
+              options={[{ value: "comfortable", label: i("مريحة", "Comfortable") }, { value: "compact", label: i("مدمجة", "Compact") }]} />
+          </Row>
+        </Section>
+      </>),
+    },
+    {
+      id: "motion", icon: <Zap size={16} />, label: i("الحركة", "Motion"), desc: i("سرعة الحركة ونمط النوابض وتقليلها.", "Animation speed, spring style and reducing motion."),
+      body: (
+        <Section title={i("الحركة", "Motion")}>
+          <Row icon={ic(Zap)} label={i("مستوى الحركة", "Motion level")} hint={i("كاملة: حركة نابضة · مخففة: انتقالات قصيرة بلا ارتداد · متوقفة: بلا حركة", "Full: springy · Reduced: short, no bounce · Off: no motion")}>
+            <Segmented label={i("مستوى الحركة", "Motion level")} value={s.motionLevel === "reduced" || s.motionLevel === "off" ? s.motionLevel : "full"} onChange={(v) => set({ motionLevel: v })}
+              options={[{ value: "full", label: i("كاملة", "Full") }, { value: "reduced", label: i("مخففة", "Reduced") }, { value: "off", label: i("متوقفة", "Off") }]} />
+          </Row>
+          <Row icon={ic(Gauge)} label={i("سرعة الحركة", "Animation speed")} hint={i("0.5× أبطأ · 1.5× أسرع", "0.5× slower · 1.5× faster")}>
+            <Slider label={i("سرعة الحركة", "Animation speed")} value={s.animSpeed ?? 100} min={50} max={150} step={10} format={(v) => `${(v / 100).toFixed(1)}×`} onCommit={(v) => set({ animSpeed: v })} />
+          </Row>
+          <Row icon={ic(Waves)} label={i("نمط النابض", "Spring style")} hint={i("حاد: سريع · ناعم: متوازن · هادئ: بطيء وسلس", "Snappy: quick · Smooth: balanced · Gentle: slow and soft")}>
+            <Segmented label={i("نمط النابض", "Spring style")} value={s.springStyle ?? "snappy"} onChange={(v) => set({ springStyle: v })}
+              options={[{ value: "snappy", label: i("حاد", "Snappy") }, { value: "smooth", label: i("ناعم", "Smooth") }, { value: "gentle", label: i("هادئ", "Gentle") }]} />
+          </Row>
+          <Row icon={ic(Eye)} label={i("تقليل الحركة", "Reduce motion")} hint={i("يُحترم تفضيل النظام «تقليل الحركة» تلقائيًا أيضًا", "The OS “reduce motion” preference is honored automatically too")}>
+            <Toggle label={i("تقليل الحركة", "Reduce motion")} value={s.reduceMotion ?? false} onChange={(v) => set({ reduceMotion: v })} />
+          </Row>
+        </Section>
+      ),
+    },
+    {
+      id: "modules", icon: <Blocks size={16} />, label: i("الوحدات", "Modules"), desc: i("فعّل الوحدات التي تحتاجها وعدّل خياراتها.", "Turn on the modules you need and tune their options."),
+      body: (<>
+        <Section title={i("اليوم والصلاة", "Today & prayer")}>
+          <Row icon={ic(CalendarClock)} label={i("إظهار قسم «اليوم»", "Show the Today section")} hint={i("هجري + مواقيت الصلاة في الرئيسية — محلي بلا إنترنت", "Hijri date + prayer times on Home — local, offline")}>
+            <Toggle label={i("إظهار قسم «اليوم»", "Show the Today section")} value={s.showToday ?? true} onChange={(v) => set({ showToday: v })} />
+          </Row>
+          <Row icon={ic(MapPin)} label={i("المدينة", "City")} hint={i("مواقيت أم القرى تُحسب محليًا لإحداثيات المدينة", "Umm al-Qura times computed locally for the city")}>
+            <Select
+              label={i("المدينة", "City")} value={s.prayerCity ?? "riyadh"}
+              options={(cities.length ? cities : [{ id: s.prayerCity ?? "riyadh", ar: "الرياض", en: "Riyadh" }]).map((c) => ({ value: c.id, label: s.language === "en" ? c.en : c.ar }))}
+              onChange={(v) => set({ prayerCity: v })}
+            />
+          </Row>
+          <Row icon={ic(Cloud)} label={i("الطقس", "Weather")} hint={i("يتصل بـ Open-Meteo (بلا حساب) لمدينتك — مطفأ افتراضيًا", "Connects to Open-Meteo (no account) for your city — off by default")}>
+            <Toggle label={i("الطقس", "Weather")} value={s.showWeather ?? false} onChange={(v) => set({ showWeather: v })} />
+          </Row>
+          <Row icon={ic(Cloud)} label={i("وحدة الحرارة", "Temperature unit")}>
+            <Segmented label={i("وحدة الحرارة", "Temperature unit")} value={s.weatherUnits ?? "c"} onChange={(v) => set({ weatherUnits: v })} options={[{ value: "c", label: "°C" }, { value: "f", label: "°F" }]} />
+          </Row>
+          <CountdownsEditor s={s} />
+          <WorldClockEditor s={s} />
+        </Section>
+        <Section title={i("الميديا", "Media")}>
+          <Row icon={ic(Music)} label={i("طيف الصوت والحبة السائلة", "Audio spectrum & liquid pill")} hint={i("يلتقط صوت الجهاز محليًا أثناء تشغيل الميديا فقط", "Captures system audio locally, only while media plays")}>
+            <Toggle label={i("طيف الصوت والحبة السائلة", "Audio spectrum & liquid pill")} value={s.liquidSpectrum ?? false} onChange={(v) => set({ liquidSpectrum: v })} />
+          </Row>
+          <Row icon={ic(Music)} label={i("كلمات الأغاني في الرئيسية", "Lyrics in Home")} hint={i("تُجلب من الإنترنت (LRCLIB)", "Fetched online (LRCLIB)")}>
+            <Toggle label={i("كلمات الأغاني في الرئيسية", "Lyrics in Home")} value={s.lyricsInHome ?? false} onChange={(v) => set({ lyricsInHome: v })} />
+          </Row>
+          <Row icon={ic(Music)} label={i("كلمات الأغاني في المشغّل", "Lyrics in player")} hint={i("تُجلب من الإنترنت (LRCLIB)", "Fetched online (LRCLIB)")}>
+            <Toggle label={i("كلمات الأغاني في المشغّل", "Lyrics in player")} value={s.lyricsInPlayer ?? false} onChange={(v) => set({ lyricsInPlayer: v })} />
+          </Row>
+        </Section>
+        <Section title={i("البطارية والشبكة", "Battery & network")}>
+          <Row icon={ic(BatteryCharging)} label={i("إظهار البطارية", "Show battery")}>
+            <Toggle label={i("إظهار البطارية", "Show battery")} value={s.showBattery ?? false} onChange={(v) => set({ showBattery: v })} />
+          </Row>
+          <Row icon={ic(BatteryCharging)} label={i("نصيحة «افصل الشاحن عند 80%»", "“Unplug at 80%” tip")} hint={i("في قسم البطارية أثناء الشحن", "In the battery section while charging")}>
+            <Toggle label={i("نصيحة «افصل الشاحن عند 80%»", "“Unplug at 80%” tip")} value={s.batteryTip ?? true} onChange={(v) => set({ batteryTip: v })} />
+          </Row>
+          <Row icon={ic(BatteryCharging)} label={i("بطاريات أجهزة البلوتوث", "Bluetooth device batteries")} hint={i("يقرأ محليًا مستوى الأجهزة المتصلة (BLE) التي تُبلغه، كل 5 دقائق", "Reads, locally, the level of connected BLE devices that report it, every 5 minutes")}>
+            <Toggle label={i("بطاريات أجهزة البلوتوث", "Bluetooth device batteries")} value={s.btBatteries ?? true} onChange={(v) => set({ btBatteries: v })} />
+          </Row>
+          <Row icon={ic(Network)} label={i("سرعتا الشبكة في الحبة", "Network speed in the pill")} hint={i("تحميل/رفع حاليان من عدّادات ويندوز المحلية؛ يتوقف القياس تمامًا عند الإطفاء.", "Current down/up speed from local Windows counters; measuring stops completely when off.")}>
+            <Toggle label={i("سرعتا الشبكة في الحبة", "Network speed in the pill")} value={s.showNetSpeed ?? false} onChange={(v) => set({ showNetSpeed: v })} />
+          </Row>
+        </Section>
+        <Section title={i("الحافظة", "Clipboard")}>
+          <Row icon={ic(ClipIcon)} label={i("الحد الأقصى للعناصر", "Item limit")} hint={i("غير المثبّتة تُحذف الأقدم أولًا", "Oldest unpinned items are dropped first")}>
+            <NumberField label={i("الحد الأقصى للعناصر", "Item limit")} value={s.clipLimit ?? 200} min={10} max={5000} onCommit={(v) => set({ clipLimit: v })} />
+          </Row>
+          <Row icon={ic(ClipIcon)} label={i("اللصق عند النقر", "Paste on click")} hint={i("إطفاؤه يضع العنصر في الحافظة فقط", "When off, the item is only copied")}>
+            <Toggle label={i("اللصق عند النقر", "Paste on click")} value={s.pasteOnClick ?? true} onChange={(v) => set({ pasteOnClick: v })} />
+          </Row>
+          <Row icon={ic(Shield)} label={i("تطبيقات مستثناة", "Excluded apps")} hint={i("اسم ملف exe في كل سطر", "One exe name per line")}>
+            <LinesField label={i("تطبيقات مستثناة", "Excluded apps")} value={s.clipExcludedApps ?? []} placeholder="keepassxc.exe" onCommit={(v) => set({ clipExcludedApps: v })} />
+          </Row>
+        </Section>
+        <Section title={i("النظام والخصوصية", "System & privacy")}>
+          <Row icon={ic(Mic)} label={i("مؤشر الميكروفون والكاميرا", "Mic & camera indicator")} hint={i("نقطة في الحبة أثناء استخدام أي تطبيق لهما — قراءة محلية لسجلّ ويندوز فقط", "A dot in the pill while any app uses them — a local read of the Windows registry only")}>
+            <Toggle label={i("مؤشر الميكروفون والكاميرا", "Mic & camera indicator")} value={s.privacyIndicator ?? false} onChange={(v) => set({ privacyIndicator: v })} />
+          </Row>
+          <Row icon={ic(Volume2)} label={i("التحكم بالصوت في قسم النظام", "Volume control in System")}>
+            <Toggle label={i("التحكم بالصوت في قسم النظام", "Volume control in System")} value={s.showVolume ?? true} onChange={(v) => set({ showVolume: v })} />
+          </Row>
+          <Row icon={ic(Activity)} label={i("تتبّع زمن التركيز (وقتي)", "Focus-time tracking")}
+            hint={i(
+              "يعمل افتراضيًا. يسجّل اسم التطبيق الأمامي فقط (بلا عناوين نوافذ أو محتوى) أثناء نشاطك، ويتوقف عند الخمول أكثر من 60 ثانية. يُحفظ على جهازك 30 يومًا ولا يُرسل لأي مكان.",
+              "On by default. Records only the foreground app name (no window titles or content) while you're active; pauses after 60 s idle. Stored on this device only for 30 days, never sent anywhere.",
+            )}>
+            <Toggle label={i("تتبّع زمن التركيز (وقتي)", "Focus-time tracking")} value={s.attentionTracking ?? true} onChange={(v) => set({ attentionTracking: v })} />
+          </Row>
+          <Row icon={ic(RotateCcw)} label={i("مسح بيانات وقتي", "Clear My-time data")} hint={i("يحذف كل ما سُجّل محليًا", "Deletes everything recorded locally")}>
+            <button onClick={() => invoke("attention_clear").catch(() => {})} className={btnOutline}>{i("مسح", "Clear")}</button>
+          </Row>
+        </Section>
+        <Section title={i("الاجتماعات", "Meetings")}>
+          <Row icon={ic(CalendarClock)} label={i("عرض الاجتماعات القادمة", "Show upcoming meetings")} hint={i("ميزة شبكية اختيارية: تجلب تقويمك من الرابط أدناه فقط", "Optional network feature: fetches your calendar from the link below only")}>
+            <Toggle label={i("عرض الاجتماعات القادمة", "Show upcoming meetings")} value={s.showMeetings ?? false} onChange={(v) => set({ showMeetings: v })} />
+          </Row>
+          <MeetingsKey />
+        </Section>
+        <Section title={i("الالتقاط والتسجيل", "Capture & recording")}>
+          <Row icon={ic(FolderOpen)} label={i("مجلد اللقطات", "Screenshots folder")} hint={i("فارغ = Pictures\\MyIsland", "Empty = Pictures\\MyIsland")}>
+            <TextField label={i("مجلد اللقطات", "Screenshots folder")} value={s.screenshotDir ?? ""} onCommit={(v) => set({ screenshotDir: v })} />
+          </Row>
+          <Row icon={ic(Film)} label={i("صيغة التسجيل", "Recording format")}>
+            <Segmented label={i("صيغة التسجيل", "Recording format")} value={s.recordFormat ?? "mp4"} onChange={(v) => set({ recordFormat: v })} options={[{ value: "mp4", label: "MP4" }, { value: "gif", label: "GIF" }]} />
+          </Row>
+          <Row icon={ic(Film)} label={i("إطارات التسجيل في الثانية", "Recording FPS")} hint={i("GIF يُسقَّف عند 20", "GIF is capped at 20")}>
+            <Segmented label={i("إطارات التسجيل في الثانية", "Recording FPS")} value={String(s.recordingFps ?? 30) as "30" | "60"} onChange={(v) => set({ recordingFps: Number(v) as 30 | 60 })} options={[{ value: "30", label: "30" }, { value: "60", label: "60" }]} />
+          </Row>
+          <Row icon={ic(Film)} label={i("جودة التسجيل", "Recording quality")}>
+            <Segmented label={i("جودة التسجيل", "Recording quality")} value={(s.recordingQuality ?? "medium") as "low" | "medium" | "high"} onChange={(v) => set({ recordingQuality: v })}
+              options={[{ value: "low", label: i("منخفضة", "Low") }, { value: "medium", label: i("متوسطة", "Medium") }, { value: "high", label: i("عالية", "High") }]} />
+          </Row>
+          <Row icon={ic(FolderOpen)} label={i("مجلد التسجيلات", "Recordings folder")} hint={i("فارغ = Videos\\MyIsland", "Empty = Videos\\MyIsland")}>
+            <TextField label={i("مجلد التسجيلات", "Recordings folder")} value={s.recordingDir ?? ""} onCommit={(v) => set({ recordingDir: v })} />
+          </Row>
+        </Section>
+        <Section title={i("شريط الأوامر", "Command palette")}>
+          <Row icon={ic(Command)} label={i("أسعار العملات الحية", "Live currency rates")}
+            hint={i(
+              "عند تحويل عملة في الشريط تُجلب الأسعار من open.er-api.com وتُخزَّن 12 ساعة؛ بلا اتصال أو مطفأ تُستعمل الأسعار المضمّنة التقريبية.",
+              "When you convert a currency in the palette, rates are fetched from open.er-api.com and cached for 12 h; offline or off, the built-in approximate rates are used.",
+            )}>
+            <Toggle label={i("أسعار العملات الحية", "Live currency rates")} value={s.liveRates ?? true} onChange={(v) => set({ liveRates: v })} />
+          </Row>
+          <Row icon={ic(Blocks)} label={i("مساحات العمل", "Workspaces")} col
+            hint={i("مجموعات تُفتح دفعة واحدة من الشريط: اكتب اسمها أو «ws اسم». كل سطر: مسار تطبيق أو مجلد أو ملف، أو رابط http(s).", "Groups opened at once from the palette: type the name or “ws name”. Each line: an app, folder or file path, or an http(s) link.")}>
+            <WorkspacesEditor value={Array.isArray(s.workspaces) ? s.workspaces : []} />
+          </Row>
+        </Section>
+      </>),
+    },
+    {
+      id: "notifications", icon: <Bell size={16} />, label: i("التنبيهات", "Notifications"), desc: i("متى وكيف تنبّهك الجزيرة — داخل الحبة نفسها دون تغيير شكلها.", "When and how the island alerts you — inside the pill, never changing its shape."),
+      body: (
+        <Section title={i("التنبيهات", "Alerts")}>
+          <Row icon={ic(Volume2)} label={i("صوت التنبيه", "Alert sound")} hint={i("مسار WAV أو default · فارغ/off = صامت", "WAV path or default · empty/off = silent")}>
+            <TextField label={i("صوت التنبيه", "Alert sound")} value={s.alertSound ?? ""} onCommit={(v) => set({ alertSound: v })} />
+          </Row>
+          <Row icon={ic(Bell)} label={i("تنبيهات الصلاة", "Prayer alerts")} hint={i("قبل 10 دقائق وعند دخول الوقت — بصوت التنبيه إن فُعّل", "10 minutes before and at the time — with the alert sound if set")}>
+            <Toggle label={i("تنبيهات الصلاة", "Prayer alerts")} value={s.prayerAlerts ?? true} onChange={(v) => set({ prayerAlerts: v })} />
+          </Row>
+          <Row icon={ic(Cpu)} label={i("تنبيه الحمل المرتفع", "High-load alert")} hint={i("معالج ≥90% لمدة 30 ثانية متواصلة ⇒ تنبيه يسمّي التطبيق المسبّب (مرة كل 10 دقائق كحدّ أقصى). مطفأ افتراضيًا.", "CPU ≥90% for 30 s straight ⇒ an alert naming the culprit app (at most once per 10 min). Off by default.")}>
+            <Toggle label={i("تنبيه الحمل المرتفع", "High-load alert")} value={s.loadAlert ?? false} onChange={(v) => set({ loadAlert: v })} />
+          </Row>
+          <Row icon={ic(CalendarClock)} label={i("نافذة «اجتماع قريب»", "“Upcoming meeting” window")} hint={i("يظهر الاجتماع في الحبة/الرئيسية بلون نوعه قبل بدئه بهذه المدة", "The meeting shows in the island/Home in its colour this long before it starts")}>
+            <Select
+              label={i("نافذة «اجتماع قريب»", "“Upcoming meeting” window")} value={s.meetingLeadMin ?? 15}
+              options={[5, 10, 15, 30, 60].map((n) => ({ value: n, label: i(`${n} دقيقة`, `${n} min`) }))}
+              onChange={(v) => set({ meetingLeadMin: Number(v) })}
+            />
+          </Row>
+          <Row icon={ic(Timer)} label={i("تذكير الاستراحة", "Break reminders")} hint={i("إشعار داخل التطبيق بعد استخدام متواصل (استراحة 5 دقائق تصفّر العدّ)", "In-app notice after continuous use (a 5-minute pause resets the count)")}>
+            <Toggle label={i("تذكير الاستراحة", "Break reminders")} value={s.breakReminders ?? false} onChange={(v) => set({ breakReminders: v })} />
+          </Row>
+          <Row icon={ic(Timer)} label={i("مدة الاستخدام المتواصل (دقيقة)", "Continuous use before a break (min)")}>
+            <NumberField label={i("مدة الاستخدام المتواصل (دقيقة)", "Continuous use before a break (min)")} value={s.breakMinutes ?? 60} min={5} max={240} onCommit={(v) => set({ breakMinutes: v })} />
+          </Row>
+        </Section>
+      ),
+    },
+    {
+      id: "shortcuts", icon: <Keyboard size={16} />, label: i("الاختصارات", "Shortcuts"), desc: i("انقر الحقل ثم اضغط التركيبة · Backspace يمسح (= معطّل) · Esc يلغي.", "Click a field, then press the combo · Backspace clears (= off) · Esc cancels."),
+      body: (
+        <Section title={i("الاختصارات العامة", "Global shortcuts")}>
+          <Row icon={ic(Command)} label={i("اختصار شريط الأوامر", "Command palette hotkey")} hint={i("فارغ = الشريط معطّل", "Empty = palette off")}>
+            <ShortcutField label={i("اختصار شريط الأوامر", "Command palette hotkey")} value={s.hotkeyPalette ?? ""} onCommit={(v) => set({ hotkeyPalette: v })} />
+          </Row>
+          <Row icon={ic(Scan)} label={i("اختصار لقطة منطقة", "Area screenshot hotkey")} hint={i("فارغ = معطّل · PrintScreen يعترض الزر", "Empty = off · PrintScreen intercepts the key")}>
+            <ShortcutField label={i("اختصار لقطة منطقة", "Area screenshot hotkey")} value={s.hotkeyArea ?? ""} onCommit={(v) => set({ hotkeyArea: v })} />
+          </Row>
+          <Row icon={ic(Monitor)} label={i("اختصار لقطة الشاشة", "Full-screen screenshot hotkey")}>
+            <ShortcutField label={i("اختصار لقطة الشاشة", "Full-screen screenshot hotkey")} value={s.hotkeyScreen ?? ""} onCommit={(v) => set({ hotkeyScreen: v })} />
+          </Row>
+          <Row icon={ic(Clapperboard)} label={i("اختصار التسجيل", "Recording hotkey")} hint={i("يبدّل بدء/إيقاف · فارغ = معطّل", "Toggles start/stop · empty = off")}>
+            <ShortcutField label={i("اختصار التسجيل", "Recording hotkey")} value={s.hotkeyRecord ?? ""} onCommit={(v) => set({ hotkeyRecord: v })} />
+          </Row>
+          <Row icon={ic(Palette)} label={i("اختصار منتقي الألوان", "Color picker hotkey")}>
+            <ShortcutField label={i("اختصار منتقي الألوان", "Color picker hotkey")} value={s.hotkeyColor ?? ""} onCommit={(v) => set({ hotkeyColor: v })} />
+          </Row>
+        </Section>
+      ),
+    },
+    {
+      id: "perf", icon: <Gauge size={16} />, label: i("الأداء والبطارية", "Performance & battery"), desc: i("وضع التوفير واستهلاك الذاكرة.", "Eco mode and memory usage."),
+      body: (
+        <Section title={i("الأداء والتوفير", "Performance & saving")}>
+          <Row icon={ic(Activity)} label={i("حالة وضع التوفير", "Eco mode status")}><EcoIndicator /></Row>
+          <Row icon={ic(Zap)} label={i("وضع التوفير (Eco)", "Eco mode")}
+            hint={i(
+              "يبطّئ رصد الحافظة وتتبّع النافذة النشطة، ويوقف فحص بلوتوث البطارية وطيف الصوت، ويخفض الحركة إلى «مخففة»، ويستبدل الزجاج بسطح مصبوغ.",
+              "Slows clipboard watching and active-window tracking, stops Bluetooth battery polling and the audio spectrum, lowers motion to “Reduced” and swaps glass for a tinted surface.",
+            )}>
+            <Toggle label={i("وضع التوفير (Eco)", "Eco mode")} value={s.ecoMode ?? false} onChange={(v) => set({ ecoMode: v })} />
+          </Row>
+          <Row icon={ic(BatteryCharging)} label={i("التوفير تلقائيًا على البطارية", "Auto-eco on battery")} hint={i("يتفعّل عند فصل الشاحن ويتوقف عند توصيله؛ التفعيل اليدوي يبقى في الحالتين", "Turns on when unplugged and off when plugged in; manual stays on either way")}>
+            <Toggle label={i("التوفير تلقائيًا على البطارية", "Auto-eco on battery")} value={s.ecoOnBattery ?? false} onChange={(v) => set({ ecoOnBattery: v })} />
+          </Row>
+          <Row icon={ic(Cpu)} label={i("استهلاك الرام الآن", "RAM usage now")} col><RamUsage /></Row>
+        </Section>
+      ),
+    },
+    {
+      id: "updates", icon: <RefreshCw size={16} />, label: i("التحديثات", "Updates"), desc: i("فحص الإصدارات الموقّعة.", "Checking signed releases."),
+      body: (
+        <Section title={i("التحديثات", "Updates")}>
+          <Row icon={ic(RefreshCw)} label={i("فحص التحديثات تلقائيًا", "Check for updates automatically")} hint={i("فحص صامت واحد بعد الإقلاع؛ لا يظهر شيء إن لم يوجد تحديث", "One silent check after launch; nothing shows if there is no update")}>
+            <Toggle label={i("فحص التحديثات تلقائيًا", "Check for updates automatically")} value={s.updateAutoCheck ?? true} onChange={(v) => set({ updateAutoCheck: v })} />
+          </Row>
+          <UpdateCheck />
+        </Section>
+      ),
+    },
+  ];
+  const about: Sec = { id: "about", icon: <Info size={16} />, label: i("حول", "About"), desc: i("الإصدار والمطوّر وما الجديد.", "Version, developer and what's new."), body: <AboutSection /> };
+  const all = [...sections, about];
+  const searching = q.trim().length > 0;
+  const cur = all.find((x) => x.id === tab) ?? all[0];
+  const visible = searching ? all : [cur];
+  const resetCur = () => { const k = SECTION_KEYS[cur.id]; if (k) set(resetPatch(k)); };
+  const Item = ({ x }: { x: Sec }) => (
+    <button data-nav={x.id} onClick={() => { setTab(x.id); setQ(""); }} aria-current={!searching && cur.id === x.id ? "true" : undefined} className="st-nav-item">
+      {!searching && cur.id === x.id && <motion.span layoutId="st-ind" className="st-nav-ind" transition={spring.press} />}
+      <span aria-hidden style={{ display: "contents" }}>{x.icon}</span>
+      <span dir="auto" className="min-w-0 flex-1 truncate">{x.label}</span>
+    </button>
+  );
+  const mainRef = useRef<HTMLElement>(null);
+  useEffect(() => { mainRef.current?.scrollTo({ top: 0 }); }, [tab, searching]);
 
   return (
-    <div dir="auto" className="mx-auto max-w-4xl px-5 pb-8 text-white">
-      <header className="sticky top-0 z-20 -mx-5 flex h-12 items-center gap-3 bg-[var(--app-bg)] px-5" data-testid="settings-bar">
-        <h1 className="text-xl font-semibold tracking-tight">{i("الإعدادات", "Settings")}</h1>
-        <QuitButton />
-      </header>
-
-      <div className="flex gap-5">
-      <SideNav
-        current={tab}
-        onSelect={setTab}
-        items={[
-          { id: "general", label: i("عام", "General"), icon: <SlidersHorizontal size={16} /> },
-          { id: "look", label: i("المظهر والميديا", "Appearance & media"), icon: <Palette size={16} /> },
-          { id: "modules", label: i("الوحدات", "Modules"), icon: <Blocks size={16} /> },
-          { id: "perf", label: i("الأداء والتوفير", "Performance"), icon: <Gauge size={16} /> },
-        ]}
-      />
-      <main className="min-w-0 flex-1">
-      {tab === "general" && (
-      <Group id="general" title={i("عام", "General")} desc={i("التحديثات والتشغيل وموضع الجزيرة وسلوكها.", "Updates, startup, island position and behavior.")}>
-      <Section title={i("التحديثات", "Updates")}>
-        <Row label={i("فحص التحديثات تلقائيًا", "Check for updates automatically")} hint={i("فحص صامت واحد بعد الإقلاع؛ لا يظهر شيء إن لم يوجد تحديث", "One silent check after launch; nothing shows if there is no update")}>
-          <Toggle label={i("فحص التحديثات تلقائيًا", "Check for updates automatically")} value={s.updateAutoCheck ?? true} onChange={(v) => saveSettings({ updateAutoCheck: v })} />
-        </Row>
-        <UpdateCheck />
-      </Section>
-      <AboutSection />
-      <Section title={i("التشغيل والموضع", "Startup & position")}>
-        <Row label={i("التشغيل مع ويندوز", "Start with Windows")}>
-          <Toggle label={i("التشغيل مع ويندوز", "Start with Windows")} value={s.autostart ?? false} onChange={(v) => saveSettings({ autostart: v })} />
-        </Row>
-        <Row label={i("اللغة", "Language")}>
-          <Select
-            label={i("اللغة", "Language")} value={s.language === "en" ? "en" : "ar"}
-            options={[{ value: "ar", label: "العربية" }, { value: "en", label: "English" }]}
-            onChange={(v) => saveSettings({ language: v })}
-          />
-        </Row>
-        <Row label={i("الشاشة", "Monitor")}>
-          <Select
-            label={i("الشاشة", "Monitor")} value={s.monitor ?? 0}
-            options={(monitors.length ? monitors : [{ index: 0, name: "", width: 0, height: 0, primary: true }]).map((m) => ({
-              value: m.index,
-              label: `${m.index + 1}${m.width ? ` — ${m.width}×${m.height}` : ""}${m.primary ? ` (${i("الرئيسية", "primary")})` : ""}`,
-            }))}
-            onChange={(v) => saveSettings({ monitor: v })}
-          />
-        </Row>
-        <Row label={i("الإزاحة الأفقية", "Horizontal offset")} hint={i("عن منتصف الشاشة", "From screen center")}>
-          <Slider label={i("الإزاحة الأفقية", "Horizontal offset")} value={s.offsetX ?? 0} min={-800} max={800} step={10} format={px} onCommit={(v) => saveSettings({ offsetX: v })} />
-        </Row>
-        <Row label={i("تحت شريط المهام", "Under the taskbar")} hint={i("من حافة الشاشة الفعلية بدل منطقة العمل", "From the physical screen edge instead of the work area")}>
-          <Toggle label={i("تحت شريط المهام", "Under the taskbar")} value={s.underTaskbar ?? false} onChange={(v) => saveSettings({ underTaskbar: v })} />
-        </Row>
-      </Section>
-      <Section title={i("السلوك", "Behavior")}>
-        <Row label={i("تأخير الفتح بالمرور", "Hover delay")}>
-          <Slider label={i("تأخير الفتح بالمرور", "Hover delay")} value={s.hoverDelayMs ?? 250} min={0} max={600} step={25} format={ms} onCommit={(v) => saveSettings({ hoverDelayMs: v })} />
-        </Row>
-        <Row label={i("تأخير الانكماش", "Collapse delay")}>
-          <Slider label={i("تأخير الانكماش", "Collapse delay")} value={s.collapseDelayMs ?? 350} min={100} max={1500} step={50} format={ms} onCommit={(v) => saveSettings({ collapseDelayMs: v })} />
-        </Row>
-        <Row label={i("إخفاء تلقائي", "Auto-hide")} hint={i("تختفي الحبة في الراحة وتظهر عند مرور المؤشر", "The pill fades at rest and reappears on hover")}>
-          <Toggle label={i("إخفاء تلقائي", "Auto-hide")} value={s.autoHide ?? false} onChange={(v) => saveSettings({ autoHide: v })} />
-        </Row>
-        <Row label={i("الإخفاء في وضع ملء الشاشة", "Hide in fullscreen")}>
-          <Toggle label={i("الإخفاء في وضع ملء الشاشة", "Hide in fullscreen")} value={s.hideInFullscreen ?? false} onChange={(v) => saveSettings({ hideInFullscreen: v })} />
-        </Row>
-        <Row label={i("إظهار الساعة", "Show clock")}>
-          <Toggle label={i("إظهار الساعة", "Show clock")} value={s.showClock ?? true} onChange={(v) => saveSettings({ showClock: v })} />
-        </Row>
-        <Row label={i("نظام الساعة", "Clock format")}>
-          <Select
-            label={i("نظام الساعة", "Clock format")} value={s.clockFormat ?? "auto"}
-            options={[
-              { value: "auto", label: i("تلقائي", "Auto") },
-              { value: "24", label: i("24 ساعة", "24-hour") },
-              { value: "12", label: i("12 ساعة", "12-hour") },
-            ]}
-            onChange={(v) => saveSettings({ clockFormat: v })}
-          />
-        </Row>
-      </Section>
-      </Group>
-      )}
-
-      {tab === "look" && (
-      <Group id="look" title={i("المظهر والميديا", "Appearance & media")} desc={i("خصّص مظهر الجزيرة وحجمها وعرض الميديا.", "Customize how the island looks, its size and media display.")}>
-      <Section title={i("الميديا والمظهر", "Media & appearance")}>
-        <SubHead>{i("الحجم", "Size")}</SubHead>
-        <Row label={i("عرض الحبة", "Pill width")} hint={i("المحتوى يتدرج مع المقاس تلقائيًا", "Content scales with the size automatically")}>
-          <Slider label={i("عرض الحبة", "Pill width")} value={s.pillWidth ?? 220} min={160} max={280} step={5} format={px} onCommit={(v) => saveSettings({ pillWidth: v })} />
-        </Row>
-        <Row label={i("ارتفاع الحبة", "Pill height")}>
-          <Slider label={i("ارتفاع الحبة", "Pill height")} value={s.pillHeight ?? 34} min={28} max={44} step={1} format={px} onCommit={(v) => saveSettings({ pillHeight: v })} />
-        </Row>
-        <SubHead>{i("النمط والمادة", "Theme & material")}</SubHead>
-        <Row label={i("النمط", "Theme")} hint={i("يُطبَّق على الحبة واللوحة ونوافذ البرنامج", "Applies to the island, the panel and app windows")}>
-          <Select
-            label={i("النمط", "Theme")} value={s.themeMode ?? "dark"}
-            options={[
-              { value: "dark", label: i("داكن", "Dark") },
-              { value: "light", label: i("فاتح", "Light") },
-            ]}
-            onChange={(v) => saveSettings({ themeMode: v === "light" ? "light" : "dark" })}
-          />
-        </Row>
-        <Row label={i("المادة", "Material")} hint={i("الزجاجية: شفافية مع blur", "Glass: transparency with blur")}>
-          <Select
-            label={i("المادة", "Material")} value={s.themeMaterial ?? "solid"}
-            options={[
-              { value: "solid", label: i("عادية (مصمتة)", "Solid") },
-              { value: "glass", label: i("زجاجية", "Glass") },
-            ]}
-            onChange={(v) => saveSettings({ themeMaterial: v === "glass" ? "glass" : "solid" })}
-          />
-        </Row>
-        {(s.themeMaterial ?? "solid") === "glass" && (
-          <Row label={i("قوة تظليل الزجاج", "Glass tint strength")} hint={i("أعلى = لوحة أغمق وتباين نص أوضح فوق المحتوى الفاتح؛ الطمس يبقى ظاهرًا", "Higher = darker panel and clearer text over bright content; the blur stays visible")}>
-            <Slider
-              label={i("قوة تظليل الزجاج", "Glass tint strength")} value={s.glassTint ?? 45} min={0} max={80} step={1} format={pct}
-              onLive={(v) => saveSettings({ glassTint: v })}
-              onCommit={(v) => saveSettings({ glassTint: v })}
-            />
-          </Row>
-        )}
-        {(s.themeMaterial ?? "solid") === "glass" && (
-          <Row label={i("تمويه الزجاج (CSS)", "Glass blur (CSS)")} hint={i("طبقة الصفحة فوق الزجاج الأصلي؛ يُحدّ تلقائيًا في وضع التوفير", "Page layer over the native glass; capped automatically in eco mode")}>
-            <Slider
-              label={i("تمويه الزجاج (CSS)", "Glass blur (CSS)")} value={clampGlassBlur(s.glassBlur)} min={0} max={40} step={1} format={px}
-              onLive={(v) => saveSettings({ glassBlur: v })}
-              onCommit={(v) => saveSettings({ glassBlur: v })}
-            />
-          </Row>
-        )}
-        {(s.themeMaterial ?? "solid") === "glass" && (
-          <Row label={i("تشبّع الزجاج", "Glass saturation")} hint={i("يزيد حيوية الألوان خلف الزجاج؛ 100% = بلا تعزيز", "Boosts colours behind the glass; 100% = no boost")}>
-            <Slider
-              label={i("تشبّع الزجاج", "Glass saturation")} value={clampGlassSaturation(s.glassSaturation)} min={100} max={200} step={5} format={pct}
-              onLive={(v) => saveSettings({ glassSaturation: v })}
-              onCommit={(v) => saveSettings({ glassSaturation: v })}
-            />
-          </Row>
-        )}
-        <Row label={i("الشفافية في الراحة", "Opacity at rest")}>
-          <Slider label={i("الشفافية في الراحة", "Opacity at rest")} value={s.opacityRest ?? 100} min={20} max={100} step={5} format={pct} onCommit={(v) => saveSettings({ opacityRest: v })} />
-        </Row>
-        <Row label={i("الشفافية عند الفتح", "Opacity when open")}>
-          <Slider label={i("الشفافية عند الفتح", "Opacity when open")} value={s.opacityOpen ?? 100} min={20} max={100} step={5} format={pct} onCommit={(v) => saveSettings({ opacityOpen: v })} />
-        </Row>
-        <SubHead>{i("السلوك البصري", "Visual behavior")}</SubHead>
-        <Row label={i("عيون التميمة", "Mascot eyes")} hint={i("عينان بجانب الساعة تتبعان المؤشر؛ تُخفى أثناء الميديا والتوفير", "Eyes beside the clock follow the cursor; hidden during media and eco mode")}>
-          <Toggle label={i("عيون التميمة", "Mascot eyes")} value={s.eyesEnabled ?? true} onChange={(v) => saveSettings({ eyesEnabled: v })} />
-        </Row>
-        <Row
-          label={i("وضع تبويب المتصفح", "Browser tab mode")}
-          hint={i(
-            "حين يكون المتصفح (Chrome/Edge/Firefox/Brave) هو النافذة الأمامية ومكبَّرًا، تتخذ الحبة هيئة تبويب في أعلى شريطه؛ الضغط عليها يفتح اللوحة. إرساء بصري يحاكي التبويب لا تبويب حقيقي، ويتوقف في وضع التوفير.",
-            "When a browser (Chrome/Edge/Firefox/Brave) is the maximized foreground window, the pill takes a tab shape in its tab strip; click it to open the panel. A visual docking that imitates a tab, not a real one; paused in Eco mode.",
-          )}
-        >
-          <Toggle label={i("وضع تبويب المتصفح", "Browser tab mode")} value={s.browserTabMode ?? false} onChange={(v) => saveSettings({ browserTabMode: v })} />
-        </Row>
-        <SubHead>{i("الميديا", "Media")}</SubHead>
-        <Row label={i("طيف الصوت والحبة السائلة", "Audio spectrum & liquid pill")} hint={i("يلتقط صوت الجهاز محليًا أثناء تشغيل الميديا فقط", "Captures system audio locally, only while media plays")}>
-          <Toggle label={i("طيف الصوت والحبة السائلة", "Audio spectrum & liquid pill")} value={s.liquidSpectrum ?? false} onChange={(v) => saveSettings({ liquidSpectrum: v })} />
-        </Row>
-        <Row label={i("كلمات الأغاني في الرئيسية", "Lyrics in Home")} hint={i("تُجلب من الإنترنت (LRCLIB)", "Fetched online (LRCLIB)")}>
-          <Toggle label={i("كلمات الأغاني في الرئيسية", "Lyrics in Home")} value={s.lyricsInHome ?? false} onChange={(v) => saveSettings({ lyricsInHome: v })} />
-        </Row>
-        <Row label={i("كلمات الأغاني في المشغّل", "Lyrics in player")} hint={i("تُجلب من الإنترنت (LRCLIB)", "Fetched online (LRCLIB)")}>
-          <Toggle label={i("كلمات الأغاني في المشغّل", "Lyrics in player")} value={s.lyricsInPlayer ?? false} onChange={(v) => saveSettings({ lyricsInPlayer: v })} />
-        </Row>
-      </Section>
-      </Group>
-      )}
-
-      {tab === "modules" && (
-      <Group id="modules" title={i("الوحدات", "Modules")} desc={i("فعّل الوحدات التي تحتاجها وعدّل خياراتها.", "Turn on the modules you need and tune their options.")}>
-      <Section title={i("اليوم والصلاة", "Today & prayer")}>
-        <Row label={i("إظهار قسم «اليوم»", "Show the Today section")} hint={i("هجري + مواقيت الصلاة في الرئيسية — محلي بلا إنترنت", "Hijri date + prayer times on Home — local, offline")}>
-          <Toggle label={i("إظهار قسم «اليوم»", "Show the Today section")} value={s.showToday ?? true} onChange={(v) => saveSettings({ showToday: v })} />
-        </Row>
-        <Row label={i("المدينة", "City")} hint={i("مواقيت أم القرى تُحسب محليًا لإحداثيات المدينة", "Umm al-Qura times computed locally for the city")}>
-          <Select
-            label={i("المدينة", "City")} value={s.prayerCity ?? "riyadh"}
-            options={(cities.length ? cities : [{ id: s.prayerCity ?? "riyadh", ar: "الرياض", en: "Riyadh" }]).map((c) => ({ value: c.id, label: s.language === "en" ? c.en : c.ar }))}
-            onChange={(v) => saveSettings({ prayerCity: v })}
-          />
-        </Row>
-        <Row label={i("تنبيهات الصلاة", "Prayer alerts")} hint={i("قبل 10 دقائق وعند دخول الوقت — بصوت التنبيه إن فُعّل", "10 minutes before and at the time — with the alert sound if set")}>
-          <Toggle label={i("تنبيهات الصلاة", "Prayer alerts")} value={s.prayerAlerts ?? true} onChange={(v) => saveSettings({ prayerAlerts: v })} />
-        </Row>
-        <Row label={i("الطقس", "Weather")} hint={i("يتصل بـ Open-Meteo (بلا حساب) لمدينتك — مطفأ افتراضيًا", "Connects to Open-Meteo (no account) for your city — off by default")}>
-          <Toggle label={i("الطقس", "Weather")} value={s.showWeather ?? false} onChange={(v) => saveSettings({ showWeather: v })} />
-        </Row>
-        <Row label={i("وحدة الحرارة", "Temperature unit")}>
-          <Select
-            label={i("وحدة الحرارة", "Temperature unit")} value={s.weatherUnits ?? "c"}
-            options={[{ value: "c", label: "°C" }, { value: "f", label: "°F" }]}
-            onChange={(v) => saveSettings({ weatherUnits: v })}
-          />
-        </Row>
-        <CountdownsEditor s={s} />
-        <WorldClockEditor s={s} />
-        <Row label={i("صوت التنبيه", "Alert sound")} hint={i("مسار WAV أو default · فارغ/off = صامت", "WAV path or default · empty/off = silent")}>
-          <TextField label={i("صوت التنبيه", "Alert sound")} value={s.alertSound ?? ""} onCommit={(v) => saveSettings({ alertSound: v })} />
-        </Row>
-      </Section>
-
-      <Section title={i("البطارية والشبكة", "Battery & network")}>
-        <SubHead>{i("البطارية", "Battery")}</SubHead>
-        <Row label={i("إظهار البطارية", "Show battery")}>
-          <Toggle label={i("إظهار البطارية", "Show battery")} value={s.showBattery ?? false} onChange={(v) => saveSettings({ showBattery: v })} />
-        </Row>
-        <Row label={i("نصيحة «افصل الشاحن عند 80%»", "“Unplug at 80%” tip")} hint={i("في قسم البطارية أثناء الشحن", "In the battery section while charging")}>
-          <Toggle label={i("نصيحة «افصل الشاحن عند 80%»", "“Unplug at 80%” tip")} value={s.batteryTip ?? true} onChange={(v) => saveSettings({ batteryTip: v })} />
-        </Row>
-        <Row label={i("بطاريات أجهزة البلوتوث", "Bluetooth device batteries")} hint={i("يقرأ محليًا مستوى الأجهزة المتصلة (BLE) التي تُبلغه، كل 5 دقائق", "Reads, locally, the level of connected (BLE) devices that report it, every 5 min")}>
-          <Toggle label={i("بطاريات أجهزة البلوتوث", "Bluetooth device batteries")} value={s.btBatteries ?? true} onChange={(v) => saveSettings({ btBatteries: v })} />
-        </Row>
-        <SubHead>{i("الشبكة", "Network")}</SubHead>
-        <Row
-          label={i("سرعتا الشبكة في الحبة", "Network speed in the pill")}
-          hint={i("تحميل/رفع حاليان من عدّادات ويندوز المحلية، تعرضهما الحبة المدمجة بدل الساعة. يتوقف القياس تمامًا عند الإطفاء.", "Current down/up speed from local Windows counters, shown in the compact pill instead of the clock. Measuring stops completely when off.")}
-        >
-          <Toggle label={i("سرعتا الشبكة في الحبة", "Network speed in the pill")} value={s.showNetSpeed ?? false} onChange={(v) => saveSettings({ showNetSpeed: v })} />
-        </Row>
-      </Section>
-      <Section title={i("الحافظة", "Clipboard")}>
-        <Row label={i("الحد الأقصى للعناصر", "Item limit")} hint={i("غير المثبّتة تُحذف الأقدم أولًا", "Oldest unpinned items are dropped first")}>
-          <NumberField label={i("الحد الأقصى للعناصر", "Item limit")} value={s.clipLimit ?? 200} min={10} max={5000} onCommit={(v) => saveSettings({ clipLimit: v })} />
-        </Row>
-        <Row label={i("اللصق عند النقر", "Paste on click")} hint={i("إطفاؤه يضع العنصر في الحافظة فقط", "When off, the item is only copied")}>
-          <Toggle label={i("اللصق عند النقر", "Paste on click")} value={s.pasteOnClick ?? true} onChange={(v) => saveSettings({ pasteOnClick: v })} />
-        </Row>
-        <Row label={i("تطبيقات مستثناة", "Excluded apps")} hint={i("اسم ملف exe في كل سطر", "One exe name per line")}>
-          <LinesField label={i("تطبيقات مستثناة", "Excluded apps")} value={s.clipExcludedApps ?? []} placeholder="keepassxc.exe" onCommit={(v) => saveSettings({ clipExcludedApps: v })} />
-        </Row>
-      </Section>
-
-      <Section title={i("النظام والخصوصية", "System & privacy")}>
-        <Row label={i("مؤشر الميكروفون والكاميرا", "Mic & camera indicator")} hint={i("نقطة في الحبة أثناء استخدام أي تطبيق لهما — قراءة محلية لسجلّ ويندوز فقط", "A dot in the pill while any app uses them — local Windows registry read only")}>
-          <Toggle label={i("مؤشر الميكروفون والكاميرا", "Mic & camera indicator")} value={s.privacyIndicator ?? false} onChange={(v) => saveSettings({ privacyIndicator: v })} />
-        </Row>
-        <Row label={i("تنبيه الحمل المرتفع", "High-load alert")} hint={i("معالج ≥90% لمدة 30 ثانية متواصلة ⇒ تنبيه يسمّي التطبيق المسبّب (مرة كل 10 دقائق كحدّ أقصى). مطفأ افتراضيًا ويتوقف في وضع التوفير", "CPU ≥90% for 30 s straight ⇒ an alert naming the app responsible (at most once per 10 min). Off by default and stopped in saving mode")}>
-          <Toggle label={i("تنبيه الحمل المرتفع", "High-load alert")} value={s.loadAlert ?? false} onChange={(v) => saveSettings({ loadAlert: v })} />
-        </Row>
-        <Row label={i("التحكم بالصوت في قسم النظام", "Volume control in System")}>
-          <Toggle label={i("التحكم بالصوت في قسم النظام", "Volume control in System")} value={s.showVolume ?? true} onChange={(v) => saveSettings({ showVolume: v })} />
-        </Row>
-      </Section>
-
-      <Section title={i("الاجتماعات", "Meetings")}>
-        <Row label={i("عرض الاجتماعات القادمة", "Show upcoming meetings")} hint={i("ميزة شبكية اختيارية: تجلب تقويمك من الرابط أدناه فقط", "Optional network feature: fetches your calendar from the link below only")}>
-          <Toggle label={i("عرض الاجتماعات القادمة", "Show upcoming meetings")} value={s.showMeetings ?? false} onChange={(v) => saveSettings({ showMeetings: v })} />
-        </Row>
-        <Row label={i("نافذة «اجتماع قريب»", "“Upcoming meeting” window")} hint={i("يظهر الاجتماع في الحبة/الرئيسية بلون نوعه قبل بدئه بهذه المدة", "The meeting shows in the island/Home in its own colour this long before it starts")}>
-          <Select
-            label={i("نافذة «اجتماع قريب»", "“Upcoming meeting” window")} value={s.meetingLeadMin ?? 15}
-            options={[5, 10, 15, 30, 60].map((n) => ({ value: n, label: i(`${n} دقيقة`, `${n} min`) }))}
-            onChange={(v) => saveSettings({ meetingLeadMin: Number(v) })}
-          />
-        </Row>
-        <MeetingsKey />
-      </Section>
-
-      <Section title={i("الالتقاط والتسجيل", "Capture & recording")}>
-        <SubHead>{i("اللقطات", "Screenshots")}</SubHead>
-        <Row label={i("إظهار الحبة في اللقطات", "Show the island in captures")} hint={i("مطفأ: الحبة تُستثنى من اللقطات والتسجيل", "Off: the island is excluded from screenshots and recordings")}>
-          <Toggle label={i("إظهار الحبة في اللقطات", "Show the island in captures")} value={s.captureVisible ?? false} onChange={(v) => saveSettings({ captureVisible: v })} />
-        </Row>
-        <Row label={i("مجلد اللقطات", "Screenshots folder")} hint={i("فارغ = Pictures\\MyIsland", "Empty = Pictures\\MyIsland")}>
-          <TextField label={i("مجلد اللقطات", "Screenshots folder")} value={s.screenshotDir ?? ""} onCommit={(v) => saveSettings({ screenshotDir: v })} />
-        </Row>
-        <Row label={i("اختصار لقطة منطقة", "Area screenshot hotkey")} hint={i("فارغ = معطّل · PrintScreen يعترض الزر", "Empty = off · PrintScreen intercepts the key")}>
-          <TextField label={i("اختصار لقطة منطقة", "Area screenshot hotkey")} value={s.hotkeyArea ?? ""} onCommit={(v) => saveSettings({ hotkeyArea: v })} />
-        </Row>
-        <Row label={i("اختصار لقطة الشاشة", "Full-screen screenshot hotkey")}>
-          <TextField label={i("اختصار لقطة الشاشة", "Full-screen screenshot hotkey")} value={s.hotkeyScreen ?? ""} onCommit={(v) => saveSettings({ hotkeyScreen: v })} />
-        </Row>
-        <SubHead>{i("التسجيل", "Recording")}</SubHead>
-        <Row label={i("صيغة التسجيل", "Recording format")}>
-          <Select
-            label={i("صيغة التسجيل", "Recording format")} value={s.recordFormat ?? "mp4"}
-            options={[{ value: "mp4", label: "MP4" }, { value: "gif", label: "GIF" }]}
-            onChange={(v) => saveSettings({ recordFormat: v })}
-          />
-        </Row>
-        <Row label={i("إطارات التسجيل في الثانية", "Recording FPS")} hint={i("GIF يُسقَّف عند 20", "GIF is capped at 20")}>
-          <Select
-            label={i("إطارات التسجيل في الثانية", "Recording FPS")} value={s.recordingFps ?? 30}
-            options={[{ value: 30, label: "30" }, { value: 60, label: "60" }]}
-            onChange={(v) => saveSettings({ recordingFps: v })}
-          />
-        </Row>
-        <Row label={i("جودة التسجيل", "Recording quality")}>
-          <Select
-            label={i("جودة التسجيل", "Recording quality")} value={s.recordingQuality ?? "medium"}
-            options={[
-              { value: "low", label: i("منخفضة", "Low") },
-              { value: "medium", label: i("متوسطة", "Medium") },
-              { value: "high", label: i("عالية", "High") },
-            ]}
-            onChange={(v) => saveSettings({ recordingQuality: v })}
-          />
-        </Row>
-        <Row label={i("مجلد التسجيلات", "Recordings folder")} hint={i("فارغ = Videos\\MyIsland", "Empty = Videos\\MyIsland")}>
-          <TextField label={i("مجلد التسجيلات", "Recordings folder")} value={s.recordingDir ?? ""} onCommit={(v) => saveSettings({ recordingDir: v })} />
-        </Row>
-        <Row label={i("اختصار التسجيل", "Recording hotkey")} hint={i("يبدّل بدء/إيقاف · فارغ = معطّل", "Toggles start/stop · empty = off")}>
-          <TextField label={i("اختصار التسجيل", "Recording hotkey")} value={s.hotkeyRecord ?? ""} onCommit={(v) => saveSettings({ hotkeyRecord: v })} />
-        </Row>
-        <SubHead>{i("أدوات", "Tools")}</SubHead>
-        <Row label={i("اختصار منتقي الألوان", "Color picker hotkey")}>
-          <TextField label={i("اختصار منتقي الألوان", "Color picker hotkey")} value={s.hotkeyColor ?? ""} onCommit={(v) => saveSettings({ hotkeyColor: v })} />
-        </Row>
-      </Section>
-      <Section title={i("شريط الأوامر", "Command palette")}>
-        <Row
-          label={i("أسعار العملات الحية", "Live currency rates")}
-          hint={i(
-            "عند تحويل عملة في الشريط تُجلب الأسعار من open.er-api.com وتُخزَّن 12 ساعة؛ بلا اتصال أو مطفأ تُستعمل الأسعار المضمّنة التقريبية.",
-            "When you convert a currency in the palette, rates are fetched from open.er-api.com and cached for 12 h; offline or off, the built-in approximate rates are used.",
-          )}
-        >
-          <Toggle label={i("أسعار العملات الحية", "Live currency rates")} value={s.liveRates ?? true} onChange={(v) => saveSettings({ liveRates: v })} />
-        </Row>
-        <div>
-          <div dir="auto" className="text-sm">{i("مساحات العمل", "Workspaces")}</div>
-          <div dir="auto" className="mb-2 text-xs text-white/50">
-            {i("مجموعات تُفتح دفعة واحدة من الشريط: اكتب اسمها أو «ws اسم». كل سطر: مسار تطبيق أو مجلد أو ملف، أو رابط http(s).", "Groups opened at once from the palette: type the name or “ws name”. One item per line: an app, folder or file path, or an http(s) link.")}
-          </div>
-          <WorkspacesEditor value={Array.isArray(s.workspaces) ? s.workspaces : []} />
+    <DirCtx.Provider value={dir}>
+      <SearchCtx.Provider value={q}>
+        <div dir={dir} className="st-root">
+          <aside className="st-side" data-testid="settings-bar">
+            <h1 className="st-title">{i("الإعدادات", "Settings")}</h1>
+            <label className="st-search">
+              <Search size={15} aria-hidden />
+              <input type="search" dir="auto" aria-label={i("بحث في الإعدادات", "Search settings")} placeholder={i("بحث في الإعدادات…", "Search settings…")} value={q} onChange={(e) => setQ(e.target.value)} className="st-input" data-testid="settings-search" />
+            </label>
+            <nav aria-label="Settings sections" className="st-nav">
+              {sections.map((x) => <Item key={x.id} x={x} />)}
+              <div role="separator" style={{ height: 1, background: "var(--c-border)", margin: "6px 4px" }} />
+              <Item x={about} />
+            </nav>
+            <div className="st-side-foot"><QuitButton /></div>
+          </aside>
+          <main ref={mainRef} className="st-main">
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div key={searching ? "search" : cur.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={spring.content}>
+                {visible.map((x) => (
+                  <div key={x.id} className="st-sec" data-group={x.id}>
+                    <div className="st-head">
+                      <div>
+                        <h2>{x.label}</h2>
+                        <p dir="auto">{x.desc}</p>
+                      </div>
+                      {SECTION_KEYS[x.id] && (
+                        <button className="st-btn" data-testid={`reset-${x.id}`} onClick={() => set(resetPatch(SECTION_KEYS[x.id]))}><RotateCcw size={14} className="rtl:-scale-x-100" />{i("إعادة ضبط القسم", "Reset section")}</button>
+                      )}
+                    </div>
+                    {x.body}
+                  </div>
+                ))}
+              </motion.div>
+            </AnimatePresence>
+          </main>
         </div>
-      </Section>
-      <Section title={i("وقتي والاستراحة", "My time & breaks")}>
-        <Row
-          label={i("تتبّع زمن التركيز (وقتي)", "Focus-time tracking")}
-          hint={i(
-            "يعمل افتراضيًا. يسجّل اسم التطبيق الأمامي فقط (بلا عناوين نوافذ أو محتوى) أثناء نشاطك، ويتوقف عند الخمول أكثر من 60 ثانية. يُحفظ على جهازك فقط 30 يومًا ولا يُرسل لأي مكان.",
-            "On by default. Records only the foreground app name (no window titles or content) while you're active; pauses after 60 s idle. Stored on this device only for 30 days, never sent anywhere.",
-          )}
-        >
-          <Toggle label={i("تتبّع زمن التركيز (وقتي)", "Focus-time tracking")} value={s.attentionTracking ?? true} onChange={(v) => saveSettings({ attentionTracking: v })} />
-        </Row>
-        <Row label={i("تذكير الاستراحة", "Break reminders")} hint={i("إشعار داخل التطبيق بعد استخدام متواصل (استراحة 5 دقائق تصفّر العدّ)", "In-app notice after continuous use (a 5-minute pause resets the count)")}>
-          <Toggle label={i("تذكير الاستراحة", "Break reminders")} value={s.breakReminders ?? false} onChange={(v) => saveSettings({ breakReminders: v })} />
-        </Row>
-        <Row label={i("مدة الاستخدام المتواصل (دقيقة)", "Continuous use before a break (min)")}>
-          <NumberField label={i("مدة الاستخدام المتواصل (دقيقة)", "Continuous use before a break (min)")} value={s.breakMinutes ?? 60} min={5} max={240} onCommit={(v) => saveSettings({ breakMinutes: v })} />
-        </Row>
-        <Row label={i("مسح بيانات وقتي", "Clear My-time data")} hint={i("يحذف كل ما سُجّل محليًا", "Deletes everything recorded locally")}>
-          <button
-            onClick={() => invoke("attention_clear").catch(() => {})}
-            className={btnOutline}
-          >{i("مسح", "Clear")}</button>
-        </Row>
-      </Section>
-      </Group>
-      )}
-
-      {tab === "perf" && (
-      <Group id="perf" title={i("الأداء والتوفير", "Performance & saving")} desc={i("وضع التوفير ومستوى الحركة واستهلاك الذاكرة.", "Eco mode, motion level and memory usage.")}>
-      <Section title={i("الأداء والتوفير", "Performance & saving")}>
-        <Row label={i("حالة وضع التوفير", "Eco mode status")}>
-          <EcoIndicator />
-        </Row>
-        <Row
-          label={i("وضع التوفير (Eco)", "Eco mode")}
-          hint={i(
-            "يبطّئ رصد الحافظة وتتبّع النافذة النشطة، ويوقف فحص بلوتوث البطارية وطيف الصوت، ويخفض الحركة إلى «مخففة».",
-            "Slows clipboard watching and active-window tracking, stops Bluetooth battery polling and the audio spectrum, and lowers motion to “Reduced”.",
-          )}
-        >
-          <Toggle label={i("وضع التوفير (Eco)", "Eco mode")} value={s.ecoMode ?? false} onChange={(v) => saveSettings({ ecoMode: v })} />
-        </Row>
-        <Row label={i("التوفير تلقائيًا على البطارية", "Auto-eco on battery")} hint={i("يتفعّل عند فصل الشاحن ويتوقف عند توصيله؛ التفعيل اليدوي يبقى في الحالتين", "Turns on when unplugged and off when plugged in; the manual switch stays on either way")}>
-          <Toggle label={i("التوفير تلقائيًا على البطارية", "Auto-eco on battery")} value={s.ecoOnBattery ?? false} onChange={(v) => saveSettings({ ecoOnBattery: v })} />
-        </Row>
-        <Row label={i("مستوى الحركة", "Motion level")} hint={i("كاملة: حركة نابضة · مخففة: انتقالات قصيرة بلا ارتداد · متوقفة: بلا حركة", "Full: springy · Reduced: short, no bounce · Off: no motion")}>
-          <Select
-            label={i("مستوى الحركة", "Motion level")} value={s.motionLevel === "reduced" || s.motionLevel === "off" ? s.motionLevel : "full"}
-            options={[
-              { value: "full", label: i("كاملة", "Full") },
-              { value: "reduced", label: i("مخففة", "Reduced") },
-              { value: "off", label: i("متوقفة", "Off") },
-            ]}
-            onChange={(v) => saveSettings({ motionLevel: v })}
-          />
-        </Row>
-        <div>
-          <div dir="auto" className="mb-2 text-sm">{i("استهلاك الرام الآن", "RAM usage now")}</div>
-          <RamUsage />
-        </div>
-      </Section>
-      </Group>
-      )}
-      </main>
-      </div>
-    </div>
+      </SearchCtx.Provider>
+    </DirCtx.Provider>
   );
 }
 

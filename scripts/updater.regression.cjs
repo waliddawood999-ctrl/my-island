@@ -113,6 +113,7 @@ const open = async (page) => { await page.mouse.move(380, 10); await page.waitFo
   // 6) الإعدادات: الزر اليدوي بحالاته
   for (const [mode, want] of [["none", /up to date/i], ["fail", /Couldn.t check/], ["available", /1\.0\.9/]]) {
     const { ctx, page, errs } = await fresh(browser, "settings.html", { mode, delay: 700 });
+    await page.locator('[data-nav="updates"]').click();
     const btn = page.locator('[data-testid="update-check"]');
     await btn.waitFor();
     ok(`[${mode}] button present, no status before click`, (await page.locator('[data-testid="update-status"]').count()) === 0);
@@ -127,7 +128,8 @@ const open = async (page) => { await page.mouse.move(380, 10); await page.waitFo
     await ctx.close();
   }
   { const { ctx, page } = await fresh(browser, "settings.html", { mode: "none" });
-    ok("auto-check toggle in General", (await page.getByRole("switch", { name: /Check for updates automatically/ }).count()) + (await page.getByLabel("Check for updates automatically").count()) > 0);
+    await page.locator('[data-nav="updates"]').click(); await page.waitForTimeout(300);
+    ok("auto-check toggle in Updates", (await page.getByRole("switch", { name: /Check for updates automatically/ }).count()) + (await page.getByLabel("Check for updates automatically").count()) > 0);
     await ctx.close(); }
 
   await browser.close();
