@@ -44,7 +44,7 @@ fn show_noactivate(w: &WebviewWindow) {
     let _ = w.show();
 }
 
-/// يضع النافذة أعلى منتصف الشاشة المختارة، محترمًا monitor وoffsetX/offsetY وpillPosition وunderTaskbar.
+/// يضع النافذة أعلى منتصف الشاشة المختارة، محترمًا monitor وoffsetX/offsetY وpillPosition (منطقة العمل).
 pub fn position_main(app: &AppHandle) {
     let Some(w) = app.get_webview_window(MAIN) else { return };
     let st = app.state::<AppState>();
@@ -57,11 +57,8 @@ pub fn position_main(app: &AppHandle) {
     else {
         return;
     };
-    // underTaskbar=true: من حافة الشاشة الفعلية؛ false: من أعلى منطقة العمل (تحترم شريط المهام العلوي).
-    let area = if p.under_taskbar { (*mon.position(), *mon.size()) } else {
-        let wa = mon.work_area();
-        (wa.position, wa.size)
-    };
+    // دائمًا من منطقة العمل: شريط مهام في الأسفل/الجانب ⇒ أعلى الشاشة نفسه؛ وشريط علوي ⇒ تحته (لا تغطيه الحبة).
+    let area = { let wa = mon.work_area(); (wa.position, wa.size) };
     let win_w = w.outer_size().map(|s| s.width as i32).unwrap_or(0);
     let scale = w.scale_factor().unwrap_or(1.0);
     // pillPosition: يسار/يمين بهامش 16px عن الحافة؛ المنتصف كما كان. offsetX يُضاف في كل الحالات.
@@ -125,69 +122,6 @@ pub fn toggle_hidden(app: &AppHandle) {
 }
 
 
-// ───────────────────── وضع تبويب المتصفح (browserTabMode) ─────────────────────
-// وضع إرساء بصري: حين يكون المتصفح المعروف هو النافذة الأمامية وهو مكبَّر وتشمل حدوده مركز الحبة، تُبلَّغ الواجهة (island:dock)
-// فتتخذ الحبة هيئة تبويب في شريط التبويبات. ليس تبويبًا حقيقيًا (لا واجهة تسمح لبرنامج خارجي بدخول شريط تبويبات المتصفح).
-// الكشف يعيد استعمال خيط fullscreen-watch القائم (لا خيط جديد) وبشرط المفتاح مفعّلًا وخارج Eco فقط.
-// PURE-BEGIN
-use serde::Serialize;
-
-/// ثوابت الشريط لكل متصفح (CSS px عند DPI 100%، والمتصفح والحبة على الشاشة نفسها فتتساوى النسبة): ارتفاع شريط التبويبات
-/// المكبَّر وحيّز الأعلى فوق التبويب. قيَم تقديرية من قياس واجهات المتصفحات؛ تُعاير على ويندوز (قائمة القبول في docs/STATUS.md).
-pub const BROWSERS: [(&str, &str, u32, u32); 5] = [
-    // (اسم exe, المعرّف, ارتفاع الشريط, حيّز الأعلى)
-    ("chrome.exe", "chrome", 41, 6),
-    ("msedge.exe", "edge", 41, 6),
-    ("brave.exe", "brave", 41, 6),
-    ("firefox.exe", "firefox", 40, 5),
-    ("vivaldi.exe", "vivaldi", 40, 5),
-];
-
-/// حمولة الحدث island:dock (active=false ⇒ العودة للوضع العائم الطبيعي).
-#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
-pub struct Dock {
-    pub active: bool,
-    pub browser: String,
-    pub strip: u32,
-    pub inset: u32,
-}
-impl Dock {
-    pub fn off() -> Dock { Dock { active: false, browser: String::new(), strip: 0, inset: 0 } }
-}
-
-/// اسم ملف exe (من مسار كامل أو اسم) ⇒ تعريف المتصفح إن كان معروفًا.
-pub fn browser_of(exe: &str) -> Option<(&'static str, u32, u32)> {
-    let file = exe.rsplit(['\\', '/']).next().unwrap_or(exe).to_ascii_lowercase();
-    BROWSERS.iter().find(|b| b.0 == file).map(|b| (b.1, b.2, b.3))
-}
-
-/// قرار الإرساء. أي غموض (مفتاح مطفأ، Eco، exe مجهول/غير متصفح، غير مكبَّر، لا يشمل مركز الحبة) ⇒ Dock::off.
-pub fn dock_decision(enabled: bool, eco: bool, exe: Option<&str>, maximized: bool, spans_pill: bool) -> Dock {
-    if !enabled || eco || !maximized || !spans_pill { return Dock::off(); }
-    match exe.and_then(browser_of) {
-        Some((id, strip, inset)) => Dock { active: true, browser: id.to_string(), strip, inset },
-        None => Dock::off(),
-    }
-}
-// PURE-END
-
-static DOCK: std::sync::Mutex<Option<Dock>> = std::sync::Mutex::new(None);
-
-/// يحدّث حالة الإرساء ويبثّ island:dock عند التغيّر فقط.
-fn set_dock(app: &AppHandle, d: Dock) {
-    let mut cur = DOCK.lock().unwrap();
-    if cur.as_ref().unwrap_or(&Dock::off()) == &d { return; }
-    *cur = Some(d.clone());
-    drop(cur);
-    let _ = app.emit_to(MAIN, "island:dock", d);
-}
-
-/// الحالة الحالية (الواجهة تسألها عند الإقلاع/إعادة التحميل لأن الحدث يُبثّ عند التغيّر فقط).
-#[tauri::command]
-pub fn island_dock_get() -> Dock {
-    DOCK.lock().unwrap().clone().unwrap_or_else(Dock::off)
-}
-
 // ───────────────────────── الفوكس واللصق (الجلسة 1.2) ─────────────────────────
 // الحبة WS_EX_NOACTIVATE دائمًا؛ take_focus/release_focus هما الاستثناء الوحيد (حقل البحث + لحظة اللصق).
 
@@ -210,7 +144,7 @@ mod focus {
         VK_CONTROL, VK_V,
     };
     use windows::Win32::UI::WindowsAndMessaging::{
-        GetClassNameW, GetForegroundWindow, GetWindowLongPtrW, GetWindowThreadProcessId, IsIconic, IsWindow, IsZoomed,
+        GetClassNameW, GetForegroundWindow, GetWindowLongPtrW, GetWindowThreadProcessId, IsIconic, IsWindow,
         SetForegroundWindow, SetWindowLongPtrW, ShowWindow, GWL_EXSTYLE, SW_RESTORE, WS_EX_NOACTIVATE,
     };
 
@@ -247,102 +181,6 @@ mod focus {
                 }
                 // وضع التوفير: تتبّع النافذة الأمامية أبطأ (آخر هدف للصق يتأخر ≤300ms فقط).
                 std::thread::sleep(std::time::Duration::from_millis(if crate::perf::eco() { 300 } else { 100 }));
-            }
-        });
-    }
-
-    /// اسم ملف exe لعملية النافذة h (None إن تعذّر الوصول).
-    fn exe_of(h: HWND) -> Option<String> {
-        use windows::core::PWSTR;
-        use windows::Win32::System::Threading::{QueryFullProcessImageNameW, PROCESS_NAME_WIN32};
-        let pid = pid_of(h);
-        if pid == 0 { return None; }
-        unsafe {
-            let p = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).ok()?;
-            let mut buf = [0u16; 520];
-            let mut len = buf.len() as u32;
-            let r = QueryFullProcessImageNameW(p, PROCESS_NAME_WIN32, PWSTR(buf.as_mut_ptr()), &mut len);
-            let _ = CloseHandle(p);
-            r.ok()?;
-            Some(String::from_utf16_lossy(&buf[..len as usize]))
-        }
-    }
-
-    /// هل حدود نافذة h تشمل مركز نافذة الحبة أفقيًا (المتصفح على شاشة الحبة نفسها)؟
-    fn spans_pill(app: &AppHandle, h: HWND) -> bool {
-        use windows::Win32::Foundation::RECT;
-        use windows::Win32::UI::WindowsAndMessaging::GetWindowRect;
-        let Some(w) = app.get_webview_window(MAIN) else { return false };
-        let (Ok(pos), Ok(size)) = (w.outer_position(), w.outer_size()) else { return false };
-        let cx = pos.x + size.width as i32 / 2;
-        let mut r = RECT::default();
-        if unsafe { GetWindowRect(h, &mut r) }.is_err() { return false; }
-        r.left <= cx && cx <= r.right && r.top <= pos.y + 8
-    }
-
-    /// وضع تبويب المتصفح: يُستدعى من دورة fullscreen-watch فقط (لا خيط جديد). نافذتنا الأمامية ⇒ لا تغيير.
-    fn dock_tick(app: &AppHandle, me: u32, fg: HWND) {
-        let enabled = app.state::<AppState>().settings.lock().unwrap()
-            .get("browserTabMode").and_then(|v| v.as_bool()).unwrap_or(false);
-        if !enabled || crate::perf::eco() {
-            set_dock(app, Dock::off());
-            return;
-        }
-        if fg.0.is_null() || pid_of(fg) == me { return; }
-        if is_shell(fg) { set_dock(app, Dock::off()); return; }
-        let maximized = unsafe { IsZoomed(fg).as_bool() };
-        let exe = if maximized { exe_of(fg) } else { None };
-        let spans = maximized && spans_pill(app, fg);
-        set_dock(app, dock_decision(true, false, exe.as_deref(), maximized, spans));
-    }
-
-    /// هل نافذة h تغطي شاشة كاملة (ملء الشاشة)؟ تُقارَن بمستطيلات الشاشات الفعلية.
-    fn covers_monitor(app: &AppHandle, h: HWND) -> bool {
-        use windows::Win32::Foundation::RECT;
-        use windows::Win32::UI::WindowsAndMessaging::GetWindowRect;
-        let mut r = RECT::default();
-        if unsafe { GetWindowRect(h, &mut r) }.is_err() {
-            return false;
-        }
-        app.available_monitors().unwrap_or_default().iter().any(|m| {
-            let (p, s) = (m.position(), m.size());
-            r.left <= p.x && r.top <= p.y && r.right >= p.x + s.width as i32 && r.bottom >= p.y + s.height as i32
-        })
-    }
-
-    /// hideInFullscreen: يخفي الحبة طالما نافذة أمامية (ليست لنا ولا الشل) تملأ شاشة، ويعيدها بعدها.
-    pub fn start_fullscreen_watch(app: AppHandle) {
-        std::thread::spawn(move || {
-            let me = unsafe { GetCurrentProcessId() };
-            let mut auto_hidden = false;
-            loop {
-                std::thread::sleep(std::time::Duration::from_millis(if crate::perf::eco() { 1500 } else { 500 }));
-                let enabled = app
-                    .state::<AppState>()
-                    .settings
-                    .lock()
-                    .unwrap()
-                    .get("hideInFullscreen")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false);
-                let fg = unsafe { GetForegroundWindow() };
-                dock_tick(&app, me, fg);
-                let want = if !enabled {
-                    false
-                } else if fg.0.is_null() || pid_of(fg) == me {
-                    auto_hidden // نافذتنا أمامية ⇒ لا تغيير
-                } else {
-                    !is_shell(fg) && covers_monitor(&app, fg)
-                };
-                if want && !auto_hidden {
-                    if !*app.state::<AppState>().hidden.lock().unwrap() {
-                        set_hidden(&app, true);
-                        auto_hidden = true;
-                    }
-                } else if !want && auto_hidden {
-                    auto_hidden = false;
-                    set_hidden(&app, false);
-                }
             }
         });
     }
@@ -499,12 +337,10 @@ mod focus {
 }
 
 #[cfg(windows)]
-pub use focus::{drop_focus, paste_into_previous, release_focus, start_fullscreen_watch, start_tracker, take_focus};
+pub use focus::{drop_focus, paste_into_previous, release_focus, start_tracker, take_focus};
 
 #[cfg(not(windows))]
 pub fn start_tracker() {}
-#[cfg(not(windows))]
-pub fn start_fullscreen_watch(_app: AppHandle) {}
 #[cfg(not(windows))]
 pub fn take_focus(_app: &AppHandle) {}
 #[cfg(not(windows))]

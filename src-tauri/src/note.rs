@@ -349,43 +349,11 @@ fn tick(app: &AppHandle, now: i64) {
     }
 }
 
-/// تنبيه: حدث island:note للواجهة + صوت alertSound إن ضُبط (غير فارغ ولا "off").
+/// تنبيه: حدث island:note للواجهة؛ الصوت يُعزف في الواجهة (WebAudio محلي من soundChoice/soundVolume — src/sounds.ts).
 /// pub(crate): تستعمله meetings.rs لتنبيه الاجتماعات بالقناة نفسها (تغيير الظهور فقط).
 pub(crate) fn alert(app: &AppHandle, payload: Value) {
     let _ = app.emit("island:note", payload);
-    let sound = app
-        .state::<AppState>()
-        .settings
-        .lock()
-        .unwrap()
-        .get("alertSound")
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .to_string();
-    play_sound(&sound);
 }
-
-#[cfg(windows)]
-fn play_sound(sound: &str) {
-    use windows::core::HSTRING;
-    use windows::Win32::Media::Audio::{PlaySoundW, SND_ALIAS, SND_ASYNC, SND_FILENAME, SND_NODEFAULT};
-    let s = sound.trim();
-    if s.is_empty() || s.eq_ignore_ascii_case("off") || s.eq_ignore_ascii_case("none") {
-        return;
-    }
-    let beep = || unsafe {
-        let _ = PlaySoundW(&HSTRING::from("SystemAsterisk"), None, SND_ALIAS | SND_ASYNC);
-    };
-    // PlaySound يقبل WAV فقط؛ مسار غير موجود/غير مدعوم ⇒ نغمة النظام الافتراضية احتياطًا.
-    if s.eq_ignore_ascii_case("default") || s.eq_ignore_ascii_case("beep") || !std::path::Path::new(s).is_file() {
-        beep();
-    } else if !unsafe { PlaySoundW(&HSTRING::from(s), None, SND_FILENAME | SND_ASYNC | SND_NODEFAULT) }.as_bool() {
-        beep();
-    }
-}
-
-#[cfg(not(windows))]
-fn play_sound(_sound: &str) {}
 
 #[cfg(test)]
 mod tests {

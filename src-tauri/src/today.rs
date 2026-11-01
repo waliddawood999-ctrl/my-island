@@ -289,6 +289,8 @@ pub struct Weather {
     pub units: String,
     pub city: String,
     pub fetched_at: i64,
+    /// سبب الفشل إن وُجد (dns/connect/timeout/http_NNN/parse/eco) — الواجهة تعرض حالة خطأ واضحة؛ فارغ = سليم.
+    pub error: String,
 }
 
 static CACHE: Mutex<Option<(String, Weather)>> = Mutex::new(None);
@@ -310,13 +312,28 @@ fn parse_weather(v: &Value, units: &str, city: &str, now: i64) -> Option<Weather
         units: units.into(),
         city: city.into(),
         fetched_at: now,
+        error: String::new(),
     })
 }
 
-fn fetch_weather(c: &City, units: &str) -> Option<Weather> {
+/// يصنّف خطأ ureq إلى رمز قصير للواجهة (بلا نصوص النظام).
+fn classify(e: &ureq::Error) -> String {
+    match e {
+        ureq::Error::Status(code, _) => format!("http_{code}"),
+        ureq::Error::Transport(t) => match t.kind() {
+            ureq::ErrorKind::Dns => "dns".into(),
+            ureq::ErrorKind::ConnectionFailed | ureq::ErrorKind::ProxyConnect => "connect".into(),
+            _ if t.to_string().to_ascii_lowercase().contains("timed out") => "timeout".into(),
+            _ => "network".into(),
+        },
+    }
+}
+
+fn fetch_once(c: &City, units: &str) -> Result<Weather, String> {
     let agent = ureq::AgentBuilder::new()
-        .timeout_connect(Duration::from_secs(5))
-        .timeout(Duration::from_secs(8))
+        .timeout_connect(Duration::from_secs(6))
+        .timeout(Duration::from_secs(10))
+        .user_agent("MyIsland/1.0")
         .build();
     let fahrenheit = units == "f";
     let r = agent
@@ -328,18 +345,36 @@ fn fetch_weather(c: &City, units: &str) -> Option<Weather> {
         .query("wind_speed_unit", if fahrenheit { "mph" } else { "kmh" })
         .query("timezone", "auto")
         .call()
-        .ok()?;
-    parse_weather(&r.into_json::<Value>().ok()?, units, c.id, now_ms())
+        .map_err(|e| classify(&e))?;
+    let v = r.into_json::<Value>().map_err(|_| "parse".to_string())?;
+    parse_weather(&v, units, c.id, now_ms()).ok_or_else(|| "parse".to_string())
 }
 
-/// الطقس الحالي لمدينة prayerCity. معطّل (enabled:false) ما لم يُفعَّل showWeather؛ غياب الشبكة ⇒ offline:true.
+/// محاولة ثم إعادة واحدة بعد 700ms لأعطال النقل العابرة (لا تُعاد أخطاء HTTP/التحليل).
+fn fetch_weather(c: &City, units: &str) -> Result<Weather, String> {
+    match fetch_once(c, units) {
+        Err(e) if !e.starts_with("http_") && e != "parse" => {
+            std::thread::sleep(Duration::from_millis(700));
+            fetch_once(c, units)
+        }
+        r => r,
+    }
+}
+
+/// مدينة الطقس: weatherCity (الافتراضي المدينة المنورة) — مستقلة عن prayerCity حتى لا تمسّ مواقيت الصلاة.
+fn weather_city(app: &AppHandle) -> &'static City {
+    let id = setting(app, "weatherCity").and_then(|v| v.as_str().map(String::from)).unwrap_or_else(|| "madinah".into());
+    city_by_id(&id)
+}
+
+/// الطقس الحالي لمدينة weatherCity. معطّل (enabled:false) ما لم يُفعَّل showWeather؛ غياب الشبكة ⇒ offline:true.
 /// يُخزَّن 15 دقيقة في الذاكرة (لكل مدينة+وحدات)؛ refresh=true يتجاوزه.
 #[tauri::command]
 pub async fn weather_get(app: AppHandle, refresh: Option<bool>) -> Result<Weather, String> {
     if !setting(&app, "showWeather").and_then(|v| v.as_bool()).unwrap_or(false) {
         return Ok(Weather::default());
     }
-    let city = city_setting(&app);
+    let city = weather_city(&app);
     let units = match setting(&app, "weatherUnits").and_then(|v| v.as_str().map(String::from)).as_deref() {
         Some("f") => "f",
         _ => "c",
@@ -352,7 +387,7 @@ pub async fn weather_get(app: AppHandle, refresh: Option<bool>) -> Result<Weathe
             // Eco: لا شبكة — آخر قيمة مخزّنة لنفس المدينة/الوحدات إن وُجدت (أيًّا كان عمرها) وإلا «لا بيانات».
             return match CACHE.lock().unwrap().as_ref() {
                 Some((k, w)) if *k == key => w.clone(),
-                _ => Weather::default(),
+                _ => Weather { enabled: true, error: "eco".into(), units: units.into(), city: city.id.into(), ..Weather::default() },
             };
         }
         if !force {
@@ -361,11 +396,15 @@ pub async fn weather_get(app: AppHandle, refresh: Option<bool>) -> Result<Weathe
             }
         }
         match fetch_weather(city, units) {
-            Some(w) => {
+            Ok(w) => {
                 *CACHE.lock().unwrap() = Some((key, w.clone()));
                 w
             }
-            None => Weather { enabled: true, offline: true, units: units.into(), city: city.id.into(), ..Weather::default() },
+            // فشل: آخر قيمة سليمة لنفس المدينة/الوحدات (مع سبب الخطأ ليُنبَّه المستخدم أنها قديمة) وإلا حالة خطأ صريحة.
+            Err(e) => match CACHE.lock().unwrap().as_ref() {
+                Some((k, w)) if *k == key => Weather { error: e, ..w.clone() },
+                _ => Weather { enabled: true, offline: true, error: e, units: units.into(), city: city.id.into(), ..Weather::default() },
+            },
         }
     })
     .await

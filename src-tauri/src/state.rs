@@ -3,12 +3,11 @@ use rusqlite::Connection;
 use serde_json::{json, Map, Value};
 use std::{path::PathBuf, sync::Mutex};
 
-/// قيَم الموضع — تطابق مفاتيح monitor / offsetX / underTaskbar في src/settings.ts.
+/// قيَم الموضع — تطابق مفاتيح monitor / offsetX / offsetY / pillPosition في src/settings.ts.
 #[derive(Clone, Copy, Debug)]
 pub struct PlacementSettings {
     pub monitor: usize,
     pub offset_x: i32,
-    pub under_taskbar: bool,
     /// إزاحة رأسية عن الحافة العليا (CSS px) — المفتاح offsetY.
     pub offset_y: i32,
     /// -1 يسار · 0 منتصف · 1 يمين — المفتاح pillPosition.
@@ -17,7 +16,7 @@ pub struct PlacementSettings {
 
 impl Default for PlacementSettings {
     fn default() -> Self {
-        Self { monitor: 0, offset_x: 0, under_taskbar: false, offset_y: 0, align: 0 }
+        Self { monitor: 0, offset_x: 0, offset_y: 0, align: 0 }
     }
 }
 
@@ -76,10 +75,16 @@ pub fn defaults() -> Map<String, Value> {
         "loadAlert": false,
         "showToday": true,
         "prayerCity": "riyadh",
+        "weatherCity": "madinah",
+        "soundChoice": "chime",
+        "soundVolume": 70,
         "prayerAlerts": true
     }) else { unreachable!() };
     m
 }
+
+/// مفاتيح إعدادات أُزيلت ميزاتها؛ تُحذف عند فتح القاعدة ولا تعود للواجهة.
+pub const OBSOLETE_KEYS: &[&str] = &["browserTabMode", "underTaskbar", "lyricsInHome", "lyricsInPlayer"];
 
 pub struct AppState {
     pub placement: Mutex<PlacementSettings>,
@@ -114,6 +119,9 @@ impl AppState {
         let mut conn = Connection::open(dir.join("island.db")).map_err(|e| e.to_string())?;
         conn.execute_batch(include_str!("../schema.sql")).map_err(|e| e.to_string())?;
         crate::migrate::run(&mut conn, crate::migrate::MIGRATIONS).map_err(|e| e.to_string())?;
+        // ترحيل: مفاتيح أُزيلت ميزاتها (وضع تبويب المتصفح، «تحت شريط المهام»، كلمات الأغاني + ذاكرتها) تُحذف من kv مرة واحدة/دائمًا (idempotent).
+        for k in OBSOLETE_KEYS { let _ = conn.execute("DELETE FROM kv WHERE key = ?1", [k]); }
+        let _ = conn.execute("DELETE FROM kv WHERE key LIKE 'lyrics:%'", []);
         let mut merged = defaults();
         {
             let mut st = conn.prepare("SELECT key, value FROM kv").map_err(|e| e.to_string())?;
@@ -121,8 +129,6 @@ impl AppState {
                 .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))
                 .map_err(|e| e.to_string())?;
             for (k, v) in rows.flatten() {
-                // ذاكرة كلمات الأغاني المؤقتة (lyrics.rs) ليست إعدادات.
-                if k.starts_with(crate::lyrics::CACHE_PREFIX) { continue; }
                 // الأخيرة في شريط الأوامر (palette.rs) ليست إعدادات.
                 if k == crate::palette::RECENT_KEY { continue; }
                 // سجل الألوان (color.rs) ليس إعدادًا.
@@ -150,7 +156,6 @@ impl AppState {
         let mut p = self.placement.lock().unwrap();
         if let Some(v) = s.get("monitor").and_then(Value::as_u64) { p.monitor = v as usize; }
         if let Some(v) = s.get("offsetX").and_then(Value::as_i64) { p.offset_x = v as i32; }
-        if let Some(v) = s.get("underTaskbar").and_then(Value::as_bool) { p.under_taskbar = v; }
         if let Some(v) = s.get("offsetY").and_then(Value::as_i64) { p.offset_y = (v as i32).clamp(0, 60); }
         if let Some(v) = s.get("pillPosition").and_then(Value::as_str) { p.align = match v { "left" => -1, "right" => 1, _ => 0 }; }
     }

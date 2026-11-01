@@ -4,6 +4,7 @@
 pub mod migrate;    // ترحيلات island.db المرقّمة
 pub mod attention;  // وقتي: زمن تركيز التطبيقات + تذكير الاستراحة
 pub mod state;      // AppState: إعدادات + جلسات + حالة النوافذ
+pub mod fullscreen; // hideInFullscreen حدثي + مراقبة الشاشات/DPI
 pub mod commands;   // طبقة الأوامر العامة (settings_get/set ...)
 pub mod win;        // موضع/إخفاء/فوكس النافذة الرئيسية
 pub mod watchdog;   // نبض page_pong وإعادة تحميل الصفحة الصامتة
@@ -12,7 +13,6 @@ pub mod autostart;  // مفتاح Run في ريجيستري ويندوز
 pub mod media;      // SMTC: ما يُشغَّل الآن + التحكم
 pub mod spectrum;   // WASAPI loopback + FFT
 // pub mod player_audio;
-pub mod lyrics;     // LRCLIB
 pub mod battery;    // GetSystemPowerStatus
 pub mod capture;    // لقطات منطقة/شاشة + overlay
 pub mod recorder;   // Media Foundation (H.264) / GIF
@@ -100,7 +100,7 @@ pub fn run() {
                 .or_else(|| app.path().app_data_dir().ok());
             watchdog::start(app.handle(), dir.clone());
             win::start_tracker();
-            win::start_fullscreen_watch(app.handle().clone());
+            fullscreen::start(app.handle().clone());
             if let Some(dir) = dir {
                 if let Err(e) = app.state::<state::AppState>().init_db(dir) {
                     eprintln!("تعذّر فتح island.db: {e}");
@@ -165,7 +165,6 @@ pub fn run() {
             media::media_pick,
             media::media_sources,
             media::media_now,
-            lyrics::lyrics_get,
             battery::battery_status,
             attention::attention_today,
             attention::attention_clear,
@@ -183,7 +182,6 @@ pub fn run() {
             perf::perf_ram,
             mascot::mascot_active,
             netspeed::netspeed_active,
-            win::island_dock_get,
             backdrop::island_backdrop,
             capture::capture_start,
             capture::capture_frame,
