@@ -1,0 +1,75 @@
+/*
+ * رموز التصميم الموحّدة — المصدر الوحيد للألوان/الزوايا/المسافات/الخط/الظلال/الحركة لكل الأسطح
+ * (الحبة، اللوحة، البطاقات، الإعدادات، المحرّر، التقاط الشاشة، التنبيهات). المرآة في TS: src/tokens.ts.
+ * المتغيرات الحيّة (accent، pill-*، border-k، shadow-k، font-scale، speed، corner-scale، density) تضبطها src/appearance.ts على <html>.
+ */
+:root {
+  /* الزوايا */
+  --corner-scale: 1;
+  --radius-pill: var(--pill-radius, 17px);
+  --radius-card: calc(16px * var(--corner-scale));
+  --radius-control: calc(10px * var(--corner-scale));
+  --radius-chip: 999px;
+  --radius-palette: calc(24px * var(--corner-scale));
+  --radius-panel: calc(28px * var(--corner-scale));
+
+  /* المسافات */
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px; --space-6: 24px; --space-8: 32px;
+  --density-pad: var(--space-4);
+  --row-h: 56px;
+
+  /* الخط (Almarai عبر --font-ui في index.css) — الحجم × مقياس المستخدم */
+  --font-scale: 1;
+  --fs-12: calc(12px * var(--font-scale)); --fs-13: calc(13px * var(--font-scale)); --fs-14: calc(14px * var(--font-scale));
+  --fs-16: calc(16px * var(--font-scale)); --fs-20: calc(20px * var(--font-scale)); --fs-24: calc(24px * var(--font-scale));
+  --fw-regular: 400; --fw-medium: 500; --fw-bold: 700;
+
+  /* الحركة */
+  --speed: 1;
+  --dur-fast: calc(120ms / var(--speed)); --dur-base: calc(200ms / var(--speed)); --dur-slow: calc(320ms / var(--speed));
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* الحبة واللوحة (أبعاد ثابتة: الحبة من الإعدادات، اللوحة لكل عرض) */
+  --pill-width: 220px; --pill-height: 34px; --pill-radius: 17px;
+  --panel-width: 720px; --panel-height: 320px;
+
+  /* قوة الحدّ/الظل من الإعدادات (1 = افتراضي) */
+  --border-k: 1; --shadow-k: 1;
+
+  /* الظلال: ثلاثة مستويات ناعمة متعدّدة الطبقات */
+  --shadow-1: 0 1px 2px rgb(0 0 0 / calc(0.14 * var(--shadow-k))), 0 1px 1px rgb(0 0 0 / calc(0.08 * var(--shadow-k)));
+  --shadow-2: 0 4px 12px rgb(0 0 0 / calc(0.18 * var(--shadow-k))), 0 1px 3px rgb(0 0 0 / calc(0.10 * var(--shadow-k)));
+  --shadow-3: 0 16px 40px rgb(0 0 0 / calc(0.28 * var(--shadow-k))), 0 4px 12px rgb(0 0 0 / calc(0.14 * var(--shadow-k)));
+
+  /* الألوان — داكن (الافتراضي) */
+  --c-surface: #12131a;
+  --c-surface-raised: #1b1d27;
+  --c-border: rgb(255 255 255 / calc(0.10 * var(--border-k)));
+  --c-text-primary: #ffffff;
+  --c-text-secondary: rgb(255 255 255 / 0.62);
+  --c-text-tertiary: rgb(255 255 255 / 0.42);
+  --c-success: #34d399; --c-warning: #fbbf24; --c-danger: #f87171; --c-info: #8ea2ff;
+  --accent: #4fd1c5; --accent-fg: #06201d; --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
+
+  /* معاملات الزجاج (glassTint/Blur/Saturation من الإعدادات؛ style يضبطه data-glass) */
+  --glass-tint: 45; --glass-blur: 24px; --glass-saturate: 1.8;
+  --glass-rim-hi: rgb(255 255 255 / 0.35); --glass-rim-lo: rgb(255 255 255 / 0.08);
+  --glass-spec: rgb(255 255 255 / 0.55);
+  --glass-shadow: rgb(0 0 0 / calc(0.25 * var(--shadow-k)));
+}
+:root[data-theme="light"] {
+  --c-surface: #eceff4;
+  --c-surface-raised: #ffffff;
+  --c-border: rgb(13 16 23 / calc(0.12 * var(--border-k)));
+  --c-text-primary: #0d1017;
+  --c-text-secondary: rgb(13 16 23 / 0.66);
+  --c-text-tertiary: rgb(13 16 23 / 0.46);
+  --c-success: #047857; --c-warning: #b45309; --c-danger: #dc2626; --c-info: #4256d0;
+  --shadow-1: 0 1px 2px rgb(13 16 23 / calc(0.08 * var(--shadow-k))), 0 1px 1px rgb(13 16 23 / calc(0.05 * var(--shadow-k)));
+  --shadow-2: 0 4px 12px rgb(13 16 23 / calc(0.10 * var(--shadow-k))), 0 1px 3px rgb(13 16 23 / calc(0.06 * var(--shadow-k)));
+  --shadow-3: 0 16px 40px rgb(13 16 23 / calc(0.16 * var(--shadow-k))), 0 4px 12px rgb(13 16 23 / calc(0.08 * var(--shadow-k)));
+  --glass-rim-hi: rgb(255 255 255 / 0.85); --glass-rim-lo: rgb(255 255 255 / 0.30);
+  --glass-spec: rgb(255 255 255 / 0.95);
+  --glass-shadow: rgb(13 16 23 / calc(0.14 * var(--shadow-k)));
+}
+:root[data-density="compact"] { --density-pad: var(--space-3); --row-h: 48px; }

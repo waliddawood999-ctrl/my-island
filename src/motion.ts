@@ -13,6 +13,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { Transition, Variants } from "motion/react";
+import { springPresets, type SpringStyle } from "./tokens";
 
 export type MotionLevel = "full" | "reduced" | "off";
 export const MOTION_LEVELS: MotionLevel[] = ["full", "reduced", "off"];
@@ -25,21 +26,31 @@ export const ease = {
 
 type SpringKey = "island" | "content" | "press" | "tabLead" | "tabTrail" | "eye";
 
-/** نوابض: تجاوز (overshoot) بسيط جدًا كحد أقصى — damping مرتفع نسبيًا. */
-const FULL_SPRING: Record<SpringKey, Transition> = {
-  /** تحوّل الحبة↔اللوحة: الحجم والانحناء (عنصر واحد يتحوّل دون قطع). */
-  island: { type: "spring", stiffness: 380, damping: 36, mass: 0.9 },
-  /** ظهور عناصر داخل اللوحة وأقسامها. */
-  content: { type: "spring", stiffness: 420, damping: 38, mass: 0.8 },
-  /** ضغط/تحويم الأزرار — سريع بلا تجاوز. */
-  press: { type: "spring", stiffness: 700, damping: 40, mass: 0.5 },
-  /** حافة مؤشر التبويب القائدة (تتمدد أولًا). */
-  tabLead: { type: "spring", stiffness: 620, damping: 38, mass: 0.7 },
-  /** حافة مؤشر التبويب التابعة (أبطأ فيتمدد المؤشر ثم ينكمش). */
-  tabTrail: { type: "spring", stiffness: 300, damping: 34, mass: 0.8 },
-  /** عيون التميمة: انزلاق/تغيّر الحالة — فوق الحرج قليلًا (ζ≈1.1): ناعم بلا أي ارتداد. */
-  eye: { type: "spring", stiffness: 240, damping: 29, mass: 0.7 },
-};
+/** سرعة الحركة (0.5..1.5) ونمط النابض (snappy/smooth/gentle): من الإعدادين animSpeed/springStyle عبر setMotionTuning.
+ *  السرعة تضرب الصلابة في مربعها والتخميد في نفسها (نسبة التخميد ثابتة)، وتقسم المدد. */
+let speed = 1;
+let style: SpringStyle = "snappy";
+const sp = (stiffness: number, damping: number, mass: number): Transition => ({ type: "spring", stiffness: stiffness * speed * speed, damping: damping * speed, mass });
+
+/** نوابض: تجاوز (overshoot) بسيط جدًا كحد أقصى. island/content تتبعان النمط المختار (tokens.ts::springPresets)؛ البقية مخصّصة. */
+function buildFullSpring(): Record<SpringKey, Transition> {
+  const p = springPresets[style];
+  return {
+    /** تحوّل الحبة↔اللوحة: الحجم والانحناء (عنصر واحد يتحوّل دون قطع). */
+    island: sp(p.stiffness, p.damping, 0.9),
+    /** ظهور عناصر داخل اللوحة وأقسامها. */
+    content: sp(p.stiffness * 1.05, p.damping * 1.05, 0.8),
+    /** ضغط/تحويم الأزرار — سريع بلا تجاوز. */
+    press: sp(700, 40, 0.5),
+    /** حافة مؤشر التبويب القائدة (تتمدد أولًا). */
+    tabLead: sp(620, 38, 0.7),
+    /** حافة مؤشر التبويب التابعة (أبطأ فيتمدد المؤشر ثم ينكمش). */
+    tabTrail: sp(300, 34, 0.8),
+    /** عيون التميمة: انزلاق/تغيّر الحالة — فوق الحرج قليلًا (ζ≈1.1): ناعم بلا أي ارتداد. */
+    eye: sp(240, 29, 0.7),
+  };
+}
+let FULL_SPRING: Record<SpringKey, Transition> = buildFullSpring();
 const SHORT: Transition = { type: "tween", duration: 0.12, ease: ease.out };
 const NONE: Transition = { type: "tween", duration: 0 };
 const flat = (t: Transition): Record<SpringKey, Transition> => ({ island: t, content: t, press: t, tabLead: t, tabTrail: t, eye: t });
@@ -48,17 +59,18 @@ export const spring: Record<SpringKey, Transition> = { ...FULL_SPRING };
 
 interface Dur { fast: number; base: number; swap: number; windowShrinkGuard: number; alert: number; tabSwitchGuard: number }
 /** مدد (ثوانٍ). */
-const FULL_DUR: Dur = {
-  fast: 0.12,
-  base: 0.18,
-  swap: 0.2,
+const buildFullDur = (): Dur => ({
+  fast: 0.12 / speed,
+  base: 0.18 / speed,
+  swap: 0.2 / speed,
   /** احتياط لتأخير تصغير النافذة إن لم يصل رد اكتمال الحركة. */
   windowShrinkGuard: 0.9,
   /** هزّة جرس تنبيه التذكير/المؤقّت (ثوانٍ لكل دورة؛ تتكرر مرتين). */
   alert: 0.6,
   /** حارس تبديل التبويب: إن لم يبدأ دخول التبويب الجديد خلال هذه المدة (حركة الخروج لم تكتمل) يُفرَض التبديل. */
   tabSwitchGuard: 0.6,
-};
+});
+let FULL_DUR: Dur = buildFullDur();
 export const dur: Dur = { ...FULL_DUR };
 
 /** رمشة العيون: إغلاق سريع ثم فتح أبطأ قليلًا (tween لا نابض: لا ارتداد)، والفاصل العشوائي بين رمشتين (ms). */
@@ -152,6 +164,8 @@ export function resolveMotion(chosen: unknown, eco: boolean): MotionLevel {
 /** يطبّق المستوى على كل الثوابت الحيّة وعلى <html data-motion> (لـCSS)، ثم يُعلم المشتركين. */
 export function setMotionLevel(l: MotionLevel) {
   level = l;
+  FULL_SPRING = buildFullSpring();
+  FULL_DUR = buildFullDur();
   if (l === "full") {
     Object.assign(spring, FULL_SPRING);
     Object.assign(dur, FULL_DUR);
@@ -183,6 +197,15 @@ export function setMotionLevel(l: MotionLevel) {
   buildVariants();
   if (typeof document !== "undefined") document.documentElement.dataset.motion = l;
   subs.forEach((f) => f());
+}
+
+/** سرعة ونمط النابض من الإعدادات (قيم غير صالحة ⇒ الافتراضي)؛ تعيد بناء الثوابت الحيّة عند التغيّر فقط. */
+export function setMotionTuning(animSpeed: unknown, springStyle: unknown) {
+  const sp2 = typeof animSpeed === "number" && Number.isFinite(animSpeed) ? Math.min(150, Math.max(50, animSpeed)) / 100 : 1;
+  const st: SpringStyle = springStyle === "smooth" || springStyle === "gentle" ? springStyle : "snappy";
+  if (sp2 === speed && st === style) return;
+  speed = sp2; style = st;
+  setMotionLevel(level);
 }
 
 export const motionLevel = (): MotionLevel => level;

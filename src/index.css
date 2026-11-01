@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./tokens.css";
 /* الخط المدمج الافتراضي Almarai (SIL OFL 1.1 — الدمج وإعادة التوزيع مسموحان) ثم IBM Plex احتياطيًا — نقطة الاستيراد الوحيدة. */
 @import "@fontsource/almarai/arabic-400.css";
 @import "@fontsource/almarai/arabic-700.css";
@@ -21,7 +22,8 @@
   --font-num: 'thmanyah Sans', 'Almarai', 'IBM Plex Sans Arabic', sans-serif;
 }
 
-html, body, #root { font-family: var(--font-ui); font-weight: 400; }
+html, body, #root { font-family: var(--font-ui); font-weight: var(--fw-regular); background: transparent; }
+html { font-size: calc(16px * var(--font-scale)); }
 button, input, textarea, select { font-family: inherit; }
 h1, h2, h3 { font-family: var(--font-display); font-weight: 800; }
 .font-medium, .font-semibold { font-weight: 700; } /* التسميات 700 */
@@ -44,14 +46,11 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 800; }
  * الداكن = الافتراضي. الفاتح يعيد ربط --color-white/--color-black (Tailwind) فتنعكس كل فئات text-white/bg-white/10… تلقائيًا
  * بلا لمس المكوّنات، وتتبعها أسطح النوافذ عبر --app-*.
  */
-:root { --app-bg: #12131a; --app-editor-bg: #14151c; --app-field: #1b1d27; --app-accent: #4fd1c5; }
+:root { --app-bg: var(--c-surface); --app-editor-bg: #14151c; --app-field: var(--c-surface-raised); --app-accent: var(--accent); }
 :root[data-theme="light"] {
   --color-white: #0d1017;
   --color-black: #f2f4f8;
-  --app-bg: #eceff4;
   --app-editor-bg: #e4e8ef;
-  --app-field: #ffffff;
-  --app-accent: #0f766e;
   color-scheme: light;
 }
 

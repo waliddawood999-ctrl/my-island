@@ -21,7 +21,10 @@ eq("garbage + eco → reduced", m.resolveMotion(7, true), "reduced");
 
 // full: النوابض الأصلية (نابضة كما في MOTION.md)
 m.setMotionLevel("full");
-eq("full island spring", m.spring.island, { type: "spring", stiffness: 380, damping: 36, mass: 0.9 });
+eq("full island spring (snappy 500/35)", m.spring.island, { type: "spring", stiffness: 500, damping: 35, mass: 0.9 });
+m.setMotionTuning(150, "gentle");
+eq("tuning: gentle at 1.5× scales stiffness x2.25 and damping x1.5", [m.spring.island.stiffness, m.spring.island.damping, m.dur.fast], [180 * 2.25, 24 * 1.5, 0.12 / 1.5]);
+m.setMotionTuning(100, "snappy");
 eq("full dur", [m.dur.fast, m.dur.base, m.dur.swap], [0.12, 0.18, 0.2]);
 eq("full tap", [m.tap.whileHover.scale, m.tap.whileTap.scale], [1.05, 0.97]);
 eq("full swap enter blur+shift", [m.swapVariants.initial.y, m.swapVariants.initial.filter], [6, "blur(6px)"]);

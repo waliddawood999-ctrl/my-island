@@ -86,11 +86,25 @@ export interface Settings {
   eyesEnabled:boolean,
   pillWidth:number,
   pillHeight:number,
-  themeMode:'dark'|'light',
+  themeMode:'system'|'dark'|'light',
   themeMaterial:'solid'|'glass',
   glassTint:number,
   glassBlur:number,
   glassSaturation:number,
+  glassStyle:'crystal'|'clear',   // أسلوب الزجاج: بلوري (Liquid Glass) / شفاف — docs/GLASS.md
+  accentColor:string,             // لون التمييز #rrggbb
+  borderStrength:number,          // قوة الحدود 0..100 (50 = افتراضي)
+  shadowStrength:number,          // قوة الظلال 0..100 (50 = افتراضي)
+  cornerStyle:'rounded'|'extra',  // استدارة البطاقات والأزرار
+  fontScale:number,               // مقياس الخط 90..120 (٪)
+  density:'comfortable'|'compact',
+  pillRadius:number,              // نصف قطر الحبة 0..22 (0 = كبسولة كاملة تلقائيًا)
+  offsetY:number,                 // إزاحة رأسية عن الحافة العليا 0..60
+  pillPosition:'center'|'left'|'right',
+  animSpeed:number,               // سرعة الحركة 50..150 (٪)
+  springStyle:'snappy'|'smooth'|'gentle',
+  reduceMotion:boolean,           // تقليل الحركة (يُحترم تفضيل النظام أيضًا)
+  settingsVersion:number,         // ترحيل الإعدادات (appearance.ts::migrateSettings)
   browserTabMode:boolean,
   showNetSpeed:boolean,
   workspaces:Workspace[],
@@ -158,10 +172,24 @@ export const DEFAULTS: Partial<Settings> = {
   ecoOnBattery: false,     // يفعّل Eco تلقائيًا عند فصل الشاحن ويوقفه عند توصيله (اليدوي يبقى)
   pillWidth: 220,          // عرض الحبة المنكمشة (160..280)
   pillHeight: 34,          // ارتفاعها (28..44)؛ المحتوى (خط/عيون/أيقونات) يتدرج k=ارتفاع/32
-  themeMode: 'dark',       // dark = أسود كالمرجع · light = فاتح كالمرجع (كل النوافذ)
-  themeMaterial: 'solid',  // solid = مصمت · glass = شفافية مع blur
+  themeMode: 'system',     // system = يتبع النظام · dark · light (كل النوافذ)
+  themeMaterial: 'glass',  // solid = مصمت · glass = شفافية مع blur (الافتراضي زجاجي)
   glassTint: 45,           // قوة تظليل الزجاج 0..80 (٪) — لا أثر إلا مع themeMaterial=glass؛ ويندوز 11: صبغة الصفحة · ويندوز 10: ألفا الأكريليك
   glassBlur: 24,           // تمويه طبقة الزجاج CSS بالبكسل 0..40 (css.glass من المرجع) — مستقل عن الزجاج الأصلي؛ لا أثر إلا مع themeMaterial=glass؛ Eco يحدّه بـ8
+  glassStyle: 'crystal',   // crystal = زجاج بلوري · clear = زجاج شفاف
+  accentColor: '#4fd1c5',
+  borderStrength: 50,
+  shadowStrength: 50,
+  cornerStyle: 'rounded',
+  fontScale: 100,
+  density: 'comfortable',
+  pillRadius: 0,           // 0 = كبسولة كاملة (نصف الارتفاع)
+  offsetY: 0,
+  pillPosition: 'center',
+  animSpeed: 100,
+  springStyle: 'snappy',
+  reduceMotion: false,
+  settingsVersion: 2,
   glassSaturation: 180,    // تشبّع طبقة الزجاج CSS 100..200 (٪)؛ Eco يجعله 100
   browserTabMode: false,   // وضع تبويب المتصفح: حين يكون المتصفح (chrome/msedge/firefox/brave) أمامية ومكبَّرًا تتخذ الحبة هيئة تبويب في شريطه (إرساء بصري لا تبويب حقيقي)
   showNetSpeed: false,     // سرعتا الشبكة (تحميل/رفع) في الكبسولة المدمجة؛ القراءة من عدّادات ويندوز فقط أثناء التفعيل (netspeed_active)

@@ -21,7 +21,9 @@
     "test:today": "node scripts/today.test.mjs",
     "test:clip": "node scripts/clipActions.test.mjs",
     "test:lottie": "node scripts/lottie.regression.cjs",
-    "test:glass": "node scripts/glass.test.mjs"
+    "test:glass": "node scripts/glass.test.mjs",
+    "test:shape": "node scripts/shape.regression.cjs",
+    "test:appearance": "node scripts/appearance.test.mjs"
   },
   "dependencies": {
     "@fontsource/almarai": "^5.3.0",
