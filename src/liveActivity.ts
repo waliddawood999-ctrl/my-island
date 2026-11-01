@@ -8,7 +8,7 @@ export type ActivityKind = "rec" | "timer" | "stopwatch" | "dl" | "media" | "mee
 
 /**
  * ترتيب الأولوية الثابت والمعلن: تسجيل جارٍ ← مؤقّت/ساعة إيقاف ← تنزيل جارٍ ← ميديا مشغّلة ← اجتماع قريب ← بطارية ← سرعتا الشبكة (محيطي).
- * «اجتماع قريب» محجوز: وحدة الاجتماعات ليست في main بعد فلا يُنتجه أي مدخل (انظر docs/STATUS.md).
+ * «اجتماع قريب» يُنتجه `upcomingMeeting` من وحدة الاجتماعات (L4) ضمن نافذة `meetingLeadMin` (الافتراضي 15 دقيقة).
  */
 export const PRIORITY: readonly ActivityKind[] = ["rec", "timer", "stopwatch", "dl", "media", "meeting", "battery", "net"];
 
@@ -133,6 +133,50 @@ export const swPause = (s: StopwatchState, now: number): StopwatchState => (s.ru
 export const swReset = (): StopwatchState => SW_IDLE;
 /** قائمة بوجود ما يُعرض (جرى أو توقّف بقيمة). */
 export const swActive = (s: StopwatchState) => s.running || s.acc > 0;
+
+// ───────────────────────────── اجتماع قريب ─────────────────────────────
+/** نافذة «اجتماع قريب» الافتراضية (دقائق قبل البدء)؛ الإعداد `meetingLeadMin`. */
+export const MEETING_LEAD_DEFAULT_MIN = 15;
+/** بعد البدء يبقى النشاط «الآن» هذه المدة (للانضمام المتأخر) ثم يسقط. */
+export const MEETING_GRACE_MS = 5 * 60_000;
+export const clampLeadMin = (v: unknown): number => {
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) ? Math.max(1, Math.min(60, n)) : MEETING_LEAD_DEFAULT_MIN;
+};
+
+export interface MeetingLite { id: string; title: string; start: number; end: number }
+export interface UpcomingMeeting<T extends MeetingLite = MeetingLite> { item: T; state: "soon" | "now"; minutes: number }
+
+/**
+ * أقرب اجتماع داخل النافذة: «soon» من (البدء − lead) حتى البدء، و«now» من البدء حتى البدء + 5 دقائق.
+ * `minutes` = الدقائق المتبقية مقرَّبة للأعلى (≥1) في «soon»، و0 في «now». لا شيء داخل النافذة ⇒ null.
+ */
+export function upcomingMeeting<T extends MeetingLite>(items: readonly T[], now: number, leadMin: number): UpcomingMeeting<T> | null {
+  const lead = clampLeadMin(leadMin) * 60_000;
+  let best: UpcomingMeeting<T> | null = null;
+  for (const m of items) {
+    if (!Number.isFinite(m.start)) continue;
+    const dt = m.start - now;
+    let st: "soon" | "now" | null = null;
+    if (dt > 0 && dt <= lead) st = "soon";
+    else if (dt <= 0 && -dt < MEETING_GRACE_MS) st = "now";
+    if (!st) continue;
+    if (!best || m.start < best.item.start) best = { item: m, state: st, minutes: st === "soon" ? Math.max(1, Math.ceil(dt / 60_000)) : 0 };
+  }
+  return best;
+}
+
+/**
+ * متى يُعاد الحساب؟ داخل النافذة: كل 30s (للعدّاد بالدقائق)؛ خارجها: عند أقرب دخول للنافذة (بحدّ أقصى 5 دقائق)؛
+ * لا اجتماعات قادمة ⇒ null (لا مؤقّت أصلًا).
+ */
+export function nextMeetingWake(items: readonly MeetingLite[], now: number, leadMin: number): number | null {
+  if (upcomingMeeting(items, now, leadMin)) return 30_000;
+  const lead = clampLeadMin(leadMin) * 60_000;
+  let next = Infinity;
+  for (const m of items) if (Number.isFinite(m.start) && m.start - lead > now) next = Math.min(next, m.start - lead - now);
+  return next === Infinity ? null : Math.max(1_000, Math.min(next + 50, 5 * 60_000));
+}
 
 // ───────────────────────────── مقاسات الكبسولة ─────────────────────────────
 /** عرض الكبسولة المدمجة المنقسمة (طرفان) من عرض الحبة الأساسي. */

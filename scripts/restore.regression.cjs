@@ -139,6 +139,47 @@ const SECRET_URL = "https://calendar.google.com/calendar/ical/secret-token-123/b
     await ctx.close();
   }
 
+  // ---- هـ: اجتماع قريب في الكبسولة والبطاقة (liveActivity) ----
+  {
+    const mk = (id, startMin, join) => ({ id, title: id, start: Date.now() + startMin * 60e3, end: Date.now() + (startMin + 30) * 60e3, location: "", join: join || null, recurring: false });
+    const snap = (items) => ({ configured: true, enabled: true, error: null, fetched_at: Date.now(), items });
+    const JOIN = { provider: "zoom", url: "https://zoom.us/j/123456789" };
+    const { ctx, page, errs } = await fresh(browser, { settings: { showMeetings: true }, extra: { meetings_list: snap([mk("Standup", 10, JOIN), mk("Later", 120)]) } });
+    await page.waitForTimeout(500);
+    ok("اجتماع قريب: كبسولة بلون النوع (قبل فتح اللوحة)", (await page.locator('[data-testid="capsule-meeting"]').count()) === 1);
+    const cap = await page.evaluate(() => { const e = document.querySelector('[data-testid="capsule-meeting"]'); return e ? { t: e.textContent.replace(/\s+/g, " "), c: getComputedStyle(e.querySelector(".act-badge")).color || "", v: getComputedStyle(document.documentElement).getPropertyValue("--act-meeting").trim() } : null; });
+    ok("اجتماع قريب: الكبسولة تعرض العنوان والدقائق", !!cap && /Standup/.test(cap.t) && /10 min/.test(cap.t), JSON.stringify(cap));
+    ok("اجتماع قريب: لون النوع --act-meeting معرّف", !!cap && /^#[0-9a-f]{6}$/i.test(cap.v), JSON.stringify(cap));
+    await shot(page, "meeting-capsule");
+    await open(page);
+    ok("اجتماع قريب: بطاقة النشاط في الرئيسية", (await page.locator('[data-testid="activity-meeting"]').count()) === 1);
+    ok("اجتماع قريب: لا يظهر اجتماع بعيد (Later)", !/Later/.test(await body(page)));
+    await page.click('[data-testid="activity-meeting"] button:has-text("Join")');
+    await page.waitForTimeout(300);
+    const j = await calls(page, "meetings_join");
+    ok("اجتماع قريب: زر الانضمام ⇒ meetings_join", j.length === 1 && j[0].url === JOIN.url, JSON.stringify(j));
+    await shot(page, "meeting-card");
+    ok("اجتماع قريب: لا أخطاء صفحة", errs.length === 0, errs.join("|"));
+    await ctx.close();
+  }
+  {
+    const mk = (id, startMin) => ({ id, title: id, start: Date.now() + startMin * 60e3, end: Date.now() + (startMin + 30) * 60e3, location: "", join: null, recurring: false });
+    const snap = (items) => ({ configured: true, enabled: true, error: null, fetched_at: Date.now(), items });
+    const { ctx, page } = await fresh(browser, { settings: { showMeetings: true, meetingLeadMin: 5 }, extra: { meetings_list: snap([mk("Standup", 10)]) } });
+    await page.waitForTimeout(500);
+    ok("اجتماع قريب: النافذة 5 د ⇒ اجتماع بعد 10 د لا يظهر", (await page.locator('[data-testid="capsule-meeting"]').count()) === 0);
+    await ctx.close();
+    const b = await fresh(browser, { settings: { showMeetings: false }, extra: { meetings_list: snap([mk("Standup", 3)]) } });
+    await b.page.waitForTimeout(500);
+    ok("اجتماع قريب: showMeetings=false ⇒ لا كبسولة ولا meetings_list", (await b.page.locator('[data-testid="capsule-meeting"]').count()) === 0 && (await nCalls(b.page, "meetings_list")) === 0);
+    await b.ctx.close();
+    const c = await fresh(browser, { settings: { showMeetings: true }, extra: { meetings_list: snap([]) } });
+    await c.page.evaluate(() => { window.__count = true; window.__timers = 0; });
+    await c.page.waitForTimeout(3000);
+    ok("اجتماع قريب: لا اجتماعات قادمة ⇒ لا مؤقّتات جديدة (صفر كلفة خمول)", (await c.page.evaluate(() => window.__timers)) === 0);
+    await c.ctx.close();
+  }
+
   // ---- Eco: يوقف الطقس (L1) وقياس النظام (L3) فعليًا ثم تعود الدورات عند الإطفاء ----
   {
     const extra = { today_get: TODAY, today_cities: [TODAY.city], weather_get: WEATHER,

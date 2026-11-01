@@ -8,7 +8,7 @@ import { i } from "../../i18n";
 import { clampTint, useSettings } from "../../useSettings";
 import { useMedia } from "../../useMedia";
 import { fmtBytes, useBattery, useDownloads } from "../../useDownloads";
-import { activeKinds, compactWidth, fmtStopwatch, nextKind, shownKind, tabShape, type ActivityKind } from "../../liveActivity";
+import { activeKinds, clampLeadMin, compactWidth, fmtStopwatch, nextKind, shownKind, tabShape, type ActivityKind } from "../../liveActivity";
 import { useStopwatchNow } from "../../useStopwatch";
 import { useNetSpeed } from "../../useNetSpeed";
 import { useDock } from "../../useDock";
@@ -41,7 +41,7 @@ import { BatterySection, hasBatteryContent } from "./BatterySection";
 import { useAttention } from "../../useAttention";
 import { SystemSection } from "./SystemSection";
 import { MeetingsTab } from "./MeetingsTab";
-import { useMeetings } from "../../useMeetings";
+import { useMeetings, useUpcomingMeeting } from "../../useMeetings";
 import { usePrivacy } from "../../useSystem";
 
 /** المقاس الافتراضي للحبة المنكمشة (الفعلي من pillWidth/pillHeight). */
@@ -155,6 +155,7 @@ export function Pill() {
   const privacy = usePrivacy(!!settings.privacyIndicator);
   const meetingsOn = !!settings.showMeetings;
   const meetings = useMeetings(meetingsOn);
+  const upMeeting = useUpcomingMeeting(meetingsOn, meetings.snap.items, clampLeadMin(settings.meetingLeadMin));
   const dl = useDownloads(showDl || dlInPill);
   const battery = useBattery(showBat);
   const btOn = settings.btBatteries ?? true;
@@ -186,17 +187,17 @@ export function Pill() {
   const lowBat = showBat && !!battery?.has_battery && battery.percent != null && battery.percent <= 20 && !battery.ac;
   const chargingBat = showBat && !!battery?.has_battery && battery.percent != null && (battery.charging || lowBat);
   const capKinds = activeKinds({
-    rec: rec.recording, timer: timerNear, stopwatch: sw.running, dl: !!biggest, media: !!pillTitle, battery: lowBat, net: netOn && net !== null,
+    rec: rec.recording, timer: timerNear, stopwatch: sw.running, dl: !!biggest, media: !!pillTitle, meeting: !!upMeeting, battery: lowBat, net: netOn && net !== null,
   });
   const shownCap = shownKind(capKinds, pinCap);
   const panelKinds = activeKinds({
     rec: rec.recording, timer: timer !== null && remaining !== null && remaining > 0, stopwatch: sw.running || sw.acc > 0,
-    dl: (showDl || dlInPill) && dl.active.length > 0, media: moduleMedia && media.info.session, battery: chargingBat,
+    dl: (showDl || dlInPill) && dl.active.length > 0, media: moduleMedia && media.info.session, meeting: !!upMeeting, battery: chargingBat,
   });
   const shownPanel = shownKind(panelKinds, pinPanel);
   const liveData: LiveData = {
     rec: { recording: rec.recording, elapsed: rec.elapsed }, timer, remaining, dl, media, showLyrics: !!(settings.lyricsInHome || settings.lyricsInPlayer),
-    battery, batteryHist: batHist,
+    battery, batteryHist: batHist, meeting: upMeeting,
   };
   const cycleCap = () => setPinCap(nextKind(capKinds, shownCap));
   // استقرار الحبة: false من لحظة تغيّر الحجم المستهدف حتى انتهاء الحركة (وإعادة قياس النافذة)؛ يتحكّم بطلب الزجاج الحقيقي فقط.
@@ -507,6 +508,12 @@ export function Pill() {
                   kind="media" k={k} dots={dots}
                   left={<PillTitle text={media.info.title} inset={0} />}
                   value={media.info.artist ? <span dir="auto" className="max-w-[7.5em] truncate text-white/60">{media.info.artist}</span> : null}
+                />
+              ) : pillKey === "meeting" && upMeeting ? (
+                <CapsuleSplit
+                  kind="meeting" k={k} dots={dots}
+                  left={upMeeting.item.title || i("اجتماع", "Meeting")}
+                  value={upMeeting.state === "now" ? i("الآن", "Now") : `${upMeeting.minutes} ${i("د", "min")}`}
                 />
               ) : pillKey === "battery" && battery?.percent != null ? (
                 <CapsuleSplit kind="battery" k={k} dots={dots} left={i("بطارية منخفضة", "Low battery")} value={`${battery.percent}%`} />

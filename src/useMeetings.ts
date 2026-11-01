@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { nextMeetingWake, upcomingMeeting, type UpcomingMeeting } from "./liveActivity";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 
@@ -31,3 +32,25 @@ export function useMeetings(enabled: boolean): { snap: MeetingsSnap; refresh: ()
 }
 
 export const PROVIDER_NAME: Record<Join["provider"], string> = { zoom: "Zoom", meet: "Meet", teams: "Teams", webex: "Webex" };
+
+/**
+ * «اجتماع قريب» لكبسولة الحبة/بطاقة النشاط: أقرب اجتماع داخل نافذة `leadMin`. مؤقّت واحد يُجدوَل لأقرب تغيّر في الحالة؛
+ * لا اجتماعات قادمة أو الميزة معطّلة ⇒ لا مؤقّت إطلاقًا.
+ */
+export function useUpcomingMeeting(enabled: boolean, items: readonly Meeting[], leadMin: number): UpcomingMeeting<Meeting> | null {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!enabled) return;
+    let alive = true;
+    let t: number | undefined;
+    const step = () => {
+      const n = Date.now();
+      setNow(n);
+      const wake = nextMeetingWake(items, n, leadMin);
+      if (alive && wake !== null) t = window.setTimeout(step, wake);
+    };
+    step();
+    return () => { alive = false; window.clearTimeout(t); };
+  }, [enabled, items, leadMin]);
+  return enabled ? upcomingMeeting(items, now, leadMin) : null;
+}

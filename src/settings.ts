@@ -74,6 +74,7 @@ export interface Settings {
   showPrivacy:boolean,
   privacyIndicator:boolean,
   showMeetings:boolean,
+  meetingLeadMin:number, // «اجتماع قريب» في الكبسولة/البطاقة: دقائق قبل البدء (1..60)
   showVpn:boolean,
   vpnLookupIp:boolean,
   showNotifications:boolean,
@@ -162,6 +163,7 @@ export const DEFAULTS: Partial<Settings> = {
   motionLevel: 'full',     // full = نابضة · reduced = مخففة · off = متوقفة (انظر src/motion.ts)
   liveRates: true,         // شريط الأوامر: أسعار عملات حية (open.er-api.com) تُجلب كسولًا عند تحويل عملة وتُخزَّن 12 ساعة؛ false = المضمّنة فقط بلا شبكة
   batteryTip: true,        // قسم البطارية: نصيحة «افصل الشاحن عند 80%» أثناء الشحن
+  meetingLeadMin: 15,    // «اجتماع قريب» في الكبسولة/البطاقة: دقائق قبل البدء (1..60)؛ يعمل فقط مع showMeetings
   showToday: true,       // محلي بلا شبكة؛ الطقس نفسه خلف showWeather (افتراضيًا معطّل)
   prayerCity: "riyadh",
   prayerAlerts: true,

@@ -4,15 +4,16 @@ import {
   animate, AnimatePresence, motion, useMotionValue, useTransform,
 } from "motion/react";
 import {
-  ArrowDown, ArrowUp, BatteryCharging, Check, Download, Hourglass, Music, Pause, Play, RotateCcw, Timer as StopwatchIcon, Video, X, Zap,
+  ArrowDown, ArrowUp, BatteryCharging, CalendarClock, Check, Download, Hourglass, Music, Pause, Play, RotateCcw, Timer as StopwatchIcon, Video, X, Zap,
   type LucideIcon,
 } from "lucide-react";
 import { itemVariants, spring, swapVariants, tap } from "../../motion";
 import { i } from "../../i18n";
 import {
   ACCENT, downloadStage, fmtSpeed, fmtStopwatch, secondaryKind, sparkPoints, stageStates, swipeDone, swipeProgress,
-  type ActivityKind,
+  type ActivityKind, type UpcomingMeeting,
 } from "../../liveActivity";
+import { PROVIDER_NAME, type Meeting } from "../../useMeetings";
 import { fmtCountdown, type TimerState } from "../../useNote";
 import { fmtElapsed } from "../../useRecording";
 import { fmtBytes, type Battery, type DownloadItem, type DownloadsSnap } from "../../useDownloads";
@@ -29,7 +30,7 @@ export const KIND_META: Record<ActivityKind, { icon: LucideIcon; label: () => st
   stopwatch: { icon: StopwatchIcon, label: () => i("ساعة إيقاف", "Stopwatch") },
   dl: { icon: Download, label: () => i("تنزيل", "Download") },
   media: { icon: Music, label: () => i("الآن يعمل", "Now playing") },
-  meeting: { icon: Hourglass, label: () => i("اجتماع", "Meeting") },
+  meeting: { icon: CalendarClock, label: () => i("اجتماع قريب", "Upcoming meeting") },
   battery: { icon: BatteryCharging, label: () => i("البطارية", "Battery") },
   net: { icon: ArrowDown, label: () => i("الشبكة", "Network") },
 };
@@ -270,6 +271,36 @@ function BatteryCard({ b, hist }: { b: Battery; hist: BatSample[] }) {
   );
 }
 
+const fmtHm = (ms: number) => new Date(ms).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+
+/** اجتماع قريب (من وحدة الاجتماعات): العنوان + عدّاد بالدقائق + زر انضمام إن وُجد رابط — بلون نوعه. */
+function MeetingCard({ m }: { m: UpcomingMeeting<Meeting> }) {
+  const it = m.item;
+  return (
+    <ActivityShell kind="meeting">
+      <div className="flex flex-1 flex-col justify-center gap-2">
+        <div dir="auto" className="truncate text-[16px] font-semibold">{it.title || i("اجتماع", "Meeting")}</div>
+        <div className="flex items-baseline gap-3">
+          <span dir="ltr" className={big}>{m.state === "now" ? i("الآن", "Now") : m.minutes}</span>
+          {m.state === "soon" && <span className="text-[13px] text-white/60">{i("دقيقة", "min")}</span>}
+          <span dir="ltr" className="ms-auto text-[13px] tabular-nums text-white/60">{fmtHm(it.start)}</span>
+        </div>
+        {it.location && <div dir="auto" className="truncate text-[12px] text-white/50">{it.location}</div>}
+        {it.join && (
+          <motion.button
+            onClick={() => invoke("meetings_join", { url: it.join!.url }).catch(() => {})}
+            whileHover={tap.whileHover} whileTap={tap.whileTap} transition={tap.transition}
+            className="act-btn act-btn-solid self-start"
+            aria-label={`${i("انضمام", "Join")} ${PROVIDER_NAME[it.join.provider]}`}
+          >
+            <Video size={ICON.md} strokeWidth={STROKE} />{i("انضمام", "Join")}
+          </motion.button>
+        )}
+      </div>
+    </ActivityShell>
+  );
+}
+
 function MediaCard({ media, showLyrics }: { media: MediaView; showLyrics: boolean }) {
   return (
     <ActivityShell kind="media">
@@ -310,6 +341,7 @@ export interface LiveData {
   showLyrics: boolean;
   battery: Battery | null;
   batteryHist: BatSample[];
+  meeting: UpcomingMeeting<Meeting> | null;
 }
 
 function Card({ kind, d }: { kind: ActivityKind; d: LiveData }) {
@@ -319,6 +351,7 @@ function Card({ kind, d }: { kind: ActivityKind; d: LiveData }) {
     case "stopwatch": return <StopwatchCard />;
     case "dl": return <DownloadCard dl={d.dl} />;
     case "media": return <MediaCard media={d.media} showLyrics={d.showLyrics} />;
+    case "meeting": return d.meeting ? <MeetingCard m={d.meeting} /> : null;
     case "battery": return d.battery ? <BatteryCard b={d.battery} hist={d.batteryHist} /> : null;
     default: return null;
   }
@@ -332,6 +365,7 @@ function secondaryValue(kind: ActivityKind, d: LiveData, swMs: number): string {
     case "stopwatch": return fmtStopwatch(swMs, false);
     case "dl": { const x = d.dl.active[0]; return x?.percent != null ? `${Math.round(x.percent)}%` : String(d.dl.active.length); }
     case "media": return d.media.info.playing ? "▶" : "⏸";
+    case "meeting": return d.meeting ? (d.meeting.state === "now" ? i("الآن", "Now") : `${d.meeting.minutes} ${i("د", "min")}`) : "";
     case "battery": return d.battery?.percent != null ? `${d.battery.percent}%` : "";
     default: return "";
   }

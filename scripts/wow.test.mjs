@@ -85,5 +85,27 @@ const tab = m.tabShape({ active: true, browser: "chrome", strip: 41, inset: 6 },
 eq("tab shape", tab, { w: 220, winH: 41, bodyH: 35, y: 6, top: 12, bottom: 0 });
 eq("not docked ⇒ capsule", m.tabShape(m.DOCK_OFF, 220, 34), { w: 220, winH: 34, bodyH: 34, y: 0, top: 17, bottom: 17 });
 
+// ── «اجتماع قريب» (من وحدة الاجتماعات L4): نافذة قبل البدء + سماح بعده + أقرب اجتماع + جدولة الإيقاظ
+{
+  const T0 = 1_000_000_000_000, MIN = 60_000;
+  const mk = (id, startMin, durMin = 30) => ({ id, title: id, start: T0 + startMin * MIN, end: T0 + (startMin + durMin) * MIN });
+  eq("lead default/clamp", [m.MEETING_LEAD_DEFAULT_MIN, m.clampLeadMin(0), m.clampLeadMin(500), m.clampLeadMin("x"), m.clampLeadMin(7.4)], [15, 1, 60, 15, 7]);
+  eq("outside window ⇒ null", m.upcomingMeeting([mk("a", 16)], T0, 15), null);
+  eq("exactly at lead ⇒ soon 15", [m.upcomingMeeting([mk("a", 15)], T0, 15)?.state, m.upcomingMeeting([mk("a", 15)], T0, 15)?.minutes], ["soon", 15]);
+  eq("minutes ceil", m.upcomingMeeting([mk("a", 4.2)], T0, 15)?.minutes, 5);
+  eq("last seconds ⇒ 1 min", m.upcomingMeeting([{ id: "a", title: "a", start: T0 + 10_000, end: T0 + MIN }], T0, 15)?.minutes, 1);
+  eq("at start ⇒ now", [m.upcomingMeeting([mk("a", 0)], T0, 15)?.state, m.upcomingMeeting([mk("a", 0)], T0, 15)?.minutes], ["now", 0]);
+  eq("within grace ⇒ now", m.upcomingMeeting([mk("a", -4)], T0, 15)?.state, "now");
+  eq("after grace ⇒ null", m.upcomingMeeting([mk("a", -5)], T0, 15), null);
+  eq("earliest wins", m.upcomingMeeting([mk("late", 10), mk("early", 3)], T0, 15)?.item.id, "early");
+  eq("custom lead 5", [m.upcomingMeeting([mk("a", 10)], T0, 5), m.upcomingMeeting([mk("a", 5)], T0, 5)?.state], [null, "soon"]);
+  eq("garbage start ignored", m.upcomingMeeting([{ id: "x", title: "x", start: NaN, end: 0 }], T0, 15), null);
+  eq("wake: none ⇒ null (no timer at all)", m.nextMeetingWake([], T0, 15), null);
+  eq("wake: only past ⇒ null", m.nextMeetingWake([mk("p", -60)], T0, 15), null);
+  eq("wake: in window ⇒ 30s", m.nextMeetingWake([mk("a", 5)], T0, 15), 30_000);
+  eq("wake: far future capped at 5 min", m.nextMeetingWake([mk("f", 600)], T0, 15), 5 * MIN);
+  eq("wake: entry in 2 min ⇒ ≈2 min", m.nextMeetingWake([mk("s", 17)], T0, 15), 2 * MIN + 50);
+}
+
 console.log(fail ? `FAILED ${fail}/${n}` : `ALL PASSED ${n}/${n}`);
 process.exit(fail ? 1 : 0);
