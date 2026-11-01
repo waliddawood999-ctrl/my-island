@@ -1,0 +1,22 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><link rel="stylesheet" href="base.css"><style>
+body{--w:1100px;--h:660px;padding:24px 32px}
+h1{font-size:20px;font-weight:800;margin-bottom:4px}p.s{font-size:12px;color:var(--ink2);margin-bottom:14px}
+table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:12px;line-height:1.6}
+col.a{width:92px}
+th{font-size:11px;color:var(--ink3);text-align:start;padding:6px 10px;border-bottom:1px solid var(--line)}
+td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:top}td:first-child{font-weight:800}
+td:nth-child(2){color:var(--ink2)}td:nth-child(3){color:#fff}.ok{color:#7ee0a1}
+</style></head><body>
+<h1>سمات NotchNook المنقولة إلى الجزيرة</h1><p class="s">المراجع: مراجعات وصفحات تعريفية للتطبيق (iMore، Root Nation، Setapp، pplware) — لم يُتح فتح الموقع الرسمي من بيئة العمل (الشبكة مقيّدة)، فالقياسات «تقديرية بالمقارنة البصرية» وتُراجَع مع المالك.</p>
+<table><colgroup><col class='a'><col><col></colgroup><tr><th>السمة</th><th>NotchNook (macOS)</th><th>تكييفنا للحبة / اللمحة / اللوحة</th></tr>
+<tr><td>الشكل</td><td>جسم أسود يخرج من نوتش الشاشة نفسه: حافة علوية مسطّحة ملتصقة، زوايا سفلية مدوّرة فقط</td><td>«نوتش معلّق»: حافة علوية مسطّحة بلا استدارة + أذنان مقعّرتان (9/12/14px) تذوّبان الجسم في حافة الشاشة</td></tr>
+<tr><td>نصف القطر</td><td>صغير جدًا مطويًا (≈ زاوية النوتش) ويكبر مع التمدد</td><td>سفلية: حبة 15px · لمحة 26px · لوحة 32px (قابلة للضبط: pillRadius/peekRadius/panelRadius)</td></tr>
+<tr><td>السطح</td><td>أسود نقي #000 بلا حدود ظاهرة، ظل سفلي ناعم، توهّج لوني خفيف من الغلاف</td><td>أسود مصمت افتراضيًا (يبقى خيار الزجاج)، بلا إطار؛ ظل -12px ناعم؛ توهّج غلاف الأغنية بلون الصبغة المستخرجة</td></tr>
+<tr><td>التباعد</td><td>هوامش داخلية سخية (≈ 16–20px)، عناصر مرتّبة على شبكة هادئة</td><td>حبة 0 · لمحة 14–20 · لوحة 12–18؛ فجوات 8/12/14/18 (رموز المساحات الحالية)</td></tr>
+<tr><td>الخط</td><td>SF Pro: عناوين شبه-سميكة، ثانوي خافت، أرقام tabular</td><td>Almarai: عنوان 14/700 (لمحة) · 20/800 (لوحة)، ثانوي 12–13 بعتامة 62٪، أرقام tabular</td></tr>
+<tr><td>التبويبات</td><td>صف أيقونات دائرية أعلى «الـNook» (ملفات، تطبيقات، وسائط، تقويم)</td><td>صف أيقونات 30px، النشط بخلفية 16٪ بيضاء — مُطبَّق (panelTabsStyle=icons)</td></tr>
+<tr><td>حركة الفتح</td><td>تمدّد نابض بتجاوز خفيف، يفتح عند المرور، ويغلق بسلاسة بلا ارتداد</td><td>نابض واحد للعرض+الارتفاع+الزوايا: فتح (224/23.9)، لوحة (185/21.8)، إغلاق (276/33.2) = ضبط boringNotch الحالي</td></tr>
+<tr><td>تبديل المحتوى</td><td>انزلاق + تلاشٍ بين الصفحات</td><td>خروج 120ms ثم دخول 240/300ms مع blur 6px؛ بطاقات اللمحة تنزلق ±20px</td></tr>
+<tr><td>الرفّ/الملفات</td><td>صينية ملفات بالسحب والإفلات تُخرَج لأي تطبيق</td><td>«الوصول السريع» (تطبيقات + ملفات) بنفس مبدأ السحب إدخالًا وإخراجًا</td></tr>
+<tr><td class="ok">العينان</td><td>— (لا شيء مماثل)</td><td class="ok">تبقيان كما هما حرفيًا على الحبة (12.2×22.3، فاصل 8، نفس الموضع) وتتلاشيان مع المحتوى</td></tr></table>
+</body></html>

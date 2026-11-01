@@ -1,0 +1,26 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><link rel="stylesheet" href="base.css"><script src="icons.js"></script><style>
+body{--w:1000px;--h:520px}
+.panel{width:520px;height:290px;--r:34px;--ear:14px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.hd{display:flex;align-items:center;justify-content:space-between}
+.row{display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin-top:2px}
+.app{display:flex;flex-direction:column;align-items:center;gap:5px;font-size:10.5px;color:var(--ink2);position:relative}
+.app .x{position:absolute;top:-5px;inset-inline-start:-3px;width:16px;height:16px;border-radius:50%;background:#2b2b2e;display:grid;place-items:center;border:1px solid var(--line);opacity:0}
+.app.hov .x{opacity:1}
+.add{border:1.5px dashed rgba(255,255,255,.28);background:transparent;color:var(--ink2);box-shadow:none}
+.files{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.drop{margin-top:auto;border:1.5px dashed rgba(255,255,255,.22);border-radius:14px;padding:8px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:11.5px;color:var(--ink3)}
+.tag{white-space:normal;max-width:200px;line-height:1.5;border-radius:14px}</style></head><body>
+<div class="top notch panel" id="p"></div>
+<div class="tag" style="top:60px;inset-inline-end:30px">① تبديل العرض: الكل · تطبيقات · ملفات</div>
+<div class="tag" style="top:178px;inset-inline-end:30px">② تطبيقات مثبّتة — × عند المرور، + للإضافة</div>
+<div class="tag" style="top:268px;inset-inline-end:30px">③ ملفات/مجلدات مُسقَطة — نقر = فتح، سحب = إخراج</div>
+<div class="tag" style="top:398px;inset-inline-end:30px">④ منطقة الإفلات (تعمل أيضًا والجزيرة مغلقة)</div>
+<div class="cap"><b>الوصول السريع</b> — تبويب واحد يجمع «اللانشر» و«الرفّ». الأزرار أعلى اللوحة: أيقونة ⚡ هي تبويب الوصول السريع (تحلّ محلّ تبويبَي اللانشر والرفّ).</div>
+<script>
+const tiles=APPS.slice(0,6).map((a,i)=>'<div class="app'+(i==2?' hov':'')+'"><div class="tile" style="background:'+a[1]+'">'+a[0]+'</div><span>'+['VS Code','فرصة','فوتوشوب','فيجما','كروم','سبوتيفاي'][i]+'</span><div class="x">'+ic('x','width:9px;height:9px')+'</div></div>').join('');
+const files=[['PDF','#e0443a','عقد-الإيجار-٢٠٢٦.pdf','٢٫٤ م.ب'],['PNG','#2f9bff','لقطة-الشاشة.png','٨٤٠ ك.ب'],['DOC','#2b6cdf','تقرير-الربع.docx','١٢٠ ك.ب'],['DIR','#caa24a','مشروع-الجزيرة','٣٤ ملفًا']].map(f=>'<div class="chip"><div class="ico" style="background:'+f[1]+'">'+f[0]+'</div><div style="min-width:0"><div class="nm">'+f[2]+'</div><div class="sz">'+f[3]+'</div></div></div>').join('');
+document.getElementById('p').innerHTML='<div class="hd">'+tabsHTML(1)+'<div class="seg"><span>الكل</span><span class="on">تطبيقات</span><span>ملفات</span></div></div>'.replace('<span class="on">تطبيقات</span>','<span>تطبيقات</span>').replace('<span>الكل</span>','<span class="on">الكل</span>')+
+'<div><div class="sec">التطبيقات المثبّتة</div><div class="row">'+tiles+'<div class="app"><div class="tile add">'+ic('plus','width:18px;height:18px')+'</div><span>إضافة</span></div></div></div>'+
+'<div><div class="sec">الملفات</div><div class="files">'+files+'</div></div>'+
+'<div class="drop">'+ic('up')+'<span>اسحب ملفات أو مجلدات أو تطبيقات وأفلتها هنا</span></div>';
+</script></body></html>

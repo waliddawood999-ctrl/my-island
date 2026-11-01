@@ -1,0 +1,20 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><link rel="stylesheet" href="base.css"><script src="icons.js"></script><style>
+body{--w:1000px;--h:520px}
+.panel{width:520px;height:290px;--r:34px;--ear:14px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;overflow:visible}
+.dim{opacity:.28;filter:blur(1px)}
+.zones{position:absolute;inset:14px 16px;display:grid;grid-template-columns:1fr 1fr;gap:12px;top:56px;bottom:14px}
+.z{border:2px dashed rgba(255,255,255,.4);border-radius:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:700;background:rgba(255,255,255,.04)}
+.z small{font-weight:400;font-size:11px;color:var(--ink2)}
+.z.hot{border-color:var(--accent);background:rgba(240,85,109,.14);box-shadow:0 0 0 4px rgba(240,85,109,.12)}
+.ghost{position:absolute;top:196px;inset-inline-start:380px;transform:rotate(-6deg);display:flex;gap:6px;align-items:center;background:#1c1c1f;border:1px solid var(--line);border-radius:12px;padding:8px 12px;font-size:12px;box-shadow:0 14px 30px -8px rgba(0,0,0,.7)}
+.badge{position:absolute;top:-8px;inset-inline-end:-8px;background:var(--accent);color:#fff;border-radius:50%;width:20px;height:20px;display:grid;place-items:center;font-size:11px;font-weight:800}
+</style></head><body>
+<div class="top notch panel"><div class="dim" style="display:flex;justify-content:space-between">
+<script>document.write(tabsHTML(1))</script><div class="seg"><span class="on">الكل</span><span>تطبيقات</span><span>ملفات</span></div></div>
+<div class="zones"><div class="z hot">__F__<span>أضِف إلى الملفات</span><small>للوصول السريع والسحب لاحقًا</small></div><div class="z">__A__<span>ثبّت كاختصار تطبيق</span><small>.exe / .lnk / رابط</small></div></div></div>
+<div class="ghost"><div class="chip" style="padding:0;border:0;background:none"><div class="ico" style="background:#e0443a;position:relative">PDF<div class="badge">٣</div></div><div><div class="nm">عقد-الإيجار.pdf</div><div class="sz">+ ملفان</div></div></div></div>
+<div class="cap"><b>السحب والإفلات:</b> عند سحب أي شيء من المستكشف فوق الجزيرة (حتى وهي حبة) تنفتح اللوحة على «الوصول السريع» وتظهر منطقتان: <b>ملفات</b> أو <b>اختصار تطبيق</b>. نوع العنصر يرجّح المنطقة (exe/lnk ⇒ تطبيق، غيره ⇒ ملف)، وإفلات خارج المنطقتين يتبع الترجيح.</div>
+<script>
+const f=ic('folder','width:26px;height:26px'),a=ic('grid','width:26px;height:26px');
+document.querySelectorAll('.z').forEach((z,i)=>z.innerHTML=z.innerHTML.replace('__F__',f).replace('__A__',a));
+</script></body></html>

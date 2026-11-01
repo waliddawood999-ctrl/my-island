@@ -1,0 +1,18 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><link rel="stylesheet" href="base.css"><script src="icons.js"></script><style>
+body{--w:1000px;--h:360px}
+.peek{width:400px;height:120px;--r:30px;--ear:14px;padding:16px 20px 10px;display:flex;flex-direction:column;justify-content:space-between}
+.apps{display:flex;gap:10px;align-items:center}
+.apps .tile{width:40px;height:40px;border-radius:11px;font-size:15px}
+.cnt{margin-inline-start:auto;text-align:center;padding-inline-start:12px;border-inline-start:1px solid var(--line)}
+.cnt b{font-size:22px;font-weight:800;display:block;line-height:1}
+.cnt span{font-size:10.5px;color:var(--ink2)}
+.lbl{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink2)}
+</style></head><body>
+<div class="top notch peek">
+<div class="lbl"><script>document.write(ic('bolt','width:13px;height:13px'))</script><b style="color:#fff;font-size:12px">الوصول السريع</b></div>
+<div class="apps"><script>document.write(APPS.slice(0,5).map(a=>'<div class="tile" style="background:'+a[1]+'">'+a[0]+'</div>').join(''))</script>
+<div class="cnt"><b>٤</b><span>ملفات</span></div></div>
+<div class="dots"><i></i><i class="on"></i><i></i><i></i><i></i></div></div>
+<div class="tag" style="top:150px;left:50%;transform:translateX(-50%)">بطاقة جديدة في اللمحة (الترتيب قابل للتعديل)</div>
+<div class="cap" style="bottom:24px"><b>بطاقة اللمحة:</b> صف أيقونات التطبيقات المثبّتة (النقر يشغّل) + عدّاد الملفات؛ العجلة تنتقل بين البطاقات: المشغّل ← <b>الوصول السريع</b> ← اليوم ← الطقس ← المؤقّت. سحب ملف فوقها يضيفه مباشرة. بلا عناصر: «اسحب ملفًا هنا».</div>
+</body></html>

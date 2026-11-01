@@ -1,0 +1,31 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><link rel="stylesheet" href="base.css"><script src="icons.js"></script><style>
+body{--w:1200px;--h:800px}
+.row{position:absolute;inset-inline:24px;display:flex;gap:10px;direction:ltr}
+.cell{flex:1;height:112px;direction:ltr;position:relative;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid var(--line);overflow:hidden}
+.cell .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);--ear:8px}
+.cell small{position:absolute;bottom:6px;inset-inline:0;text-align:center;font-size:10.5px;color:var(--ink2);direction:ltr}
+.rt{position:absolute;inset-inline:24px;font-size:13px;line-height:1.6}
+.rt b{color:#fff}.rt span{color:var(--ink2)}
+svg.c{position:absolute;inset-inline-end:24px;width:300px;height:96px}
+</style></head><body>
+<div id="out"></div>
+<script>
+// حلّال نابض (mass=1): x(t) من 0→1. stiffness k, damping c.
+const spring=(k,c)=>{const w=Math.sqrt(k),z=c/(2*w);return t=>{if(z<1){const wd=w*Math.sqrt(1-z*z);return 1-Math.exp(-z*w*t)*(Math.cos(wd*t)+(z*w/wd)*Math.sin(wd*t))}return 1-Math.exp(-w*t)*(1+w*t)}};
+const P={pill:[220,34,15],peek:[400,120,26],panel:[520,290,32]};
+const segs=[
+ {title:'① pill ← peek (فتح اللمحة)',k:224,c:23.9,from:P.pill,to:P.peek,note:'d=0.42s · b=0.20 → stiffness 224 · damping 23.9 · mass 1',y:16},
+ {title:'② peek ← panel (فتح اللوحة، d×1.1)',k:185,c:21.8,from:P.peek,to:P.panel,note:'stiffness 185 · damping 21.8 (تجاوز طفيف جدًا ثم استقرار)',y:246},
+ {title:'③ panel ← pill (إغلاق، d×0.9، بلا ارتداد)',k:276,c:33.2,from:P.panel,to:P.pill,note:'stiffness 276 · damping 33.2 (ζ=1: لا ارتداد أبدًا)',y:476},
+];
+const ts=[0,30,60,90,130,180,250,380];
+let h='';
+for(const s of segs){
+ const f=spring(s.k,s.c);
+ h+='<div class="rt" style="top:'+s.y+'px"><b>'+s.title+'</b> &nbsp; <span dir="ltr">'+s.note+'</span></div><div class="row" style="top:'+(s.y+30)+'px">';
+ for(const t of ts){const x=f(t/1000);const w=s.from[0]+(s.to[0]-s.from[0])*x,hh=s.from[1]+(s.to[1]-s.from[1])*x,r=s.from[2]+(s.to[2]-s.from[2])*x;const sc=118/Math.max(s.from[0],s.to[0]);
+  h+='<div class="cell"><div class="notch" style="width:'+w.toFixed(1)+'px;height:'+hh.toFixed(1)+'px;--r:'+r.toFixed(1)+'px;transform:translateX(-50%) scale('+sc.toFixed(3)+');transform-origin:top center"></div><small>t='+t+'ms · '+(x*100).toFixed(0)+'%</small></div>'}
+ h+='</div>';
+}
+document.getElementById('out').innerHTML=h+'<div class="cap" style="bottom:14px;line-height:1.6"><b>سلوك الحركة:</b> عرض/ارتفاع/نصف قطر تتحرك معًا بنابض واحد (الإطارات أعلاه من الحلّ التحليلي للنابض نفسه). الفتح يتجاوز الهدف قليلًا (≈1–3٪ عند ζ≈0.8) ثم يستقرّ؛ الإغلاق حرج التخميد. المحتوى القديم يخرج 120ms (blur 6px، y 4px، scale .98) ثم الجديد يدخل 240/300ms. العينان تتلاشيان مع المحتوى وتعودان عند الإغلاق.</div>';
+</script></body></html>
