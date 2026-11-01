@@ -16,12 +16,23 @@ const fac = new FastAverageColor();
 const accentCache = new Map<string, string>();
 
 /** لون الإبراز: auto ⇒ من الغلاف (fast-average-color، مفضّل الحيوي، مخزَّن لكل أغنية)؛ fixed أو بلا غلاف ⇒ accentColor. */
+/** بصمة رخيصة لنص الغلاف (الطول + عينات منه): تتغيّر حين تستبدل GSMTC أيقونة المتصفح البديلة بصورة الفيديو لنفس المسار. */
+export function coverKey(cover: string | null): string {
+  if (!cover) return "";
+  const n = cover.length; let h = n;
+  for (let k = 0; k < 64; k++) h = (h * 31 + cover.charCodeAt(Math.floor((k / 64) * (n - 1)))) | 0;
+  return `${n}:${h}`;
+}
+
+/** لون الإبراز: auto ⇒ من **مصغّرة الوسائط الفعلية** (fast-average-color، مفضّل الحيوي)؛ المخزَّن يُفتَّح بالمسار + بصمة الغلاف فيُعاد حسابه عند تبدّل الصورة.
+ *  fixed أو بلا غلاف ⇒ accentColor. */
 export function useAccent(cover: string | null, trackKey: string, s: Partial<Settings>): string {
   const fixed = s.accentColor || "#4fd1c5";
-  const [auto, setAuto] = useState<string | null>(() => accentCache.get(trackKey) ?? null);
+  const key = `${trackKey}#${coverKey(cover)}`;
+  const [auto, setAuto] = useState<string | null>(() => accentCache.get(key) ?? null);
   useEffect(() => {
     if (s.accentMode === "fixed" || !cover) { setAuto(null); return; }
-    const hit = accentCache.get(trackKey);
+    const hit = accentCache.get(key);
     if (hit) { setAuto(hit); return; }
     let alive = true;
     fac.getColorAsync(cover, { algorithm: "dominant", ignoredColor: [[255, 255, 255, 255, 30], [0, 0, 0, 255, 30]] })
@@ -29,11 +40,11 @@ export function useAccent(cover: string | null, trackKey: string, s: Partial<Set
         if (!alive) return;
         const v = vibrant([c.value[0], c.value[1], c.value[2]]);
         if (accentCache.size > 40) accentCache.clear();
-        accentCache.set(trackKey, v); setAuto(v);
+        accentCache.set(key, v); setAuto(v);
       })
       .catch(() => alive && setAuto(null));
     return () => { alive = false; };
-  }, [cover, trackKey, s.accentMode]);
+  }, [key, s.accentMode]); // eslint-disable-line react-hooks/exhaustive-deps
   return s.accentMode === "fixed" ? fixed : auto ?? fixed;
 }
 

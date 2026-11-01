@@ -248,8 +248,11 @@ mod win_impl {
         m
     }
 
-    fn read_cover(p: &Props) -> Option<String> {
+    /// يقرأ المصغّرة من GSMTC (`Thumbnail`): يعيد (بصمة البايتات الخام، data-URI) — الـURI فقط إن اختلفت البصمة عن `prev` (لا ترميز/بث بلا تغيّر).
+    /// المتصفحات (Brave/Chrome/Edge) تعيد أولًا أيقونة التطبيق البديلة ثم تصل صورة الفيديو لاحقًا ⇒ لذلك نعيد القراءة (انظر حلقة run).
+    fn read_cover(p: &Props, prev: u64) -> Option<(u64, Option<String>)> {
         use base64::Engine;
+        use std::hash::{Hash, Hasher};
         let r = p.Thumbnail().ok()?;
         let stream = r.OpenReadAsync().ok()?.get().ok()?;
         let size = stream.Size().ok()?;
@@ -261,13 +264,19 @@ mod win_impl {
         reader.LoadAsync(size as u32).ok()?.get().ok()?;
         let mut buf = vec![0u8; size as usize];
         reader.ReadBytes(&mut buf).ok()?;
+        let mut h = std::collections::hash_map::DefaultHasher::new();
+        buf.hash(&mut h);
+        let hash = h.finish();
+        if hash == prev {
+            return Some((hash, None));
+        }
         let mime = stream
             .ContentType()
             .map(|h| h.to_string())
             .ok()
             .filter(|m| m.starts_with("image/"))
             .unwrap_or_else(|| "image/jpeg".into());
-        Some(format!("data:{mime};base64,{}", base64::engine::general_purpose::STANDARD.encode(buf)))
+        Some((hash, Some(format!("data:{mime};base64,{}", base64::engine::general_purpose::STANDARD.encode(buf)))))
     }
 
     /// اشتراكات أحداث الجلسة المختارة (تُستبدل عند تغيّر الجلسة).
@@ -327,7 +336,8 @@ mod win_impl {
         let st = app.state::<MediaState>();
         let mut last = MediaInfo::default();
         let mut last_key = String::new();
-        let mut cover_tries = 0u8;
+        let mut cover_hash = 0u64; // بصمة آخر مصغّرة أُرسلت
+        let mut since = 0u32; // دورات منذ آخر تغيّر مسار
         let mut sub: Option<Sub> = None;
 
         loop {
@@ -360,20 +370,26 @@ mod win_impl {
                 st.sources.lock().unwrap().clear();
             }
 
-            // الغلاف: عند تغيّر المسار، مع إعادة محاولة قصيرة إن تأخّر وصوله
+            // الغلاف (المصغّرة الحقيقية من GSMTC لكل مصدر): عند تغيّر المسار/الفيديو يُصفَّر ثم يُعاد قراءته كل دورة (~1ث) لأول 20 دورة ثم كل 5 دورات؛
+            // أي بايتات جديدة (مثلًا وصول صورة الفيديو بعد أيقونة المتصفح البديلة) تستبدل الغلاف وتُبثّ media:cover. بلا مصغّرة ⇒ لا غلاف (الواجهة تعرض بديلًا).
             let key = if info.session { format!("{}|{}|{}|{}", info.source, info.title, info.artist, info.album) } else { String::new() };
             if key != last_key {
                 last_key = key;
-                cover_tries = 0;
+                since = 0;
+                cover_hash = 0;
                 if st.cover.lock().unwrap().take().is_some() {
                     let _ = app.emit("media:cover", Option::<String>::None);
                 }
+            } else {
+                since = since.saturating_add(1);
             }
-            if info.session && cover_tries < 6 && st.cover.lock().unwrap().is_none() {
-                cover_tries += 1;
-                if let Some(c) = props.as_ref().and_then(read_cover) {
-                    *st.cover.lock().unwrap() = Some(c.clone());
-                    let _ = app.emit("media:cover", Some(c));
+            if info.session && (since < 20 || since % 5 == 0) {
+                if let Some((hash, uri)) = props.as_ref().and_then(|p| read_cover(p, cover_hash)) {
+                    cover_hash = hash;
+                    if let Some(c) = uri {
+                        *st.cover.lock().unwrap() = Some(c.clone());
+                        let _ = app.emit("media:cover", Some(c));
+                    }
                 }
             }
 

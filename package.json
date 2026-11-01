@@ -29,7 +29,8 @@
     "test:island": "node scripts/island.test.mjs",
     "test:eyes-ui": "node scripts/eyes.regression.cjs",
     "test:t03": "node scripts/t03.regression.cjs",
-    "test:layout": "node scripts/layout.regression.cjs"
+    "test:layout": "node scripts/layout.regression.cjs",
+    "test:t06": "node scripts/t06.regression.cjs"
   },
   "dependencies": {
     "@fontsource/almarai": "^5.3.0",
