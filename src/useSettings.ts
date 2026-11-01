@@ -5,14 +5,20 @@ import { DEFAULTS, type Settings } from "./settings";
 import { setLang } from "./i18n";
 import { useMotionSync } from "./motion";
 
+/** glassTint صالح 0..80 (غير ذلك ⇒ الافتراضي 45). */
+export const clampTint = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? Math.min(80, Math.max(0, Math.round(v))) : 45);
+
 /** يضبط data-theme/data-material على <html> (CSS في index.css/island.css يتكفّل بالباقي). */
-function useThemeAttrs(mode: unknown, material: unknown) {
+function useThemeAttrs(mode: unknown, material: unknown, tint: unknown) {
   const m = mode === "light" ? "light" : "dark";
   const t = material === "glass" ? "glass" : "solid";
+  // قوة التظليل 0..80 ⇒ متغيّر CSS رقمي (island.css يشتق منه صبغة الصفحة).
+  const g = clampTint(tint);
   useEffect(() => {
     document.documentElement.dataset.theme = m;
     document.documentElement.dataset.material = t;
-  }, [m, t]);
+    document.documentElement.style.setProperty("--glass-tint", String(g));
+  }, [m, t, g]);
 }
 
 /** يعكس إعدادات الخلفية (settings_get) ويتحدّث عند settings:changed. الخلفية مصدر الحقيقة.
@@ -30,7 +36,7 @@ export function useSettings(): Partial<Settings> {
     return () => { alive = false; un.then((f) => f()); };
   }, []);
   setLang(s.language === "en" ? "en" : "ar");
-  useThemeAttrs(s.themeMode, s.themeMaterial);
+  useThemeAttrs(s.themeMode, s.themeMaterial, s.glassTint);
   useMotionSync(s.motionLevel); // مستوى الحركة الفعلي (الإعداد + Eco) لهذه النافذة
   return s;
 }

@@ -1,6 +1,7 @@
 // backdrop — الزجاج الحقيقي لنافذة main: تمويه ما خلف الجزيرة على سطح المكتب (Acrylic) بتركيب نظام التشغيل (DWM).
 // ويندوز 11 (build ≥ 22621): DWMWA_SYSTEMBACKDROP_TYPE = DWMSBT_TRANSIENTWINDOW (Acrylic) + وضع داكن/فاتح للصبغة.
-// ويندوز 10 (≥ 17134): SetWindowCompositionAttribute(ACCENT_ENABLE_ACRYLICBLURBEHIND) بصبغة ABGR بنفس شفافية الزجاج الحالي (0.62/0.66).
+// ويندوز 10 (≥ 17134): SetWindowCompositionAttribute(ACCENT_ENABLE_ACRYLICBLURBEHIND) بصبغة ABGR تُشتق من glassTint (0–80): ألفا = 0.28 + 0.0075·t
+// (الافتراضي 45 ⇒ 0.62 كالسابق)، والفاتح +0.04 بسقف 0.92 — البلور من النظام والصبغة منّا. ويندوز 11: الصبغة داخل الصفحة (CSS) لا هنا.
 // أقدم/فشل أي نداء ⇒ يُبتلع بصمت ويعود "none" (الواجهة تبقى على الزجاج داخل الصفحة). لا خيوط ولا مؤقّتات: نداءات عند التغيّر فقط.
 // المنطقة (SetWindowRgn) كبسولة مستديرة بحجم النافذة كي لا يظهر مستطيل التمويه خارج الحبة؛ لذلك تُسقَط الخلفية قبل أي تغيير حجم
 // (win::resize_to_island) وتعيد الواجهة طلبها بعد استقرار الحركة. نافذتا overlay والإعدادات/المحرّر خارج النطاق عمدًا.
@@ -35,10 +36,22 @@ pub fn mode_for_build(build: u32) -> Mode {
     }
 }
 
-/// صبغة ويندوز 10 بصيغة ABGR (0xAABBGGRR): داكن = أسود بشفافية الزجاج 0.62، فاتح = #eceff3 بـ0.66 (كما --island-bg).
-pub fn tint_abgr(light: bool) -> u32 {
-    let (r, g, b, a) = if light { (236u32, 239u32, 243u32, 0.66f64) } else { (0, 0, 0, 0.62) };
-    (((a * 255.0).round() as u32) << 24) | (b << 16) | (g << 8) | r
+/// glassTint المقبول (نسبة 0–80)؛ غير صالح/NaN ⇒ الافتراضي 45.
+pub fn clamp_tint(t: f64) -> u32 {
+    if t.is_finite() { t.round().clamp(0.0, 80.0) as u32 } else { 45 }
+}
+
+/// ألفا صبغة الأكريليك على ويندوز 10 من glassTint: خريطة خطية 0.28 + 0.0075·t (0 ⇒ 0.28 تمويه شبه صافٍ بصبغة خفيفة · 45 ⇒ 0.62 ·
+/// 80 ⇒ 0.88)؛ الفاتح +0.04 بسقف 0.92 (يبقى البلور ظاهرًا: لا يبلغ مصمتًا أبدًا).
+pub fn win10_alpha(light: bool, tint: u32) -> f64 {
+    let a = 0.28 + 0.0075 * tint.min(80) as f64;
+    if light { (a + 0.04).min(0.92) } else { a }
+}
+
+/// صبغة ويندوز 10 بصيغة ABGR (0xAABBGGRR): داكن = أسود، فاتح = #eceff3، ألفا من win10_alpha.
+pub fn tint_abgr(light: bool, tint: u32) -> u32 {
+    let (r, g, b) = if light { (236u32, 239u32, 243u32) } else { (0, 0, 0) };
+    (((win10_alpha(light, tint) * 255.0).round() as u32) << 24) | (b << 16) | (g << 8) | r
 }
 
 /// نصف قطر المنطقة بالبكسل الفيزيائي، محصور بنصف أصغر بُعد (كبسولة كاملة كحدّ أقصى).
@@ -66,7 +79,7 @@ mod imp {
     use windows::Win32::UI::WindowsAndMessaging::GetWindowRect;
 
     /// المطبَّق حاليًا على main: (المفتاح، الآلية). None = لا خلفية.
-    static CUR: Mutex<Option<(Key, Mode)>> = Mutex::new(None);
+    static CUR: Mutex<Option<(Key, Mode, u32)>> = Mutex::new(None);
     static BUILD: OnceLock<u32> = OnceLock::new();
 
     fn build_number() -> u32 {
@@ -135,7 +148,7 @@ mod imp {
 
     pub fn drop_for_resize(app: &AppHandle) {
         let mut cur = CUR.lock().unwrap();
-        let Some((_, mode)) = cur.take() else { return };
+        let Some((_, mode, _)) = cur.take() else { return };
         if let Some(w) = app.get_webview_window(crate::win::MAIN) {
             if let Ok(h) = w.hwnd() {
                 unsafe { clear(HWND(h.0), mode) };
@@ -143,7 +156,7 @@ mod imp {
         }
     }
 
-    pub fn apply(app: &AppHandle, glass: bool, light: bool, radius_css: f64) -> Mode {
+    pub fn apply(app: &AppHandle, glass: bool, light: bool, radius_css: f64, tint: u32) -> Mode {
         let Some(w) = app.get_webview_window(crate::win::MAIN) else { return Mode::None };
         let Ok(h) = w.hwnd() else { return Mode::None };
         let h = HWND(h.0);
@@ -157,8 +170,15 @@ mod imp {
             let (ww, wh) = ((r.right - r.left).max(0) as u32, (r.bottom - r.top).max(0) as u32);
             let rad = region_radius_px(radius_css, w.scale_factor().unwrap_or(1.0), ww, wh);
             let key: Key = (glass, light, ww, wh, rad);
-            if let Some((k, m)) = *cur {
+            if let Some((k, m, t)) = *cur {
                 if k == key {
+                    // نفس الهندسة/الثيم: تغيّر glassTint وحده ⇒ تحديث صبغة ويندوز 10 فقط (بلا مسح فلا وميض أثناء سحب المنزلق)؛
+                    // ويندوز 11 صبغته داخل الصفحة فلا شيء يُنفَّذ هنا.
+                    if m == Mode::Win10 && t != tint {
+                        if set_accent(h, 4, tint_abgr(light, tint)) {
+                            *cur = Some((k, m, tint));
+                        }
+                    }
                     return m;
                 }
                 clear(h, m); // تغيّر الطلب: ابدأ نظيفًا (يتفادى بقايا منطقة/صبغة قديمة)
@@ -179,14 +199,14 @@ mod imp {
                         & DwmExtendFrameIntoClientArea(h, &MARGINS { cxLeftWidth: -1, cxRightWidth: -1, cyTopHeight: -1, cyBottomHeight: -1 }).is_ok()
                         & dwm_i32(h, 38, 3) // DWMWA_SYSTEMBACKDROP_TYPE = DWMSBT_TRANSIENTWINDOW (Acrylic)
                 }
-                Mode::Win10 => set_accent(h, 4, tint_abgr(light)), // ACCENT_ENABLE_ACRYLICBLURBEHIND
+                Mode::Win10 => set_accent(h, 4, tint_abgr(light, tint)), // ACCENT_ENABLE_ACRYLICBLURBEHIND
                 Mode::None => false,
             };
             if !ok {
                 clear(h, target);
                 return Mode::None;
             }
-            *cur = Some((key, target));
+            *cur = Some((key, target, tint));
             target
         }
     }
@@ -199,16 +219,16 @@ pub use imp::drop_for_resize;
 pub fn drop_for_resize(_app: &AppHandle) {}
 
 /// الواجهة تطلب/تزيل الزجاج الحقيقي وتتلقى الآلية الفعلية ("none" = غير مدعوم/فشل ⇒ الزجاج داخل الصفحة).
-/// radius = نصف قطر سطح الحبة بـCSS px (الارتفاع/2 منكمشة، 28 مفتوحة، 24 شريط الأوامر).
+/// tint = glassTint (0–80): يُستعمل لصبغة ويندوز 10 فقط (ويندوز 11: الصبغة في الصفحة). radius = نصف قطر سطح الحبة بـCSS px (الارتفاع/2 منكمشة، 28 مفتوحة، 24 شريط الأوامر).
 #[tauri::command]
-pub fn island_backdrop(app: AppHandle, glass: bool, light: bool, radius: f64) -> &'static str {
+pub fn island_backdrop(app: AppHandle, glass: bool, light: bool, radius: f64, tint: f64) -> &'static str {
     #[cfg(windows)]
     {
-        imp::apply(&app, glass, light, radius).as_str()
+        imp::apply(&app, glass, light, radius, clamp_tint(tint)).as_str()
     }
     #[cfg(not(windows))]
     {
-        let _ = (app, glass, light, radius);
+        let _ = (app, glass, light, radius, tint);
         Mode::None.as_str()
     }
 }
@@ -229,14 +249,41 @@ mod tests {
     }
 
     #[test]
-    fn tint_follows_theme_with_current_glass_alphas() {
-        let d = tint_abgr(false);
-        assert_eq!(d >> 24, 158, "0.62·255");
+    fn tint_is_clamped_and_defaults_on_garbage() {
+        assert_eq!(clamp_tint(45.0), 45);
+        assert_eq!(clamp_tint(-10.0), 0);
+        assert_eq!(clamp_tint(500.0), 80);
+        assert_eq!(clamp_tint(44.6), 45);
+        assert_eq!(clamp_tint(f64::NAN), 45);
+        assert_eq!(clamp_tint(f64::INFINITY), 45);
+    }
+
+    #[test]
+    fn win10_alpha_map_is_monotonic_default_matches_old_and_blur_never_vanishes() {
+        assert!((win10_alpha(false, 45) - 0.6175).abs() < 1e-9, "الافتراضي ≈ 0.62 كالسابق");
+        assert!((win10_alpha(true, 45) - 0.6575).abs() < 1e-9, "الفاتح ≈ 0.66 كالسابق");
+        assert!((win10_alpha(false, 0) - 0.28).abs() < 1e-9);
+        assert!((win10_alpha(false, 80) - 0.88).abs() < 1e-9);
+        let mut prev = -1.0;
+        for t in 0..=80 {
+            let a = win10_alpha(false, t);
+            assert!(a > prev, "رتيب تصاعدي");
+            assert!(win10_alpha(true, t) >= a, "الفاتح ≥ الداكن");
+            assert!(win10_alpha(true, t) <= 0.92 && a < 0.92, "لا يبلغ مصمتًا: البلور يبقى ظاهرًا");
+            prev = a;
+        }
+    }
+
+    #[test]
+    fn tint_abgr_packs_alpha_and_theme_colour() {
+        let d = tint_abgr(false, 45);
+        assert_eq!(d >> 24, 157, "round(0.6175·255)");
         assert_eq!(d & 0x00ff_ffff, 0, "أسود");
-        let l = tint_abgr(true);
-        assert_eq!(l >> 24, 168, "0.66·255");
+        let l = tint_abgr(true, 45);
+        assert_eq!(l >> 24, 168, "round(0.6575·255)");
         // ABGR: R في البايت الأدنى
         assert_eq!((l & 0xff, (l >> 8) & 0xff, (l >> 16) & 0xff), (236, 239, 243));
+        assert!(tint_abgr(false, 80) >> 24 > tint_abgr(false, 10) >> 24, "التظليل الأقوى ألفا أعلى");
     }
 
     #[test]

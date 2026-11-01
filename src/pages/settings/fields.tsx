@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 export function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -42,17 +42,25 @@ export function Toggle({ value, onChange, label }: { value: boolean; onChange: (
 export function Slider(p: {
   value: number; min: number; max: number; step: number;
   onCommit: (v: number) => void; format?: (v: number) => string; label: string;
+  /** معاينة حيّة أثناء السحب (مخنوقة ~80ms)؛ onCommit يثبّت القيمة النهائية عند الإفلات. */
+  onLive?: (v: number) => void;
 }) {
   const [v, setV] = useState(p.value);
   const [drag, setDrag] = useState(false);
   useEffect(() => { if (!drag) setV(p.value); }, [p.value, drag]);
   const commit = () => { setDrag(false); if (v !== p.value) p.onCommit(v); };
+  const lastLive = useRef(0);
+  const live = (n: number) => {
+    if (!p.onLive) return;
+    const now = performance.now();
+    if (now - lastLive.current >= 80) { lastLive.current = now; p.onLive(n); }
+  };
   return (
     <div className="flex items-center gap-3" dir="ltr">
       <input
         type="range" aria-label={p.label}
         min={p.min} max={p.max} step={p.step} value={v}
-        onChange={(e) => { setDrag(true); setV(Number(e.target.value)); }}
+        onChange={(e) => { const n = Number(e.target.value); setDrag(true); setV(n); live(n); }}
         onPointerUp={commit} onKeyUp={commit} onBlur={commit}
         className="w-48 accent-[#6f86ff]"
       />

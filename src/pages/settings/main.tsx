@@ -115,6 +115,15 @@ function App() {
             onChange={(v) => saveSettings({ themeMaterial: v === "glass" ? "glass" : "solid" })}
           />
         </Row>
+        {(s.themeMaterial ?? "solid") === "glass" && (
+          <Row label={i("قوة تظليل الزجاج", "Glass tint strength")} hint={i("أعلى = لوحة أغمق وتباين نص أوضح فوق المحتوى الفاتح؛ الطمس يبقى ظاهرًا", "Higher = darker panel and clearer text over bright content; the blur stays visible")}>
+            <Slider
+              label={i("قوة تظليل الزجاج", "Glass tint strength")} value={s.glassTint ?? 45} min={0} max={80} step={1} format={pct}
+              onLive={(v) => saveSettings({ glassTint: v })}
+              onCommit={(v) => saveSettings({ glassTint: v })}
+            />
+          </Row>
+        )}
         <Row label={i("عيون التميمة", "Mascot eyes")} hint={i("عينان بجانب الساعة تتبعان المؤشر؛ تُخفى أثناء الميديا والتوفير", "Eyes beside the clock follow the cursor; hidden during media and eco mode")}>
           <Toggle label={i("عيون التميمة", "Mascot eyes")} value={s.eyesEnabled ?? true} onChange={(v) => saveSettings({ eyesEnabled: v })} />
         </Row>

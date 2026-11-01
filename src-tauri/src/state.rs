@@ -49,7 +49,8 @@ pub fn defaults() -> Map<String, Value> {
         "pillWidth": 220,
         "pillHeight": 34,
         "themeMode": "dark",
-        "themeMaterial": "solid"
+        "themeMaterial": "solid",
+        "glassTint": 45
     }) else { unreachable!() };
     m
 }

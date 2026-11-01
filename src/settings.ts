@@ -89,6 +89,7 @@ export interface Settings {
   pillHeight:number,
   themeMode:'dark'|'light',
   themeMaterial:'solid'|'glass',
+  glassTint:number,
   workspaces:Workspace[],
   weatherCity:string,
   weatherLat:number,
@@ -147,6 +148,7 @@ export const DEFAULTS: Partial<Settings> = {
   pillHeight: 34,          // ارتفاعها (28..44)؛ المحتوى (خط/عيون/أيقونات) يتدرج k=ارتفاع/32
   themeMode: 'dark',       // dark = أسود كالمرجع · light = فاتح كالمرجع (كل النوافذ)
   themeMaterial: 'solid',  // solid = مصمت · glass = شفافية مع blur
+  glassTint: 45,           // قوة تظليل الزجاج 0..80 (٪) — لا أثر إلا مع themeMaterial=glass؛ ويندوز 11: صبغة الصفحة · ويندوز 10: ألفا الأكريليك
   eyesEnabled: true,       // عيون التميمة بجانب الساعة في الحبة المنكمشة (تُخفى تلقائيًا مع الميديا/التوفير/الحركة المتوقفة)
   motionLevel: 'full',     // full = نابضة · reduced = مخففة · off = متوقفة (انظر src/motion.ts)
   liveRates: true,         // شريط الأوامر: أسعار عملات حية (open.er-api.com) تُجلب كسولًا عند تحويل عملة وتُخزَّن 12 ساعة؛ false = المضمّنة فقط بلا شبكة

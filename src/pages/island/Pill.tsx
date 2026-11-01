@@ -5,7 +5,7 @@ import { Bell, Coffee, Settings as SettingsIcon, Timer as TimerIcon } from "luci
 import { AnimatePresence, motion } from "motion/react";
 import { alertShake, dur, ease, paletteVariants, useMotionLevel, sectionVariants, spring, swapVariants, tap } from "../../motion";
 import { i } from "../../i18n";
-import { useSettings } from "../../useSettings";
+import { clampTint, useSettings } from "../../useSettings";
 import { useMedia } from "../../useMedia";
 import { fmtBytes, useBattery, useDownloads } from "../../useDownloads";
 import { fmtElapsed, useRecording } from "../../useRecording";
@@ -333,6 +333,7 @@ export function Pill() {
     light: settings.themeMode === "light",
     ready: settled && !hidden && opacity >= 0.99,
     radius,
+    tint: clampTint(settings.glassTint),
   });
   const tabs = tabDefs(shelfOn, shelf.items.length, launcherOn);
   const tab = Math.max(0, tabs.findIndex((t) => t.id === tabId));
