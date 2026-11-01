@@ -10,10 +10,9 @@ import { clampTint, useResolvedTheme, useSettings } from "../../useSettings";
 import { PANEL as PANEL_TOKEN, PANEL_PALETTE, PILL as PILL_TOKEN } from "../../tokens";
 import { useMedia } from "../../useMedia";
 import { useBattery } from "../../useBattery";
-import { activeKinds, clampLeadMin, fmtStopwatch, nextKind, shownKind, tabShape, type ActivityKind } from "../../liveActivity";
+import { activeKinds, clampLeadMin, fmtStopwatch, nextKind, shownKind, type ActivityKind } from "../../liveActivity";
 import { useStopwatchNow } from "../../useStopwatch";
 import { useNetSpeed } from "../../useNetSpeed";
-import { useDock } from "../../useDock";
 import { useBatteryHistory } from "../../useBatteryHistory";
 import { ActivityStack, CapsuleSplit, NetValue, updateLabel, type LiveData } from "./activity";
 import { useUpdater } from "../../useUpdater";
@@ -28,6 +27,7 @@ import { useLauncher } from "../../useLauncher";
 // (lazy المرفوض يبقى مرفوضًا للأبد)، وفشل التحميل يُحجَز في TabBoundary فلا يهدم الجزيرة.
 const importNote = () => import("./NoteTab").then((m) => ({ default: m.NoteTab }));
 const makeNoteTab = () => lazy(importNote);
+import { normSound, normVolume, playSound } from "../../sounds";
 import { fmtCountdown, TIMER_NEAR_MS, useNoteAlert, useTimer } from "../../useNote";
 import { MediaSection } from "./MediaSection";
 import { TodaySection } from "./TodaySection";
@@ -166,7 +166,6 @@ export function Pill() {
   // سرعتا الشبكة (اختياري) · وضع تبويب المتصفح (اختياري) · سجلّ البطارية للمنحنى المصغّر · ساعة الإيقاف
   const netOn = !!settings.showNetSpeed;
   const net = useNetSpeed(netOn && !hidden);
-  const dock = useDock(!!settings.browserTabMode);
   const batHist = useBatteryHistory(battery);
   const { sw, ms: swMs } = useStopwatchNow(false);
   const { state: upd, install: installUpdate } = useUpdater(settings.updateAutoCheck ?? true);
@@ -183,6 +182,8 @@ export function Pill() {
   const rec = useRecording();
   // ملاحظة/تذكيرات/مؤقّت: التنبيه (island:note) والمؤقّت القريب يظهران في الحبة المنكمشة.
   const { alert, dismiss } = useNoteAlert();
+  // صوت التنبيه المختار (WebAudio محلي): مرة لكل تنبيه جديد.
+  useEffect(() => { if (alert) playSound(normSound(settings.soundChoice), normVolume(settings.soundVolume)); }, [alert?.id, alert?.at]); // eslint-disable-line react-hooks/exhaustive-deps
   const { timer, remaining } = useTimer();
   const timerNear = timer !== null && remaining !== null && remaining > 0 && remaining <= TIMER_NEAR_MS;
   const alertRef = useRef(alert);
@@ -201,7 +202,7 @@ export function Pill() {
   });
   const shownPanel = shownKind(panelKinds, pinPanel);
   const liveData: LiveData = {
-    rec: { recording: rec.recording, elapsed: rec.elapsed }, timer, remaining, media, showLyrics: !!(settings.lyricsInHome || settings.lyricsInPlayer),
+    rec: { recording: rec.recording, elapsed: rec.elapsed }, timer, remaining, media,
     battery, batteryHist: batHist, meeting: upMeeting, update: upd, onInstallUpdate: installUpdate,
   };
   const cycleCap = () => setPinCap(nextKind(capKinds, shownCap));
@@ -357,9 +358,8 @@ export function Pill() {
   const alertShown = !!alert && !open && shownCap !== "rec";
   // شكل الحبة المنكمشة ثابت دائمًا: التنبيه/النشاط/المؤقّت/البطارية تُرسم داخلها ولا تغيّر مقاسها أبدًا (الإعدادات وحدها تغيّره).
   const restContent = pill;
-  const tabS = tabShape(dock, restContent.w, restContent.h);
-  const restWin = dock.active ? { w: restContent.w, h: tabS.winH } : restContent;
-  const restBody = dock.active ? { w: restContent.w, h: tabS.bodyH } : restContent;
+  const restWin = restContent;
+  const restBody = restContent;
   restWinRef.current = restWin;
   // تغيّر المقاس الاستراحي والحبة منكمشة: النمو ⇒ تكبير النافذة قبل الحركة؛ الانكماش ⇒ تصغيرها بعد انتهاء الحركة.
   useEffect(() => {
@@ -376,9 +376,8 @@ export function Pill() {
   const opacity = hidden ? 0 : palette ? 1 : open ? opened : settings.autoHide && !hover ? 0 : rest;
 
   // كبسولة كاملة الاستدارة؛ مرسيّة في شريط المتصفح: زوايا علوية مدوّرة وقاع مسطّح (هيئة تبويب).
-  const dockedRest = dock.active && !open && !palette;
-  const rTop = palette ? 24 : open ? 28 : dockedRest ? tabS.top : pillR;
-  const rBot = palette ? 24 : open ? 28 : dockedRest ? tabS.bottom : pillR;
+  const rTop = palette ? 24 : open ? 28 : pillR;
+  const rBot = palette ? 24 : open ? 28 : pillR;
   const radius = rTop;
   // مفتاح الحجم المستهدف؛ أول عرض = مستقر. مؤقّت احتياطي أحادي إن لم يصل رد الاكتمال (كحارس التصغير).
   const sizeKey = `${size.w}x${size.h}`;
@@ -441,13 +440,12 @@ export function Pill() {
         onContextMenu={(e) => { e.preventDefault(); invoke("open_settings").catch(() => {}); }}
         initial={false}
         animate={{
-          opacity, width: size.w, height: size.h, y: open || palette ? 0 : dock.active ? tabS.y : 0,
+          opacity, width: size.w, height: size.h, y: 0,
           borderTopLeftRadius: rTop, borderTopRightRadius: rTop, borderBottomLeftRadius: rBot, borderBottomRightRadius: rBot,
         }}
         transition={{ default: spring.island, opacity: { duration: dur.base, ease: ease.out } }}
         onAnimationComplete={() => { if (!flushShrink()) settleNow(); }}
         data-open={open || palette ? "true" : "false"}
-        data-docked={dockedRest ? "true" : "false"}
         className="island-body relative overflow-hidden"
       >
         <Liquid
@@ -639,7 +637,7 @@ export function Pill() {
                         {shownPanel ? (
                           <ActivityStack kinds={panelKinds} shown={shownPanel} onPin={setPinPanel} data={liveData} />
                         ) : (
-                          <MediaSection media={media} showLyrics={!!(settings.lyricsInHome || settings.lyricsInPlayer)} />
+                          <MediaSection media={media} />
                         )}
                       </motion.div>
                     )}

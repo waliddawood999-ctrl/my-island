@@ -30,16 +30,19 @@ type SpringKey = "island" | "content" | "press" | "tabLead" | "tabTrail" | "eye"
  *  السرعة تضرب الصلابة في مربعها والتخميد في نفسها (نسبة التخميد ثابتة)، وتقسم المدد. */
 let speed = 1;
 let style: SpringStyle = "snappy";
-const sp = (stiffness: number, damping: number, mass: number): Transition => ({ type: "spring", stiffness: stiffness * speed * speed, damping: damping * speed, mass });
-
-/** نوابض: تجاوز (overshoot) بسيط جدًا كحد أقصى. island/content تتبعان النمط المختار (tokens.ts::springPresets)؛ البقية مخصّصة. */
-function buildFullSpring(): Record<SpringKey, Transition> {
+/** كل النوابض (لا island/content فقط) تتبع نمط النابض: الصلابة × (صلابة النمط/500) والتخميد × (تخميد النمط/35)، ثم السرعة. */
+const sp = (stiffness: number, damping: number, mass: number): Transition => {
   const p = springPresets[style];
+  return { type: "spring", stiffness: stiffness * (p.stiffness / 500) * speed * speed, damping: damping * (p.damping / 35) * speed, mass };
+};
+
+/** نوابض: تجاوز (overshoot) بسيط جدًا كحد أقصى. */
+function buildFullSpring(): Record<SpringKey, Transition> {
   return {
     /** تحوّل الحبة↔اللوحة: الحجم والانحناء (عنصر واحد يتحوّل دون قطع). */
-    island: sp(p.stiffness, p.damping, 0.9),
+    island: sp(500, 35, 0.9),
     /** ظهور عناصر داخل اللوحة وأقسامها. */
-    content: sp(p.stiffness * 1.05, p.damping * 1.05, 0.8),
+    content: sp(525, 37, 0.8),
     /** ضغط/تحويم الأزرار — سريع بلا تجاوز. */
     press: sp(700, 40, 0.5),
     /** حافة مؤشر التبويب القائدة (تتمدد أولًا). */

@@ -5,7 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { getVersion } from "@tauri-apps/api/app";
 import {
   Activity, AppWindow, BatteryCharging, Bell, Blocks, Brush, CalendarClock, Camera, Clapperboard, Clipboard as ClipIcon, Clock, Cloud, Command, Cpu, Download, Eye, Film, FolderOpen,
-  Gauge, Globe, Info, Keyboard, Languages, Layers, LogOut, MapPin, Maximize2, Mic, Monitor, Moon, MousePointer2, Move, MoveVertical, Music, Network, Palette, PanelTop, Percent,
+  Gauge, Globe, Play, Info, Keyboard, Languages, Layers, LogOut, MapPin, Maximize2, Mic, Monitor, Moon, MousePointer2, Move, MoveVertical, Music, Network, Palette, PanelTop, Percent,
   PictureInPicture2, Power, RefreshCw, RotateCcw, Ruler, Scan, Search, Settings2, Shield, Sparkles, Square, SunMoon, Timer, Type, Upload, Volume2, Waves, Zap, Hourglass, SlidersHorizontal,
 } from "lucide-react";
 import "../../index.css";
@@ -20,6 +20,7 @@ import { manualCheck } from "../../useUpdater";
 import type { ManualStatus } from "../../updater";
 import { GLASS_STYLE_VALUES, SECTION_KEYS, STYLE_PRESETS, exportSettings, parseImport, resetPatch } from "../../appearance";
 import { spring } from "../../motion";
+import { SOUND_IDS, SOUND_LABELS, normSound, normVolume, playSound } from "../../sounds";
 import { btnOutline, btnPrimary, ColorField, DirCtx, inputCls, LinesField, NumberField, Row, SearchCtx, Section, Segmented, Select, ShortcutField, Slider, SubHead, TextField, Toggle } from "./fields";
 
 interface CityOpt { id: string; ar: string; en: string }
@@ -193,7 +194,7 @@ function App() {
       id: "general", icon: <Settings2 size={16} />, label: i("عام", "General"), desc: i("التشغيل واللغة والشاشة وسلوك الفتح والإغلاق.", "Startup, language, screen and open/close behavior."),
       body: (<>
         <Section title={i("التشغيل", "Startup")}>
-          <Row icon={ic(Power)} label={i("التشغيل مع ويندوز", "Start with Windows")}>
+          <Row icon={ic(Power)} label={i("التشغيل مع ويندوز", "Start with Windows")} hint={i("يشغّل الجزيرة تلقائيًا عند تسجيل الدخول", "Starts the island automatically when you sign in")}>
             <Toggle label={i("التشغيل مع ويندوز", "Start with Windows")} value={s.autostart ?? false} onChange={(v) => set({ autostart: v })} />
           </Row>
           <Row icon={ic(Languages)} label={i("اللغة", "Language")}>
@@ -203,7 +204,7 @@ function App() {
               onChange={(v) => set({ language: v })}
             />
           </Row>
-          <Row icon={ic(Monitor)} label={i("الشاشة", "Monitor")}>
+          <Row icon={ic(Monitor)} label={i("الشاشة", "Monitor")} hint={i("الشاشة التي تظهر عليها الحبة", "The screen the pill appears on")}>
             <Select
               label={i("الشاشة", "Monitor")} value={s.monitor ?? 0}
               options={(monitors.length ? monitors : [{ index: 0, name: "", width: 0, height: 0, primary: true }]).map((m) => ({
@@ -215,10 +216,10 @@ function App() {
           </Row>
         </Section>
         <Section title={i("السلوك", "Behavior")}>
-          <Row icon={ic(MousePointer2)} label={i("تأخير الفتح بالمرور", "Hover delay")}>
+          <Row icon={ic(MousePointer2)} label={i("تأخير الفتح بالمرور", "Hover delay")} hint={i("المدة قبل فتح اللوحة عند وضع المؤشر على الحبة", "How long before the panel opens when you hover the pill")}>
             <Slider label={i("تأخير الفتح بالمرور", "Hover delay")} value={s.hoverDelayMs ?? 250} min={0} max={600} step={25} format={ms} onCommit={(v) => set({ hoverDelayMs: v })} />
           </Row>
-          <Row icon={ic(Hourglass)} label={i("تأخير الانكماش", "Collapse delay")}>
+          <Row icon={ic(Hourglass)} label={i("تأخير الانكماش", "Collapse delay")} hint={i("المدة قبل إغلاق اللوحة بعد ابتعاد المؤشر", "How long before the panel closes after the pointer leaves")}>
             <Slider label={i("تأخير الانكماش", "Collapse delay")} value={s.collapseDelayMs ?? 350} min={100} max={1500} step={50} format={ms} onCommit={(v) => set({ collapseDelayMs: v })} />
           </Row>
         </Section>
@@ -229,10 +230,10 @@ function App() {
       id: "island", icon: <PictureInPicture2 size={16} />, label: i("الجزيرة", "Island"), desc: i("الحجم والموضع والظهور — الشكل ثابت ولا يتغيّر إلا من هنا.", "Size, position and visibility — the shape is fixed and only changes here."),
       body: (<>
         <Section title={i("الحجم والشكل", "Size & shape")}>
-          <Row icon={ic(Ruler)} label={i("عرض الحبة", "Pill width")} hint={i("المحتوى يتدرج مع المقاس تلقائيًا", "Content scales with the size automatically")}>
+          <Row icon={ic(Ruler)} label={i("عرض الحبة", "Pill width")} hint={i("عرض الحبة وهي مغلقة", "Width of the pill when closed")}>
             <Slider label={i("عرض الحبة", "Pill width")} value={s.pillWidth ?? 220} min={160} max={280} step={5} format={px} onLive={(v) => set({ pillWidth: v })} onCommit={(v) => set({ pillWidth: v })} />
           </Row>
-          <Row icon={ic(Ruler)} label={i("ارتفاع الحبة", "Pill height")}>
+          <Row icon={ic(Ruler)} label={i("ارتفاع الحبة", "Pill height")} hint={i("ارتفاع الحبة وهي مغلقة", "Height of the pill when closed")}>
             <Slider label={i("ارتفاع الحبة", "Pill height")} value={s.pillHeight ?? 34} min={28} max={44} step={1} format={px} onLive={(v) => set({ pillHeight: v })} onCommit={(v) => set({ pillHeight: v })} />
           </Row>
           <Row icon={ic(Square)} label={i("استدارة الحبة", "Pill corner radius")} hint={i("0 = كبسولة كاملة تلقائيًا", "0 = automatic full capsule")}>
@@ -240,31 +241,28 @@ function App() {
           </Row>
         </Section>
         <Section title={i("الموضع", "Position")}>
-          <Row icon={ic(MapPin)} label={i("موضع الجزيرة", "Position")}>
+          <Row icon={ic(MapPin)} label={i("موضع الجزيرة", "Position")} hint={i("أين تقع الحبة على الحافة العليا للشاشة", "Where the pill sits along the top edge of the screen")}>
             <Segmented label={i("موضع الجزيرة", "Position")} value={s.pillPosition ?? "center"} onChange={(v) => set({ pillPosition: v })}
               options={[{ value: "left", label: i("يسار", "Left") }, { value: "center", label: i("منتصف", "Center") }, { value: "right", label: i("يمين", "Right") }]} />
           </Row>
-          <Row icon={ic(Move)} label={i("الإزاحة الأفقية", "Horizontal offset")} hint={i("عن الموضع المختار", "From the chosen position")}>
+          <Row icon={ic(Move)} label={i("الإزاحة الأفقية", "Horizontal offset")} hint={i("تحريك الحبة يمينًا أو يسارًا من موضعها", "Nudges the pill left or right from its place")}>
             <Slider label={i("الإزاحة الأفقية", "Horizontal offset")} value={s.offsetX ?? 0} min={-800} max={800} step={10} format={px} onCommit={(v) => set({ offsetX: v })} />
           </Row>
-          <Row icon={ic(MoveVertical)} label={i("الإزاحة الرأسية", "Vertical offset")} hint={i("المسافة عن أعلى الشاشة", "Distance from the top of the screen")}>
+          <Row icon={ic(MoveVertical)} label={i("الإزاحة الرأسية", "Vertical offset")} hint={i("المسافة بين الحبة وأعلى الشاشة", "Gap between the pill and the top of the screen")}>
             <Slider label={i("الإزاحة الرأسية", "Vertical offset")} value={s.offsetY ?? 0} min={0} max={60} step={2} format={px} onCommit={(v) => set({ offsetY: v })} />
-          </Row>
-          <Row icon={ic(PanelTop)} label={i("تحت شريط المهام", "Under the taskbar")} hint={i("من حافة الشاشة الفعلية بدل منطقة العمل", "From the physical screen edge instead of the work area")}>
-            <Toggle label={i("تحت شريط المهام", "Under the taskbar")} value={s.underTaskbar ?? false} onChange={(v) => set({ underTaskbar: v })} />
           </Row>
         </Section>
         <Section title={i("الظهور", "Visibility")}>
-          <Row icon={ic(Eye)} label={i("إخفاء تلقائي", "Auto-hide")} hint={i("تختفي الحبة في الراحة وتظهر عند مرور المؤشر (إطفاؤه = ظاهرة دائمًا)", "The pill fades at rest and reappears on hover (off = always visible)")}>
+          <Row icon={ic(Eye)} label={i("إخفاء تلقائي", "Auto-hide")} hint={i("تختفي الحبة وهي ساكنة وتعود عند تمرير المؤشر عليها", "The pill fades away at rest and returns when you hover it")}>
             <Toggle label={i("إخفاء تلقائي", "Auto-hide")} value={s.autoHide ?? false} onChange={(v) => set({ autoHide: v })} />
           </Row>
-          <Row icon={ic(Maximize2)} label={i("الإخفاء في وضع ملء الشاشة", "Hide in fullscreen")}>
+          <Row icon={ic(Maximize2)} label={i("الإخفاء في وضع ملء الشاشة", "Hide in fullscreen")} hint={i("تختفي أثناء الألعاب والفيديو بملء الشاشة؛ المس الحافة العليا لإظهارها", "Hides during fullscreen games and videos; touch the top edge to show it")}>
             <Toggle label={i("الإخفاء في وضع ملء الشاشة", "Hide in fullscreen")} value={s.hideInFullscreen ?? false} onChange={(v) => set({ hideInFullscreen: v })} />
           </Row>
-          <Row icon={ic(Percent)} label={i("الشفافية في الراحة", "Opacity at rest")}>
+          <Row icon={ic(Percent)} label={i("الشفافية في الراحة", "Opacity at rest")} hint={i("شفافية الحبة وهي ساكنة؛ أقل = أخفّ حضورًا", "How see-through the pill is while resting; lower is subtler")}>
             <Slider label={i("الشفافية في الراحة", "Opacity at rest")} value={s.opacityRest ?? 100} min={20} max={100} step={5} format={pct} onCommit={(v) => set({ opacityRest: v })} />
           </Row>
-          <Row icon={ic(Percent)} label={i("الشفافية عند الفتح", "Opacity when open")}>
+          <Row icon={ic(Percent)} label={i("الشفافية عند الفتح", "Opacity when open")} hint={i("شفافية اللوحة وهي مفتوحة", "How see-through the panel is when open")}>
             <Slider label={i("الشفافية عند الفتح", "Opacity when open")} value={s.opacityOpen ?? 100} min={20} max={100} step={5} format={pct} onCommit={(v) => set({ opacityOpen: v })} />
           </Row>
           <Row icon={ic(Camera)} label={i("إظهار الحبة في اللقطات", "Show the island in captures")} hint={i("مطفأ: الحبة تُستثنى من اللقطات والتسجيل", "Off: the island is excluded from screenshots and recordings")}>
@@ -272,22 +270,15 @@ function App() {
           </Row>
         </Section>
         <Section title={i("المحتوى", "Content")}>
-          <Row icon={ic(Clock)} label={i("إظهار الساعة", "Show clock")}>
+          <Row icon={ic(Clock)} label={i("إظهار الساعة", "Show clock")} hint={i("يعرض الوقت داخل الحبة", "Shows the time inside the pill")}>
             <Toggle label={i("إظهار الساعة", "Show clock")} value={s.showClock ?? true} onChange={(v) => set({ showClock: v })} />
           </Row>
-          <Row icon={ic(Clock)} label={i("نظام الساعة", "Clock format")}>
+          <Row icon={ic(Clock)} label={i("نظام الساعة", "Clock format")} hint={i("طريقة عرض الوقت في الحبة", "How the time is shown in the pill")}>
             <Segmented label={i("نظام الساعة", "Clock format")} value={s.clockFormat ?? "auto"} onChange={(v) => set({ clockFormat: v })}
               options={[{ value: "auto", label: i("تلقائي", "Auto") }, { value: "24", label: i("24 ساعة", "24-hour") }, { value: "12", label: i("12 ساعة", "12-hour") }]} />
           </Row>
           <Row icon={ic(Eye)} label={i("عيون التميمة", "Mascot eyes")} hint={i("عينان بجانب الساعة تتبعان المؤشر؛ تُخفى أثناء الميديا والتوفير", "Eyes beside the clock follow the cursor; hidden during media and eco mode")}>
             <Toggle label={i("عيون التميمة", "Mascot eyes")} value={s.eyesEnabled ?? true} onChange={(v) => set({ eyesEnabled: v })} />
-          </Row>
-          <Row icon={ic(AppWindow)} label={i("وضع تبويب المتصفح", "Browser tab mode")}
-            hint={i(
-              "حين يكون المتصفح (Chrome/Edge/Firefox/Brave) هو النافذة الأمامية ومكبَّرًا، تتخذ الحبة هيئة تبويب في أعلى شريطه؛ الضغط عليها يفتح اللوحة. إرساء بصري لا تبويب حقيقي، ويتوقف في وضع التوفير.",
-              "When a browser (Chrome/Edge/Firefox/Brave) is the maximized foreground window, the pill takes a tab shape in its tab strip; click it to open the panel. A visual docking, not a real tab; paused in Eco mode.",
-            )}>
-            <Toggle label={i("وضع تبويب المتصفح", "Browser tab mode")} value={s.browserTabMode ?? false} onChange={(v) => set({ browserTabMode: v })} />
           </Row>
         </Section>
       </>),
@@ -303,11 +294,11 @@ function App() {
           </Row>
         </Section>
         <Section title={i("النمط والمادة", "Theme & material")}>
-          <Row icon={ic(SunMoon)} label={i("النمط", "Theme")} hint={i("يتبع النظام افتراضيًا ويُطبَّق على الحبة واللوحة ونوافذ البرنامج", "Follows the system by default; applies to the island, panel and app windows")}>
+          <Row icon={ic(SunMoon)} label={i("النمط", "Theme")} hint={i("فاتح أو داكن، أو يتّبع النظام تلقائيًا", "Light or dark, or follow the system automatically")}>
             <Segmented label={i("النمط", "Theme")} value={s.themeMode ?? "system"} onChange={(v) => set({ themeMode: v })}
               options={[{ value: "system", label: i("النظام", "System") }, { value: "light", label: i("فاتح", "Light") }, { value: "dark", label: i("داكن", "Dark") }]} />
           </Row>
-          <Row icon={ic(Layers)} label={i("المادة", "Material")} hint={i("الزجاجية: شفافية مع blur · العادية: سطح مصمت", "Glass: transparency with blur · Solid: an opaque surface")}>
+          <Row icon={ic(Layers)} label={i("المادة", "Material")} hint={i("زجاجية: شفافة مع تمويه · عادية: سطح غير شفاف", "Glass: see-through with blur · Solid: an opaque surface")}>
             <Segmented label={i("المادة", "Material")} value={glassOn ? "glass" : "solid"} onChange={(v) => set({ themeMaterial: v })}
               options={[{ value: "solid", label: i("عادية (مصمتة)", "Solid") }, { value: "glass", label: i("زجاجية", "Glass") }]} />
           </Row>
@@ -325,39 +316,39 @@ function App() {
             </Row>
           )}
           {glassOn && (
-            <Row icon={ic(Moon)} label={i("قوة تظليل الزجاج", "Glass tint strength")} hint={i("أعلى = لوحة أغمق وتباين نص أوضح فوق المحتوى الفاتح", "Higher = darker panel and clearer text over bright content")}>
+            <Row icon={ic(Moon)} label={i("قوة تظليل الزجاج", "Glass tint strength")} hint={i("كم تغمق لوحة الزجاج؛ كلما زاد صار النص أوضح", "How dark the glass looks; higher makes text easier to read")}>
               <Slider label={i("قوة تظليل الزجاج", "Glass tint strength")} value={s.glassTint ?? 45} min={0} max={80} step={1} format={pct} onLive={(v) => set({ glassTint: v })} onCommit={(v) => set({ glassTint: v })} />
             </Row>
           )}
-          {glassOn && (
-            <Row icon={ic(Waves)} label={i("تمويه الزجاج (CSS)", "Glass blur (CSS)")} hint={i("طبقة الصفحة فوق الزجاج الأصلي (حتى 40px)؛ يُحدّ في وضع التوفير", "Page layer over the native glass (max 40px); capped in eco mode")}>
+          {glassOn && (s.glassStyle ?? "crystal") === "crystal" && (
+            <Row icon={ic(Waves)} label={i("تمويه الزجاج (CSS)", "Glass blur (CSS)")} hint={i("كم يتشوّش ما خلف الزجاج", "How blurry things behind the glass look")}>
               <Slider label={i("تمويه الزجاج (CSS)", "Glass blur (CSS)")} value={clampGlassBlur(s.glassBlur)} min={0} max={40} step={1} format={px} onLive={(v) => set({ glassBlur: v })} onCommit={(v) => set({ glassBlur: v })} />
             </Row>
           )}
-          {glassOn && (
-            <Row icon={ic(Palette)} label={i("تشبّع الزجاج", "Glass saturation")} hint={i("يزيد حيوية الألوان خلف الزجاج؛ 100% = بلا تعزيز", "Boosts colours behind the glass; 100% = no boost")}>
+          {glassOn && (s.glassStyle ?? "crystal") === "crystal" && (
+            <Row icon={ic(Palette)} label={i("تشبّع الزجاج", "Glass saturation")} hint={i("كم تزداد حيوية الألوان خلف الزجاج", "How vivid the colors behind the glass look")}>
               <Slider label={i("تشبّع الزجاج", "Glass saturation")} value={clampGlassSaturation(s.glassSaturation)} min={100} max={200} step={5} format={pct} onLive={(v) => set({ glassSaturation: v })} onCommit={(v) => set({ glassSaturation: v })} />
             </Row>
           )}
         </Section>
         <Section title={i("اللون والتفاصيل", "Color & details")}>
-          <Row icon={ic(Brush)} label={i("لون التمييز", "Accent color")}>
+          <Row icon={ic(Brush)} label={i("لون التمييز", "Accent color")} hint={i("لون الأزرار والمفاتيح المفعّلة", "Color of buttons and switches that are on")}>
             <ColorField label={i("لون التمييز", "Accent color")} value={s.accentColor ?? "#4fd1c5"} onChange={(v) => set({ accentColor: v })} />
           </Row>
-          <Row icon={ic(Square)} label={i("قوة الحدود", "Border strength")}>
+          <Row icon={ic(Square)} label={i("قوة الحدود", "Border strength")} hint={i("وضوح الخط الرفيع حول العناصر", "How visible the thin outline around things is")}>
             <Slider label={i("قوة الحدود", "Border strength")} value={s.borderStrength ?? 50} min={0} max={100} step={5} format={pct} onLive={(v) => set({ borderStrength: v })} onCommit={(v) => set({ borderStrength: v })} />
           </Row>
-          <Row icon={ic(Layers)} label={i("قوة الظلال", "Shadow strength")}>
+          <Row icon={ic(Layers)} label={i("قوة الظلال", "Shadow strength")} hint={i("عمق الظل تحت العناصر", "How deep the shadows under things are")}>
             <Slider label={i("قوة الظلال", "Shadow strength")} value={s.shadowStrength ?? 50} min={0} max={100} step={5} format={pct} onLive={(v) => set({ shadowStrength: v })} onCommit={(v) => set({ shadowStrength: v })} />
           </Row>
-          <Row icon={ic(Square)} label={i("نمط الزوايا", "Corner style")}>
+          <Row icon={ic(Square)} label={i("نمط الزوايا", "Corner style")} hint={i("استدارة زوايا البطاقات والأزرار", "How round the corners of cards and buttons are")}>
             <Segmented label={i("نمط الزوايا", "Corner style")} value={s.cornerStyle ?? "rounded"} onChange={(v) => set({ cornerStyle: v })}
               options={[{ value: "rounded", label: i("مستدير", "Rounded") }, { value: "extra", label: i("مستدير جدًا", "Extra rounded") }]} />
           </Row>
-          <Row icon={ic(Type)} label={i("حجم الخط", "Font size")} hint={i("يقيس نصوص الواجهة كلها (Almarai)", "Scales all interface text (Almarai)")}>
+          <Row icon={ic(Type)} label={i("حجم الخط", "Font size")} hint={i("حجم الخط في كل الواجهة", "Text size across the whole interface")}>
             <Slider label={i("حجم الخط", "Font size")} value={s.fontScale ?? 100} min={90} max={120} step={5} format={pct} onLive={(v) => set({ fontScale: v })} onCommit={(v) => set({ fontScale: v })} />
           </Row>
-          <Row icon={ic(SlidersHorizontal)} label={i("الكثافة", "Density")}>
+          <Row icon={ic(SlidersHorizontal)} label={i("الكثافة", "Density")} hint={i("المسافات داخل الصفوف: مريحة أو مدمجة", "Spacing inside rows: comfortable or compact")}>
             <Segmented label={i("الكثافة", "Density")} value={s.density ?? "comfortable"} onChange={(v) => set({ density: v })}
               options={[{ value: "comfortable", label: i("مريحة", "Comfortable") }, { value: "compact", label: i("مدمجة", "Compact") }]} />
           </Row>
@@ -368,18 +359,18 @@ function App() {
       id: "motion", icon: <Zap size={16} />, label: i("الحركة", "Motion"), desc: i("سرعة الحركة ونمط النوابض وتقليلها.", "Animation speed, spring style and reducing motion."),
       body: (
         <Section title={i("الحركة", "Motion")}>
-          <Row icon={ic(Zap)} label={i("مستوى الحركة", "Motion level")} hint={i("كاملة: حركة نابضة · مخففة: انتقالات قصيرة بلا ارتداد · متوقفة: بلا حركة", "Full: springy · Reduced: short, no bounce · Off: no motion")}>
+          <Row icon={ic(Zap)} label={i("مستوى الحركة", "Motion level")} hint={i("كاملة: حركة حيّة · مخففة: تلاشٍ قصير · متوقفة: بلا حركة", "Full: lively · Reduced: short fades · Off: no motion")}>
             <Segmented label={i("مستوى الحركة", "Motion level")} value={s.motionLevel === "reduced" || s.motionLevel === "off" ? s.motionLevel : "full"} onChange={(v) => set({ motionLevel: v })}
               options={[{ value: "full", label: i("كاملة", "Full") }, { value: "reduced", label: i("مخففة", "Reduced") }, { value: "off", label: i("متوقفة", "Off") }]} />
           </Row>
-          <Row icon={ic(Gauge)} label={i("سرعة الحركة", "Animation speed")} hint={i("0.5× أبطأ · 1.5× أسرع", "0.5× slower · 1.5× faster")}>
+          <Row icon={ic(Gauge)} label={i("سرعة الحركة", "Animation speed")} hint={i("يجعل كل الحركات أسرع أو أبطأ", "Makes every animation faster or slower")}>
             <Slider label={i("سرعة الحركة", "Animation speed")} value={s.animSpeed ?? 100} min={50} max={150} step={10} format={(v) => `${(v / 100).toFixed(1)}×`} onCommit={(v) => set({ animSpeed: v })} />
           </Row>
-          <Row icon={ic(Waves)} label={i("نمط النابض", "Spring style")} hint={i("حاد: سريع · ناعم: متوازن · هادئ: بطيء وسلس", "Snappy: quick · Smooth: balanced · Gentle: slow and soft")}>
+          <Row icon={ic(Waves)} label={i("نمط النابض", "Spring style")} hint={i("طريقة تحرّك العناصر: حادّة وسريعة، أو ناعمة، أو هادئة وبطيئة", "How things move: quick, smooth, or slow and soft")}>
             <Segmented label={i("نمط النابض", "Spring style")} value={s.springStyle ?? "snappy"} onChange={(v) => set({ springStyle: v })}
               options={[{ value: "snappy", label: i("حاد", "Snappy") }, { value: "smooth", label: i("ناعم", "Smooth") }, { value: "gentle", label: i("هادئ", "Gentle") }]} />
           </Row>
-          <Row icon={ic(Eye)} label={i("تقليل الحركة", "Reduce motion")} hint={i("يُحترم تفضيل النظام «تقليل الحركة» تلقائيًا أيضًا", "The OS “reduce motion” preference is honored automatically too")}>
+          <Row icon={ic(Eye)} label={i("تقليل الحركة", "Reduce motion")} hint={i("يستبدل الحركات الكبيرة بتلاشٍ سريع، ويتّبع إعداد ويندوز أيضًا", "Swaps big movements for quick fades, and also follows the Windows setting")}>
             <Toggle label={i("تقليل الحركة", "Reduce motion")} value={s.reduceMotion ?? false} onChange={(v) => set({ reduceMotion: v })} />
           </Row>
         </Section>
@@ -389,7 +380,7 @@ function App() {
       id: "modules", icon: <Blocks size={16} />, label: i("الوحدات", "Modules"), desc: i("فعّل الوحدات التي تحتاجها وعدّل خياراتها.", "Turn on the modules you need and tune their options."),
       body: (<>
         <Section title={i("اليوم والصلاة", "Today & prayer")}>
-          <Row icon={ic(CalendarClock)} label={i("إظهار قسم «اليوم»", "Show the Today section")} hint={i("هجري + مواقيت الصلاة في الرئيسية — محلي بلا إنترنت", "Hijri date + prayer times on Home — local, offline")}>
+          <Row icon={ic(CalendarClock)} label={i("إظهار قسم «اليوم»", "Show the Today section")} hint={i("بطاقة التاريخ الهجري ومواقيت الصلاة في الرئيسية والنظام (الطقس له مفتاحه أدناه)", "The Hijri date and prayer-times card on Home and System (weather has its own switch below)")}>
             <Toggle label={i("إظهار قسم «اليوم»", "Show the Today section")} value={s.showToday ?? true} onChange={(v) => set({ showToday: v })} />
           </Row>
           <Row icon={ic(MapPin)} label={i("المدينة", "City")} hint={i("مواقيت أم القرى تُحسب محليًا لإحداثيات المدينة", "Umm al-Qura times computed locally for the city")}>
@@ -402,7 +393,14 @@ function App() {
           <Row icon={ic(Cloud)} label={i("الطقس", "Weather")} hint={i("يتصل بـ Open-Meteo (بلا حساب) لمدينتك — مطفأ افتراضيًا", "Connects to Open-Meteo (no account) for your city — off by default")}>
             <Toggle label={i("الطقس", "Weather")} value={s.showWeather ?? false} onChange={(v) => set({ showWeather: v })} />
           </Row>
-          <Row icon={ic(Cloud)} label={i("وحدة الحرارة", "Temperature unit")}>
+          <Row icon={ic(MapPin)} label={i("مدينة الطقس", "Weather city")} hint={i("المدينة التي يُجلب لها الطقس (الافتراضي المدينة المنورة)", "The city the weather is fetched for (default Madinah)")}>
+            <Select
+              label={i("مدينة الطقس", "Weather city")} value={s.weatherCity ?? "madinah"}
+              options={(cities.length ? cities : [{ id: "madinah", ar: "المدينة المنورة", en: "Madinah" }]).map((c) => ({ value: c.id, label: s.language === "en" ? c.en : c.ar }))}
+              onChange={(v) => set({ weatherCity: v })}
+            />
+          </Row>
+          <Row icon={ic(Cloud)} label={i("وحدة الحرارة", "Temperature unit")} hint={i("درجة مئوية أو فهرنهايت", "Celsius or Fahrenheit")}>
             <Segmented label={i("وحدة الحرارة", "Temperature unit")} value={s.weatherUnits ?? "c"} onChange={(v) => set({ weatherUnits: v })} options={[{ value: "c", label: "°C" }, { value: "f", label: "°F" }]} />
           </Row>
           <CountdownsEditor s={s} />
@@ -411,12 +409,6 @@ function App() {
         <Section title={i("الميديا", "Media")}>
           <Row icon={ic(Music)} label={i("طيف الصوت والحبة السائلة", "Audio spectrum & liquid pill")} hint={i("يلتقط صوت الجهاز محليًا أثناء تشغيل الميديا فقط", "Captures system audio locally, only while media plays")}>
             <Toggle label={i("طيف الصوت والحبة السائلة", "Audio spectrum & liquid pill")} value={s.liquidSpectrum ?? false} onChange={(v) => set({ liquidSpectrum: v })} />
-          </Row>
-          <Row icon={ic(Music)} label={i("كلمات الأغاني في الرئيسية", "Lyrics in Home")} hint={i("تُجلب من الإنترنت (LRCLIB)", "Fetched online (LRCLIB)")}>
-            <Toggle label={i("كلمات الأغاني في الرئيسية", "Lyrics in Home")} value={s.lyricsInHome ?? false} onChange={(v) => set({ lyricsInHome: v })} />
-          </Row>
-          <Row icon={ic(Music)} label={i("كلمات الأغاني في المشغّل", "Lyrics in player")} hint={i("تُجلب من الإنترنت (LRCLIB)", "Fetched online (LRCLIB)")}>
-            <Toggle label={i("كلمات الأغاني في المشغّل", "Lyrics in player")} value={s.lyricsInPlayer ?? false} onChange={(v) => set({ lyricsInPlayer: v })} />
           </Row>
         </Section>
         <Section title={i("البطارية والشبكة", "Battery & network")}>
@@ -505,8 +497,15 @@ function App() {
       id: "notifications", icon: <Bell size={16} />, label: i("التنبيهات", "Notifications"), desc: i("متى وكيف تنبّهك الجزيرة — داخل الحبة نفسها دون تغيير شكلها.", "When and how the island alerts you — inside the pill, never changing its shape."),
       body: (
         <Section title={i("التنبيهات", "Alerts")}>
-          <Row icon={ic(Volume2)} label={i("صوت التنبيه", "Alert sound")} hint={i("مسار WAV أو default · فارغ/off = صامت", "WAV path or default · empty/off = silent")}>
-            <TextField label={i("صوت التنبيه", "Alert sound")} value={s.alertSound ?? ""} onCommit={(v) => set({ alertSound: v })} />
+          <Row icon={ic(Volume2)} label={i("صوت التنبيه", "Alert sound")} hint={i("يُعزف مع التذكيرات والمؤقّت والصلاة والاجتماعات", "Plays with reminders, timers, prayers and meetings")}>
+            <div className="flex items-center gap-2">
+              <Select label={i("صوت التنبيه", "Alert sound")} value={normSound(s.soundChoice)} onChange={(v) => { set({ soundChoice: v }); playSound(v, normVolume(s.soundVolume)); }}
+                options={SOUND_IDS.map((id) => ({ value: id, label: i(SOUND_LABELS[id][0], SOUND_LABELS[id][1]) }))} />
+              <button className="st-btn" style={{ width: 36, paddingInline: 0 }} aria-label={i("معاينة الصوت", "Preview sound")} data-testid="sound-preview" disabled={normSound(s.soundChoice) === "none"} onClick={() => playSound(normSound(s.soundChoice), normVolume(s.soundVolume))}><Play size={14} className="rtl:-scale-x-100" /></button>
+            </div>
+          </Row>
+          <Row icon={ic(Volume2)} label={i("مستوى الصوت", "Sound volume")} hint={i("مستوى صوت التنبيه فقط", "Only the alert sound's loudness")}>
+            <Slider label={i("مستوى الصوت", "Sound volume")} value={normVolume(s.soundVolume)} min={0} max={100} step={5} format={pct} onCommit={(v) => set({ soundVolume: v })} />
           </Row>
           <Row icon={ic(Bell)} label={i("تنبيهات الصلاة", "Prayer alerts")} hint={i("قبل 10 دقائق وعند دخول الوقت — بصوت التنبيه إن فُعّل", "10 minutes before and at the time — with the alert sound if set")}>
             <Toggle label={i("تنبيهات الصلاة", "Prayer alerts")} value={s.prayerAlerts ?? true} onChange={(v) => set({ prayerAlerts: v })} />
@@ -557,14 +556,10 @@ function App() {
       body: (
         <Section title={i("الأداء والتوفير", "Performance & saving")}>
           <Row icon={ic(Activity)} label={i("حالة وضع التوفير", "Eco mode status")}><EcoIndicator /></Row>
-          <Row icon={ic(Zap)} label={i("وضع التوفير (Eco)", "Eco mode")}
-            hint={i(
-              "يبطّئ رصد الحافظة وتتبّع النافذة النشطة، ويوقف فحص بلوتوث البطارية وطيف الصوت، ويخفض الحركة إلى «مخففة»، ويستبدل الزجاج بسطح مصبوغ.",
-              "Slows clipboard watching and active-window tracking, stops Bluetooth battery polling and the audio spectrum, lowers motion to “Reduced” and swaps glass for a tinted surface.",
-            )}>
+          <Row icon={ic(Zap)} label={i("وضع التوفير (Eco)", "Eco mode")} hint={i("يوفّر البطارية: يبطّئ الأعمال الخلفية ويخفف الحركة ويستبدل الزجاج بسطح عادي", "Saves battery: slows background work, calms motion and swaps glass for a plain surface")}>
             <Toggle label={i("وضع التوفير (Eco)", "Eco mode")} value={s.ecoMode ?? false} onChange={(v) => set({ ecoMode: v })} />
           </Row>
-          <Row icon={ic(BatteryCharging)} label={i("التوفير تلقائيًا على البطارية", "Auto-eco on battery")} hint={i("يتفعّل عند فصل الشاحن ويتوقف عند توصيله؛ التفعيل اليدوي يبقى في الحالتين", "Turns on when unplugged and off when plugged in; manual stays on either way")}>
+          <Row icon={ic(BatteryCharging)} label={i("التوفير تلقائيًا على البطارية", "Auto-eco on battery")} hint={i("يشغّل التوفير تلقائيًا عند فصل الشاحن", "Turns eco mode on when the charger is unplugged")}>
             <Toggle label={i("التوفير تلقائيًا على البطارية", "Auto-eco on battery")} value={s.ecoOnBattery ?? false} onChange={(v) => set({ ecoOnBattery: v })} />
           </Row>
           <Row icon={ic(Cpu)} label={i("استهلاك الرام الآن", "RAM usage now")} col><RamUsage /></Row>

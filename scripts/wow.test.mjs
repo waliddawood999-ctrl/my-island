@@ -75,11 +75,6 @@ eq("fmt hours drops centis", m.fmtStopwatch(3_725_000), "1:02:05");
 eq("fmtSpeed", [m.fmtSpeed(0), m.fmtSpeed(2048), m.fmtSpeed(1_572_864), m.fmtSpeed(250 * 1048576)], ["0 KB/s", "2 KB/s", "1.5 MB/s", "250 MB/s"]);
 
 // ── مقاسات الكبسولة وهيئة تبويب المتصفح
-eq("dock sanitize good", m.sanitizeDock({ active: true, browser: "edge", strip: 41, inset: 6 }), { active: true, browser: "edge", strip: 41, inset: 6 });
-eq("dock sanitize garbage ⇒ off", [m.sanitizeDock(null), m.sanitizeDock({}), m.sanitizeDock({ active: true, strip: 900, inset: 1 }), m.sanitizeDock({ active: true, strip: "x", inset: 1 }), m.sanitizeDock({ active: false, strip: 41, inset: 6 })].every((d) => d.active === false), true);
-const tab = m.tabShape({ active: true, browser: "chrome", strip: 41, inset: 6 }, 220, 34);
-eq("tab shape", tab, { w: 220, winH: 41, bodyH: 35, y: 6, top: 12, bottom: 0 });
-eq("not docked ⇒ capsule", m.tabShape(m.DOCK_OFF, 220, 34), { w: 220, winH: 34, bodyH: 34, y: 0, top: 17, bottom: 17 });
 
 // ── «اجتماع قريب» (من وحدة الاجتماعات L4): نافذة قبل البدء + سماح بعده + أقرب اجتماع + جدولة الإيقاظ
 {

@@ -290,10 +290,10 @@ function UpdateCard({ u, onInstall }: { u: UpdateState; onInstall: () => void })
   );
 }
 
-function MediaCard({ media, showLyrics }: { media: MediaView; showLyrics: boolean }) {
+function MediaCard({ media }: { media: MediaView }) {
   return (
     <ActivityShell kind="media">
-      <MediaSection media={media} showLyrics={showLyrics} />
+      <MediaSection media={media} />
     </ActivityShell>
   );
 }
@@ -326,7 +326,6 @@ export interface LiveData {
   timer: TimerState | null;
   remaining: number | null;
   media: MediaView;
-  showLyrics: boolean;
   battery: Battery | null;
   batteryHist: BatSample[];
   meeting: UpcomingMeeting<Meeting> | null;
@@ -339,7 +338,7 @@ function Card({ kind, d }: { kind: ActivityKind; d: LiveData }) {
     case "rec": return <RecCard elapsed={d.rec.elapsed} />;
     case "timer": return d.timer && d.remaining != null ? <TimerCard timer={d.timer} remaining={d.remaining} /> : null;
     case "stopwatch": return <StopwatchCard />;
-    case "media": return <MediaCard media={d.media} showLyrics={d.showLyrics} />;
+    case "media": return <MediaCard media={d.media} />;
     case "meeting": return d.meeting ? <MeetingCard m={d.meeting} /> : null;
     case "battery": return d.battery ? <BatteryCard b={d.battery} hist={d.batteryHist} /> : null;
     case "update": return <UpdateCard u={d.update} onInstall={d.onInstallUpdate} />;

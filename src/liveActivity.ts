@@ -166,25 +166,3 @@ export function nextMeetingWake(items: readonly MeetingLite[], now: number, lead
 
 // ───────────────────────────── مقاسات الكبسولة ─────────────────────────────
 /** عرض الكبسولة المدمجة المنقسمة (طرفان) من عرض الحبة الأساسي. */
-
-export interface DockInfo { active: boolean; browser: string; strip: number; inset: number }
-export const DOCK_OFF: DockInfo = { active: false, browser: "", strip: 0, inset: 0 };
-
-/** استجابة سليمة فقط: أي حمولة مشوّهة ⇒ الوضع الطبيعي (لا تُترك الحبة خارج موضعها أبدًا). */
-export function sanitizeDock(p: unknown): DockInfo {
-  const d = p as Partial<DockInfo> | null | undefined;
-  if (!d || d.active !== true) return DOCK_OFF;
-  const strip = Number(d.strip), inset = Number(d.inset);
-  if (!Number.isFinite(strip) || strip < 24 || strip > 80 || !Number.isFinite(inset) || inset < 0 || inset > 16) return DOCK_OFF;
-  return { active: true, browser: String(d.browser ?? ""), strip, inset };
-}
-
-/**
- * هيئة التبويب: ارتفاع النافذة = ارتفاع الشريط، والجسم يهبط بحيّز الأعلى (y) فيكون ارتفاعه strip−inset،
- * زوايا علوية مدوّرة وقاع مسطّح يلتحم بحافة الشريط. العرض: عرض الحبة الأساسي (محتواها كما هو).
- */
-export function tabShape(d: DockInfo, pillW: number, pillH: number): { w: number; winH: number; bodyH: number; y: number; top: number; bottom: number } {
-  if (!d.active) return { w: pillW, winH: pillH, bodyH: pillH, y: 0, top: pillH / 2, bottom: pillH / 2 };
-  const bodyH = Math.max(20, d.strip - d.inset);
-  return { w: pillW, winH: d.strip, bodyH, y: d.inset, top: Math.min(12, bodyH / 2), bottom: 0 };
-}

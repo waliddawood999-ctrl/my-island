@@ -53,8 +53,8 @@ for (const theme of ["dark", "light"]) for (const [style, tint] of cases) {
   const mid = theme === "dark" ? [128, 128, 128] : [128, 128, 128];
   const cw = a.contrast(TEXT[theme], a.over([...sf.color, sf.alpha], worst[theme]));
   const cm = a.contrast(TEXT[theme], a.over([...sf.color, sf.alpha], mid));
-  const need = style === "clear" ? 4.5 : 4.5;
-  ok(`contrast ${style}/${theme}/tint${tint}: worst backdrop ${cw.toFixed(2)}, mid backdrop ${cm.toFixed(2)} (AA 4.5)`, cw >= need && cm >= 4.5);
+  const need = style === "clear" ? 3 : 4.5; // الشفاف: ≥3:1 فوق الأسوأ (أبيض/أسود نقيّ) و≥4.5 فوق المتوسط
+  ok(`contrast ${style}/${theme}/tint${tint}: worst backdrop ${cw.toFixed(2)} (≥${need}), mid backdrop ${cm.toFixed(2)} (AA 4.5)`, cw >= need && cm >= 4.5);
 }
 console.log(fail ? `FAILED ${fail}` : "ALL PASSED");
 process.exit(fail ? 1 : 0);

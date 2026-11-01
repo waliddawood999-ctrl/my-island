@@ -145,7 +145,7 @@ const tab = async (page, name) => { await page.getByRole("tab", { name }).click(
   }
   { const { ctx, page } = await fresh(browser, { settings: { showWeather: true }, extra: { weather_get: WEATHER(0, true, true) } });
     await open(page);
-    // بلا بيانات (بلا اتصال) ⇒ لا بلاطة طقس أصلًا في الرئيسية الخفيفة؛ ملف 05 يبقى لعرض إخفاق الكلمات (LyricsView).
+    // بلا بيانات (بلا اتصال) ⇒ لا بلاطة طقس أصلًا في الرئيسية الخفيفة؛ ملف 05 أُزيل مع الكلمات؛ الخطأ الصريح بلاطة أخرى.
     ok("weather offline: no weather tile and no Lottie on Home (data unavailable ⇒ tile hidden)", (await modes(page, "offline")).length === 0 && (await modes(page, "weather")).length === 0 && !(await page.locator('[data-testid="tile-weather"]').count()));
     await ctx.close(); }
   { const { ctx, page } = await fresh(browser, { settings: { showWeather: true, motionLevel: "off" }, extra: { weather_get: WEATHER(0) } });

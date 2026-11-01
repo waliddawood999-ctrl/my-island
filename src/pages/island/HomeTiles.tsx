@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { motion } from "motion/react";
 import {
-  BatteryCharging, Battery as BatteryIcon, Cloud, CloudDrizzle, CloudFog, CloudLightning, CloudRain, CloudSnow, CloudSun, Moon, Sun, Video,
+  BatteryCharging, Battery as BatteryIcon, Cloud, CloudDrizzle, CloudFog, CloudLightning, CloudOff, CloudRain, CloudSnow, CloudSun, Moon, RotateCw, Sun, Video,
 } from "lucide-react";
 import { itemVariants, sectionVariants, tap, useEco } from "../../motion";
 import { i } from "../../i18n";
@@ -37,22 +37,26 @@ export function HomeTiles({ settings, meetings, battery, liveShown }: {
   const prayerOn = settings.showToday ?? true;
   // الجلب مشروط بالتفعيل؛ وضع التوفير يوقف جلب الطقس الدوري.
   const { info, now } = useToday(settings.prayerCity, prayerOn);
-  const weather = useWeather(!!settings.showWeather && !eco, settings.prayerCity, settings.weatherUnits);
+  const { weather, reload: reloadWeather } = useWeather(!!settings.showWeather, settings.weatherCity, settings.weatherUnits);
   const next = prayerOn && info ? nextPrayer(info.prayers, now) : null;
   const minute = Math.floor(now / 60_000);
   const hijri = useMemo(() => (next ? dateLines(now, lang).hijri : ""), [!!next, lang, Math.floor(now / 3_600_000)]);
   const wOk = !!settings.showWeather && !!weather && weather.enabled && !weather.offline;
+  // فشل صريح: لا بيانات (offline) أو Eco بلا ذاكرة مؤقتة ⇒ بلاطة خطأ مع إعادة المحاولة بدل الصمت.
+  const wErr = !!settings.showWeather && !!weather && weather.enabled && weather.offline;
   const upcoming = settings.showMeetings ? nextMeeting(meetings, minute * 60_000) : null;
   const batOk = !!settings.showBattery && !!battery?.has_battery && battery.percent != null;
 
   const kinds = visibleTiles({
     prayer: !!next,
-    weather: wOk,
+    weather: wOk || wErr,
     meeting: !!upcoming && liveShown !== "meeting",
     battery: batOk && liveShown !== "battery",
   });
   if (kinds.length === 0) return null;
 
+  const errText = (e?: string) => (e === "eco" ? i("متوقف في وضع التوفير", "Paused in eco mode") : e === "dns" || e === "connect" || e === "network" || e === "timeout" || e === "ipc"
+    ? i("تعذّر الاتصال بالإنترنت", "Couldn't reach the internet") : e?.startsWith("http_") ? i("الخدمة لا تستجيب", "The weather service isn't responding") : i("تعذّر قراءة الطقس", "Couldn't read the weather"));
   const wk = wOk && weather ? weatherKind(weather.code) : null;
   const WIcon = wk ? (wk === "clear" && !weather!.is_day ? Moon : ICONS[wk]) : null;
   // Lottie لحالتين فقط: مشمس نهارًا + احتمال مطر (رذاذ)؛ غيرهما Lucide.
@@ -75,13 +79,20 @@ export function HomeTiles({ settings, meetings, battery, liveShown }: {
           </div>
         );
       case "weather":
+        if (wErr) return (
+          <div data-testid="tile-weather-error" className={tile} dir="auto" role="status">
+            <div className="flex items-center gap-2"><CloudOff size={18} /><span className="truncate text-[13px] font-bold">{i("الطقس غير متاح", "Weather unavailable")}</span></div>
+            <span className="truncate text-white/60">{errText(weather?.error)}</span>
+            <button data-testid="weather-retry" onClick={(e) => { e.stopPropagation(); reloadWeather(); }} className="act-btn ms-auto"><RotateCw size={12} />{i("إعادة المحاولة", "Retry")}</button>
+          </div>
+        );
         return WIcon && weather && (
           <div data-testid="tile-weather" className={tile} title={`${i("المحسوس", "Feels like")} ${Math.round(weather.feels)}${unit} · ${i("الرطوبة", "Humidity")} ${Math.round(weather.humidity)}%`}>
             <div className="flex items-center gap-2">
               {animWeather ? <LottieIcon name="weather" size={28} /> : <WIcon size={20} />}
               <span dir="ltr" className="text-[20px] font-bold leading-none tabular-nums">{Math.round(weather.temp)}{unit}</span>
             </div>
-            <span className="truncate text-white/60">{weatherLabel(wk!, lang)}</span>
+            <span className="truncate text-white/60">{weatherLabel(wk!, lang)}{weather?.error ? ` · ${i("قديم", "stale")}` : ""}</span>
           </div>
         );
       case "meeting":

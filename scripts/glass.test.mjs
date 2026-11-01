@@ -37,17 +37,17 @@ eq("eco default", g.glassVars(24, 180, true), { blur: "8px", saturate: "1" });
 // الوصفة في CSS
 const css = readFileSync("src/pages/island/island.css", "utf8");
 eq("css recipe filter", css.includes("blur(var(--glass-blur)) saturate(var(--glass-saturate))"), true);
-eq("css crystal dark layers (gradient + saturate + brightness)", css.includes("rgb(255 255 255 / 0.16)") && css.includes("brightness(1.05)"), true);
-eq("css crystal light layers", css.includes("rgb(255 255 255 / 0.55), rgb(255 255 255 / 0.10) 45%"), true);
+eq("css: ONE surface stack — no white gradient overlays or ::after on the glass body", !/data-glass="crystal"\] \.island-body \{[^}]*background-image/.test(css) && !/island-body::after/.test(css.replace(/\/\*.*?\*\//gs, "")), true);
+eq("css: inner cards are flat (no backdrop-filter, no gradient)", /\.i-card, :root\[data-material="glass"\] \.i-glass \{ background: rgb\(255 255 255 \/ 0\.07\); box-shadow/.test(css), true);
 eq("css body covered by glass vars (crystal)", /data-glass="crystal"\] \.island-body\s*\{[^}]*blur\(var\(--glass-blur\)\) saturate\(var\(--glass-saturate\)\)/.test(css), true);
-eq("css clear blur capped at 8px", css.includes("blur(min(var(--glass-blur), 8px))"), true);
+eq("css clear style has no backdrop-filter (cannot see the desktop anyway)", !/data-glass="clear"\] \.island-body \{[^}]*backdrop-filter/.test(css), true);
 eq("css no backdrop exemption for body", /data-backdrop="win1[01]"\] \.island-body\s*\{[^}]*backdrop-filter:\s*none/.test(css), false);
 eq("css 1px rim via mask-composite", css.includes("padding: 1px") && css.includes("mask-composite") && css.includes(".island-body::before"), true);
 
 // INSERT M: لا طبقة صبغة صفحة ثانية فوق الأكريليك الأصلي، وأشرطة التمرير مخفية، وحدّ/لمعة جسم الحبة
 eq("no win11 page tint", css.includes('data-backdrop="win11"'), false);
 eq("native tint only", css.includes('[data-backdrop="win10"] { --island-bg: transparent; }'), true);
-eq("crystal specular + inner glow + depth", /data-glass="crystal"\] \.island-body \{[^}]*inset 0 1\.5px 0 var\(--glass-spec\)[^}]*inset 0 0 18px[^}]*inset 0 -14px 28px/.test(css), true);
+eq("crystal specular + light inner glow + depth (inset only)", /data-glass="crystal"\] \.island-body \{[^}]*inset 0 1px 0 var\(--glass-spec\)[^}]*inset 0 0 12px[^}]*inset 0 -10px 20px/.test(css), true);
 const base = readFileSync("src/index.css", "utf8");
 eq("scrollbars hidden (firefox/webview)", base.includes("scrollbar-width: none !important"), true);
 eq("scrollbars hidden (webkit)", base.includes("::-webkit-scrollbar { display: none"), true);

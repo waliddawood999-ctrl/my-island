@@ -96,11 +96,11 @@ export const GLASS_STYLE_VALUES: Record<"crystal" | "clear", P> = {
 /** مفاتيح كل قسم (لزر «إعادة ضبط القسم»). المصدر الوحيد لخريطة الأقسام. */
 export const SECTION_KEYS: Record<string, (keyof Settings)[]> = {
   general: ["autostart", "language", "monitor", "hoverDelayMs", "collapseDelayMs"],
-  island: ["pillWidth", "pillHeight", "pillRadius", "offsetX", "offsetY", "pillPosition", "underTaskbar", "autoHide", "hideInFullscreen", "opacityRest", "opacityOpen", "showClock", "clockFormat", "eyesEnabled", "browserTabMode", "captureVisible"],
+  island: ["pillWidth", "pillHeight", "pillRadius", "offsetX", "offsetY", "pillPosition", "autoHide", "hideInFullscreen", "opacityRest", "opacityOpen", "showClock", "clockFormat", "eyesEnabled", "captureVisible"],
   appearance: ["themeMode", "themeMaterial", "glassStyle", "glassTint", "glassBlur", "glassSaturation", "accentColor", "borderStrength", "shadowStrength", "cornerStyle", "fontScale", "density"],
   motion: ["motionLevel", "animSpeed", "springStyle", "reduceMotion"],
-  modules: ["showToday", "prayerCity", "showWeather", "weatherUnits", "showCountdowns", "showWorldClock", "showBattery", "batteryTip", "btBatteries", "showNetSpeed", "clipLimit", "pasteOnClick", "clipExcludedApps", "privacyIndicator", "showVolume", "showMeetings", "screenshotDir", "recordFormat", "recordingFps", "recordingQuality", "recordingDir", "liveRates", "liquidSpectrum", "lyricsInHome", "lyricsInPlayer", "attentionTracking"],
-  notifications: ["alertSound", "prayerAlerts", "loadAlert", "meetingLeadMin", "breakReminders", "breakMinutes"],
+  modules: ["showToday", "prayerCity", "showWeather", "weatherCity", "weatherUnits", "showCountdowns", "showWorldClock", "showBattery", "batteryTip", "btBatteries", "showNetSpeed", "clipLimit", "pasteOnClick", "clipExcludedApps", "privacyIndicator", "showVolume", "showMeetings", "screenshotDir", "recordFormat", "recordingFps", "recordingQuality", "recordingDir", "liveRates", "liquidSpectrum", "attentionTracking"],
+  notifications: ["soundChoice", "soundVolume", "prayerAlerts", "loadAlert", "meetingLeadMin", "breakReminders", "breakMinutes"],
   shortcuts: ["hotkeyPalette", "hotkeyArea", "hotkeyScreen", "hotkeyRecord", "hotkeyColor"],
   perf: ["ecoMode", "ecoOnBattery"],
   updates: ["updateAutoCheck"],
@@ -140,10 +140,10 @@ export function parseImport(text: string, current: P): P | null {
 /** قيم افتراضية كاملة لكل مفتاح تغطيه SECTION_KEYS (DEFAULTS جزئي): تُستعمل لـ«إعادة ضبط القسم/الكل». */
 export const FULL_DEFAULTS: P = {
   ...DEFAULTS,
-  autostart: false, monitor: 0, offsetX: 0, underTaskbar: false, autoHide: false, hideInFullscreen: false, showClock: true,
-  opacityRest: 100, opacityOpen: 100, liquidSpectrum: false, lyricsInHome: false, lyricsInPlayer: false,
+  autostart: false, monitor: 0, offsetX: 0, autoHide: false, hideInFullscreen: false, showClock: true,
+  opacityRest: 100, opacityOpen: 100, liquidSpectrum: false,
   showWeather: false, weatherUnits: "c", showBattery: false, showNetSpeed: false, clipLimit: 200, pasteOnClick: true, clipExcludedApps: [],
-  privacyIndicator: false, showVolume: true, showMeetings: false, captureVisible: false, screenshotDir: "", recordingDir: "", alertSound: "",
+  privacyIndicator: false, showVolume: true, showMeetings: false, captureVisible: false, screenshotDir: "", recordingDir: ""
 };
 /** مقطع إعادة الضبط لقائمة مفاتيح. */
 export const resetPatch = (keys: (keyof Settings)[]): P => Object.fromEntries(keys.map((k) => [k, (FULL_DEFAULTS as Record<string, unknown>)[k]])) as P;
@@ -156,7 +156,6 @@ export function glassSurface(style: "crystal" | "clear", theme: ResolvedTheme, t
     const alpha = dark ? 0.28 + 0.0075 * t : Math.min(0.32 + 0.0075 * t, 0.92);
     return { color: dark ? [0, 0, 0] : [236, 239, 243], alpha };
   }
-  const base = dark ? 0.04 + 0.0023 * t : 0.1 + 0.0035 * t;
-  const scrim = dark ? 0.52 : 0.62; // مركز scrim النص (island.css)
-  return { color: dark ? [0, 0, 0] : [255, 255, 255], alpha: 1 - (1 - base) * (1 - scrim) };
+  const alpha = dark ? 0.30 + 0.0086 * t : 0.36 + 0.01 * t; // صبغة مسطّحة واحدة (island.css)
+  return { color: dark ? [0, 0, 0] : [255, 255, 255], alpha };
 }

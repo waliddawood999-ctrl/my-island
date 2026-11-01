@@ -14,7 +14,6 @@ import { useMotionLevel } from "./motion";
 import equalizer from "./assets/lottie/01-music-equalizer.lottie?url";
 import tick from "./assets/lottie/02-success-tick.lottie?url";
 import empty from "./assets/lottie/04-empty-state.lottie?url";
-import offline from "./assets/lottie/05-no-internet.lottie?url";
 import bell from "./assets/lottie/06-bell-ringing.lottie?url";
 import weather from "./assets/lottie/07-chance-rain-sunny.lottie?url";
 
@@ -26,7 +25,6 @@ const LOTTIES = {
   equalizer: { src: equalizer, still: 0.5 },
   tick: { src: tick, still: 1 },
   empty: { src: empty, still: 0.5 },
-  offline: { src: offline, still: 0.5 },
   bell: { src: bell, still: 0 },
   weather: { src: weather, still: 0.3 },
 } as const;

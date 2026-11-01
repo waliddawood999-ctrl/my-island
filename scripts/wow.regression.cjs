@@ -167,41 +167,7 @@ const pxNum = (v) => parseFloat(v);
     ok("net speed default off ⇒ never activates the backend thread", !(await calls(page, "netspeed_active")).some((a) => a.active === true));
     await ctx.close(); }
 
-  // 8) وضع تبويب المتصفح
-  { const { ctx, page, errs } = await fresh(browser, { settings: { browserTabMode: true } });
-    const b0 = await body(page);
-    ok("tab-mode: starts as the normal capsule", b0.docked === "false" && b0.h === 34 && pxNum(b0.tl) >= 16, JSON.stringify(b0));
-    await emit(page, "island:dock", { active: true, browser: "edge", strip: 41, inset: 6 });
-    await page.waitForTimeout(1200);
-    const b1 = await body(page);
-    ok("tab-mode: browser maximized ⇒ tab shape (flat bottom, rounded top, height strip−inset, y=inset)", b1.docked === "true" && b1.h === 35 && b1.top === 6 && pxNum(b1.tl) === 12 && pxNum(b1.bl) === 0, JSON.stringify(b1));
-    ok("tab-mode: window resized to the strip height (41)", (await calls(page, "report_island_rect")).some((r) => r.height === 41));
-    await shot(page, "tab-mode");
-    await page.mouse.move(380, 20); await page.waitForTimeout(1500);
-    const b2 = await body(page);
-    ok("tab-mode: hover opens the normal panel from the docked spot", b2.w === 720 && b2.top === 0 && pxNum(b2.tl) === 28, JSON.stringify(b2));
-    await page.mouse.move(5, 340); await page.waitForTimeout(1500);
-    const b3 = await body(page);
-    ok("tab-mode: after collapse still docked", b3.docked === "true" && b3.h === 35, JSON.stringify(b3));
-    await page.mouse.click(380, 20); await page.waitForTimeout(1500);
-    ok("tab-mode: click opens the panel", (await body(page)).w === 720);
-    await page.mouse.move(5, 340); await page.waitForTimeout(1500);
-    await emit(page, "island:dock", { active: false, browser: "", strip: 0, inset: 0 });
-    await page.waitForTimeout(1200);
-    const b4 = await body(page);
-    ok("tab-mode: another app / un-maximize ⇒ back to the floating capsule", b4.docked === "false" && b4.h === 34 && b4.top === 0 && pxNum(b4.tl) >= 16 && pxNum(b4.bl) >= 16, JSON.stringify(b4));
-    await emit(page, "island:dock", { active: true, browser: "x", strip: 5000, inset: -3 });
-    await page.waitForTimeout(800);
-    ok("tab-mode: garbage payload ⇒ normal mode (never hidden/off-screen)", (await body(page)).docked === "false" && (await body(page)).h === 34);
-    ok("tab-mode: no page errors", errs.length === 0, JSON.stringify(errs));
-    await ctx.close(); }
-  { const { ctx, page } = await fresh(browser);
-    await emit(page, "island:dock", { active: true, browser: "edge", strip: 41, inset: 6 });
-    await page.waitForTimeout(800);
-    ok("tab-mode OFF (default): dock events are ignored", (await body(page)).docked === "false" && (await body(page)).h === 34);
-    ok("tab-mode OFF: never asks the backend for dock state", (await calls(page, "island_dock_get")).length === 0);
-    await ctx.close(); }
-
+  // 8) وضع تبويب المتصفح أُزيل بالكامل (T02): لا مفتاح ولا أمر island_dock_get ولا شكل تبويب؛ الحبة ثابتة دائمًا.
   // 9) مستويات الحركة: «متوقفة» ⇒ تبديل فوري وبلا أخطاء؛ «مخففة» ⇒ تعمل
   for (const lvl of ["reduced", "off"]) {
     const { ctx, page, errs } = await fresh(browser, { rec: { recording: true, startedAt: now - 5000, format: "mp4" }, settings: { motionLevel: lvl } });
@@ -232,7 +198,7 @@ const pxNum = (v) => parseFloat(v);
     ok("settings: default section is General, and only one section group is shown", JSON.stringify(await page.locator("h2").allTextContents()) === JSON.stringify(["General"]));
     ok("settings: all 10 sidebar sections reachable", await (async () => { for (const g of ["general", "island", "appearance", "motion", "modules", "notifications", "shortcuts", "perf", "updates", "about"]) { await page.locator(`[data-nav="${g}"]`).click(); await page.waitForTimeout(60); if ((await page.locator("[data-group]").count()) !== 1) return false; } return true; })());
     await page.locator('[data-nav="island"]').click(); await page.waitForTimeout(500);
-    ok("settings: Browser tab mode sits in Island", (await page.getByRole("switch", { name: "Browser tab mode" }).count()) === 1);
+    ok("settings: Browser tab mode option is gone", (await page.getByRole("switch", { name: "Browser tab mode" }).count()) === 0);
     await page.locator('[data-nav="modules"]').click(); await page.waitForTimeout(500);
     ok("settings: Network speed toggle sits in Modules", (await page.getByRole("switch", { name: "Network speed in the pill" }).count()) === 1);
     ok("settings: no horizontal overflow", await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth));

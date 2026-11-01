@@ -7,6 +7,8 @@ export interface TodayInfo { city: CityInfo; prayers: PrayerAt[]; next_day_at: n
 export interface Weather {
   enabled: boolean; offline: boolean; temp: number; feels: number; humidity: number;
   wind: number; code: number; is_day: boolean; units: "c" | "f"; city: string; fetched_at: number;
+  /** سبب الفشل: dns/connect/timeout/network/http_NNN/parse/eco — فارغ = سليم. */
+  error?: string;
 }
 const WEATHER_REFRESH_MS = 15 * 60_000;
 
@@ -30,16 +32,20 @@ export function useToday(city: string | undefined, enabled = true) {
   return { info, now };
 }
 
-/** الطقس الحالي؛ يُجلب فقط عند enabled (showWeather) ويتجدد كل 15 دقيقة ما دام القسم معروضًا. */
+/** الطقس الحالي؛ يُجلب فقط عند enabled (showWeather) ويتجدد كل 15 دقيقة. الخلفية تقرّر الشبكة (Eco يخدم من الذاكرة المؤقتة).
+ *  فشل الاستدعاء نفسه (IPC) يُحوَّل إلى حالة خطأ صريحة بدل الصمت؛ reload() يعيد المحاولة فورًا بتجاوز الذاكرة المؤقتة. */
 export function useWeather(enabled: boolean, city: string | undefined, units: string | undefined) {
   const [w, setW] = useState<Weather | null>(null);
+  const [tick, setTick] = useState(0);
   useEffect(() => {
     if (!enabled) { setW(null); return; }
     let alive = true;
-    const load = () => invoke<Weather>("weather_get").then((v) => alive && setW(v)).catch(() => {});
-    load();
-    const t = window.setInterval(load, WEATHER_REFRESH_MS);
+    const load = (refresh: boolean) => invoke<Weather>("weather_get", { refresh })
+      .then((v) => alive && setW(v))
+      .catch(() => alive && setW({ enabled: true, offline: true, temp: 0, feels: 0, humidity: 0, wind: 0, code: 0, is_day: true, units: "c", city: "", fetched_at: 0, error: "ipc" }));
+    load(tick > 0);
+    const t = window.setInterval(() => load(false), WEATHER_REFRESH_MS);
     return () => { alive = false; window.clearInterval(t); };
-  }, [enabled, city, units]);
-  return w;
+  }, [enabled, city, units, tick]);
+  return { weather: w, reload: () => setTick((n) => n + 1) };
 }

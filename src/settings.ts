@@ -10,7 +10,6 @@ export interface Settings {
   language:string,
   monitor:number,
   offsetX:number,
-  underTaskbar:boolean,
   style:string,
   opacityRest:number,
   opacityOpen:number,
@@ -35,11 +34,10 @@ export interface Settings {
   breakReminders:boolean,
   breakMinutes:number,
   mediaPill:string,
-  lyricsInPlayer:boolean,
-  lyricsInHome:boolean,
   homePlayer:string,
   liquidSpectrum:boolean,
-  alertSound:string,
+  soundChoice:'chime'|'glass'|'pop'|'bubble'|'bell'|'none', // صوت التنبيه (WebAudio محلي — src/sounds.ts)
+  soundVolume:number,             // 0..100
   mascot:string,
   character:string,
   characterMusic:string,
@@ -105,10 +103,9 @@ export interface Settings {
   springStyle:'snappy'|'smooth'|'gentle',
   reduceMotion:boolean,           // تقليل الحركة (يُحترم تفضيل النظام أيضًا)
   settingsVersion:number,         // ترحيل الإعدادات (appearance.ts::migrateSettings)
-  browserTabMode:boolean,
   showNetSpeed:boolean,
   workspaces:Workspace[],
-  weatherCity:string,
+  weatherCity:string,             // مدينة الطقس (id من جدول today.rs؛ الافتراضي madinah) — مستقلة عن prayerCity
   weatherLat:number,
   weatherLon:number,
   weatherUnits:'c'|'f',
@@ -191,7 +188,6 @@ export const DEFAULTS: Partial<Settings> = {
   reduceMotion: false,
   settingsVersion: 2,
   glassSaturation: 180,    // تشبّع طبقة الزجاج CSS 100..200 (٪)؛ Eco يجعله 100
-  browserTabMode: false,   // وضع تبويب المتصفح: حين يكون المتصفح (chrome/msedge/firefox/brave) أمامية ومكبَّرًا تتخذ الحبة هيئة تبويب في شريطه (إرساء بصري لا تبويب حقيقي)
   showNetSpeed: false,     // سرعتا الشبكة (تحميل/رفع) في الكبسولة المدمجة؛ القراءة من عدّادات ويندوز فقط أثناء التفعيل (netspeed_active)
   eyesEnabled: true,       // عيون التميمة بجانب الساعة في الحبة المنكمشة (تُخفى تلقائيًا مع الميديا/التوفير/الحركة المتوقفة)
   motionLevel: 'full',     // full = نابضة · reduced = مخففة · off = متوقفة (انظر src/motion.ts)
@@ -201,6 +197,9 @@ export const DEFAULTS: Partial<Settings> = {
   meetingLeadMin: 15,    // «اجتماع قريب» في الكبسولة/البطاقة: دقائق قبل البدء (1..60)؛ يعمل فقط مع showMeetings
   showToday: true,       // محلي بلا شبكة؛ الطقس نفسه خلف showWeather (افتراضيًا معطّل)
   prayerCity: "riyadh",
+  weatherCity: "madinah",
+  soundChoice: "chime",
+  soundVolume: 70,
   prayerAlerts: true,
   showCountdowns: true,
   countdowns: [],

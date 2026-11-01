@@ -23,7 +23,9 @@
     "test:lottie": "node scripts/lottie.regression.cjs",
     "test:glass": "node scripts/glass.test.mjs",
     "test:shape": "node scripts/shape.regression.cjs",
-    "test:appearance": "node scripts/appearance.test.mjs"
+    "test:appearance": "node scripts/appearance.test.mjs",
+    "test:t02": "node scripts/t02.regression.cjs",
+    "test:motion-ui": "node scripts/motion.regression.cjs"
   },
   "dependencies": {
     "@fontsource/almarai": "^5.3.0",

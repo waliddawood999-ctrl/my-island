@@ -5,8 +5,6 @@ import { AnimatePresence, motion } from "motion/react";
 import { dur, ease, spring, tap } from "../../motion";
 import { i } from "../../i18n";
 import type { MediaView } from "../../useMedia";
-import { useLyrics } from "../../useLyrics";
-import { LyricsView } from "./LyricsView";
 import { LottieIcon } from "../../lottie";
 import { ICON, Ring, STROKE } from "./primitives";
 
@@ -35,13 +33,12 @@ function useLivePos(m: MediaView): number {
 }
 
 /** قسم الميديا في الرئيسية: غلاف + عنوان/فنان + شريط تقدم قابل للنقر + سابق/تشغيل/التالي. */
-export function MediaSection({ media, showLyrics = false }: { media: MediaView; showLyrics?: boolean }) {
+export function MediaSection({ media }: { media: MediaView }) {
   const { info, cover, sources } = media;
   const live = useLivePos(media);
   const [seekTo, setSeekTo] = useState<number | null>(null);
   const seekT = useRef<number | undefined>(undefined);
   const pos = seekTo ?? live;
-  const lyrics = useLyrics(showLyrics && info.session, info.artist, info.title, info.album, info.duration);
   const ctl = (action: string) => invoke("media_control", { action }).catch(() => {});
 
   if (!info.session) {
@@ -69,16 +66,16 @@ export function MediaSection({ media, showLyrics = false }: { media: MediaView; 
   return (
     // تمرير داخلي لمنطقة الميديا فقط: الحاوية الخارجية تمرّر، والداخلية min-h-full تُوسّط المحتوى القصير دون قصّ أعلاه.
     <div className="h-full overflow-y-auto overflow-x-hidden">
-    <div className={`flex min-h-full flex-col items-stretch ${showLyrics ? "gap-3" : "justify-center gap-4"}`}>
+    <div className="flex min-h-full flex-col items-stretch justify-center gap-4">
       <div className="flex shrink-0 items-center gap-4">
         <motion.div
           initial={false}
           animate={{ scale: info.playing ? 1 : 0.94 }}
           transition={spring.content}
-          className={`${showLyrics ? "h-16 w-16" : "h-[88px] w-[88px]"} relative shrink-0 overflow-hidden rounded-2xl bg-white/10`}
+          className="relative h-[88px] w-[88px] shrink-0 overflow-hidden rounded-2xl bg-white/10"
         >
           {/* مؤشر «يشتغل الآن»: يدور أثناء التشغيل فقط؛ إطار ثابت عند الإيقاف المؤقت (الظهور/المستوى في LottieIcon) */}
-          <span className="absolute bottom-1 end-1 z-10 flex rounded-md bg-black/45 p-0.5 text-white"><LottieIcon name="equalizer" size={showLyrics ? 14 : 18} play={info.playing} loop /></span>
+          <span className="absolute bottom-1 end-1 z-10 flex rounded-md bg-black/45 p-0.5 text-white"><LottieIcon name="equalizer" size={18} play={info.playing} loop /></span>
           {cover ? (
             <img src={cover} alt={i("غلاف الألبوم", "Album cover")} className="h-full w-full object-cover" />
           ) : (
@@ -101,11 +98,6 @@ export function MediaSection({ media, showLyrics = false }: { media: MediaView; 
         </div>
       </div>
 
-      {showLyrics && (
-        <div className="min-h-[72px] flex-1 basis-0 overflow-hidden [mask-image:linear-gradient(transparent,#000_18%,#000_82%,transparent)]">
-          <LyricsView lyrics={lyrics} pos={pos} />
-        </div>
-      )}
 
       <div dir="ltr" className="flex items-center gap-3 text-[12px] tabular-nums text-white/60">
         <span className="w-10 text-end">{fmt(pos)}</span>

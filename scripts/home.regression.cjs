@@ -67,7 +67,7 @@ const allExtra = { today_get: TODAY(), weather_get: WEATHER(), meetings_list: ME
     ["battery on but no battery hardware", { battery: BAT({ has_battery: false, percent: null }), extra: {}, settings: { showBattery: true } }, []],
     ["battery data but showBattery off", { battery: BAT(), extra: {}, settings: {} }, []],
     ["weather on, data present", { extra: { weather_get: WEATHER(63) }, settings: { showWeather: true } }, ["tile-weather"]],
-    ["weather on but offline", { extra: { weather_get: { ...WEATHER(), offline: true } }, settings: { showWeather: true } }, []],
+    ["weather on but offline ⇒ explicit error tile (not silent)", { extra: { weather_get: { ...WEATHER(), offline: true, error: "dns" } }, settings: { showWeather: true } }, ["tile-weather-error"]],
     ["weather data but showWeather off", { extra: { weather_get: WEATHER() }, settings: {} }, []],
     ["meetings on, upcoming exists", { extra: { meetings_list: MEET() }, settings: { showMeetings: true } }, ["tile-meeting"]],
     ["meetings on, none upcoming", { extra: { meetings_list: { ...MEET(), items: [] } }, settings: { showMeetings: true } }, []],
