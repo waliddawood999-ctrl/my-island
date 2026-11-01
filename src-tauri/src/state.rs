@@ -9,11 +9,15 @@ pub struct PlacementSettings {
     pub monitor: usize,
     pub offset_x: i32,
     pub under_taskbar: bool,
+    /// إزاحة رأسية عن الحافة العليا (CSS px) — المفتاح offsetY.
+    pub offset_y: i32,
+    /// -1 يسار · 0 منتصف · 1 يمين — المفتاح pillPosition.
+    pub align: i8,
 }
 
 impl Default for PlacementSettings {
     fn default() -> Self {
-        Self { monitor: 0, offset_x: 0, under_taskbar: false }
+        Self { monitor: 0, offset_x: 0, under_taskbar: false, offset_y: 0, align: 0 }
     }
 }
 
@@ -48,8 +52,21 @@ pub fn defaults() -> Map<String, Value> {
         "eyesEnabled": true,
         "pillWidth": 220,
         "pillHeight": 34,
-        "themeMode": "dark",
-        "themeMaterial": "solid",
+        "themeMode": "system",
+        "themeMaterial": "glass",
+        "glassStyle": "crystal",
+        "accentColor": "#4fd1c5",
+        "borderStrength": 50,
+        "shadowStrength": 50,
+        "cornerStyle": "rounded",
+        "fontScale": 100,
+        "density": "comfortable",
+        "pillRadius": 0,
+        "offsetY": 0,
+        "pillPosition": "center",
+        "animSpeed": 100,
+        "springStyle": "snappy",
+        "reduceMotion": false,
         "glassTint": 45,
         "glassBlur": 24,
         "glassSaturation": 180,
@@ -134,6 +151,8 @@ impl AppState {
         if let Some(v) = s.get("monitor").and_then(Value::as_u64) { p.monitor = v as usize; }
         if let Some(v) = s.get("offsetX").and_then(Value::as_i64) { p.offset_x = v as i32; }
         if let Some(v) = s.get("underTaskbar").and_then(Value::as_bool) { p.under_taskbar = v; }
+        if let Some(v) = s.get("offsetY").and_then(Value::as_i64) { p.offset_y = (v as i32).clamp(0, 60); }
+        if let Some(v) = s.get("pillPosition").and_then(Value::as_str) { p.align = match v { "left" => -1, "right" => 1, _ => 0 }; }
     }
 
     /// يحفظ كل مفتاح في kv كـ JSON ويدمجه في الذاكرة؛ يعيد المقطع المطبّق.

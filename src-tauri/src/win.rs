@@ -44,7 +44,7 @@ fn show_noactivate(w: &WebviewWindow) {
     let _ = w.show();
 }
 
-/// يضع النافذة أعلى منتصف الشاشة المختارة، محترمًا monitor وoffsetX وunderTaskbar.
+/// يضع النافذة أعلى منتصف الشاشة المختارة، محترمًا monitor وoffsetX/offsetY وpillPosition وunderTaskbar.
 pub fn position_main(app: &AppHandle) {
     let Some(w) = app.get_webview_window(MAIN) else { return };
     let st = app.state::<AppState>();
@@ -63,8 +63,16 @@ pub fn position_main(app: &AppHandle) {
         (wa.position, wa.size)
     };
     let win_w = w.outer_size().map(|s| s.width as i32).unwrap_or(0);
-    let x = area.0.x + (area.1.width as i32 - win_w) / 2 + p.offset_x;
-    let y = area.0.y;
+    let scale = w.scale_factor().unwrap_or(1.0);
+    // pillPosition: يسار/يمين بهامش 16px عن الحافة؛ المنتصف كما كان. offsetX يُضاف في كل الحالات.
+    let margin = (16.0 * scale) as i32;
+    let base = match p.align {
+        -1 => area.0.x + margin,
+        1 => area.0.x + area.1.width as i32 - win_w - margin,
+        _ => area.0.x + (area.1.width as i32 - win_w) / 2,
+    };
+    let x = base + p.offset_x;
+    let y = area.0.y + (p.offset_y as f64 * scale).round() as i32;
     let _ = w.set_position(PhysicalPosition::new(x, y));
 }
 

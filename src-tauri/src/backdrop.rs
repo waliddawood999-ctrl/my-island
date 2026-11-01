@@ -69,7 +69,7 @@ mod imp {
     use windows::Win32::Foundation::{HWND, RECT};
     use windows::Win32::Graphics::Gdi::{CreateRoundRectRgn, SetWindowRgn, HRGN};
     use windows::Win32::System::LibraryLoader::{GetModuleHandleW, GetProcAddress};
-    use windows::Win32::System::Registry::{RegGetValueW, HKEY_LOCAL_MACHINE, RRF_RT_REG_SZ};
+    use windows::Win32::System::Registry::{RegGetValueW, HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, RRF_RT_REG_DWORD, RRF_RT_REG_SZ};
     use windows::Win32::UI::WindowsAndMessaging::GetWindowRect;
 
     /// المطبَّق حاليًا على main: (المفتاح، الآلية). None = لا خلفية.
@@ -95,6 +95,24 @@ mod imp {
             let n = (len as usize / 2).saturating_sub(1).min(buf.len());
             String::from_utf16_lossy(&buf[..n]).trim().parse().unwrap_or(0)
         })
+    }
+
+    /// «تأثيرات الشفافية» في إعدادات ويندوز (Personalize\\EnableTransparency): 0 ⇒ لا أكريليك (احتياط مصبوغ في الواجهة). غياب القيمة ⇒ مفعّل.
+    fn transparency_enabled() -> bool {
+        unsafe {
+            let mut v: u32 = 1;
+            let mut len = std::mem::size_of::<u32>() as u32;
+            let r = RegGetValueW(
+                HKEY_CURRENT_USER,
+                w!("Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize"),
+                w!("EnableTransparency"),
+                RRF_RT_REG_DWORD,
+                None,
+                Some(&mut v as *mut u32 as *mut c_void),
+                Some(&mut len),
+            );
+            r.0 != 0 || v != 0
+        }
     }
 
     #[repr(C)]
@@ -146,7 +164,7 @@ mod imp {
         let Some(w) = app.get_webview_window(crate::win::MAIN) else { return Mode::None };
         let Ok(h) = w.hwnd() else { return Mode::None };
         let h = HWND(h.0);
-        let target = if glass { mode_for_build(build_number()) } else { Mode::None };
+        let target = if glass && transparency_enabled() { mode_for_build(build_number()) } else { Mode::None };
         let mut cur = CUR.lock().unwrap();
         unsafe {
             let mut r = RECT::default();
