@@ -22,7 +22,10 @@ module.exports.bridge = (cfg) => `
       window.__calls.push([cmd, args]);
       if (cmd === 'plugin:event|listen') { (listeners[args.event] ||= []).push(args.handler); return Promise.resolve(args.handler); }
       if (cmd === 'plugin:event|unlisten') return Promise.resolve();
+      if (cfg.extra && Object.prototype.hasOwnProperty.call(cfg.extra, cmd)) return Promise.resolve(cfg.extra[cmd]);
       if (cmd === 'settings_get') return Promise.resolve(cfg.settings);
+      if (cmd === 'today_cities') return Promise.resolve([]);
+      if (cmd === 'meetings_key_status') return Promise.resolve({ set: false });
       if (cmd === 'perf_status') return Promise.resolve({ eco: !!cfg.eco, reason: cfg.eco ? 'manual' : null, onBattery: null });
       if (cmd === 'media_now') return Promise.resolve({ info: cfg.media || { session: false, source: '', source_name: '', title: '', artist: '', album: '', duration: 0, position: 0, playing: false, can_prev: false, can_next: false, can_seek: false }, cover: null });
       if (cmd === 'record_status') return Promise.resolve(cfg.rec || { recording: false, startedAt: 0, format: 'mp4' });
