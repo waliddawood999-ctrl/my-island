@@ -1,0 +1,33 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main",
+  "description": "الحبة واللوحة: كل أوامر الجزيرة + التحديث وإعادة التشغيل",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "updater:default",
+    "process:allow-restart",
+    "allow-set-island-hidden", "allow-report-island-rect", "allow-settings-get", "allow-settings-set",
+    "allow-take-focus", "allow-release-focus", "allow-open-settings", "allow-page-pong",
+    "allow-clip-list", "allow-clip-delete", "allow-clip-clear", "allow-clip-pin", "allow-clip-set-text", "allow-clip-paste",
+    "allow-media-control", "allow-media-seek", "allow-media-pick", "allow-media-sources", "allow-media-now",
+    "allow-battery-status", "allow-attention-today",
+    "allow-palette-apps", "allow-palette-icon", "allow-files-search", "allow-files-warm", "allow-palette-recent",
+    "allow-run-shell", "allow-open-path", "allow-workspace-open",
+    "allow-rates-get", "allow-perf-status", "allow-mascot-active", "allow-netspeed-active", "allow-island-backdrop",
+    "allow-capture-start", "allow-open-captures",
+    "allow-record-begin", "allow-record-stop", "allow-record-status",
+    "allow-color-pick", "allow-color-patch", "allow-color-history",
+    "allow-editor-open",
+    "allow-shelf-list", "allow-shelf-add", "allow-shelf-remove", "allow-shelf-clear", "allow-shelf-copy", "allow-shelf-drag",
+    "allow-launcher-list", "allow-launcher-add", "allow-launcher-remove", "allow-launcher-launch", "allow-launcher-pick-icon",
+    "allow-launcher-add-link", "allow-launcher-edit-link", "allow-launcher-link-icon",
+    "allow-launcher-groups-get", "allow-launcher-groups-set", "allow-launcher-hotkeys-get", "allow-launcher-hotkeys-set",
+    "allow-note-get", "allow-note-set", "allow-note-folders-get", "allow-note-folders-set",
+    "allow-reminders-get", "allow-reminders-set", "allow-timer-get", "allow-timer-set",
+    "allow-today-get", "allow-weather-get", "allow-sysinfo-get", "allow-sysdepth-get",
+    "allow-volume-get", "allow-volume-set", "allow-volume-step", "allow-volume-mute-toggle",
+    "allow-brightness-get", "allow-brightness-set", "allow-privacy-status",
+    "allow-meetings-list", "allow-meetings-refresh", "allow-meetings-join"
+  ]
+}

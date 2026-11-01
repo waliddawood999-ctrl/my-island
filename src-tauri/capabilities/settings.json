@@ -1,0 +1,13 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "settings",
+  "description": "نافذة الإعدادات: الفحص اليدوي عن تحديث فقط (التنزيل والتثبيت وإعادة التشغيل من الجزيرة)",
+  "windows": ["settings"],
+  "permissions": [
+    "core:default",
+    "updater:allow-check",
+    "allow-settings-get", "allow-settings-set", "allow-perf-status", "allow-perf-ram",
+    "allow-open-path", "allow-app-quit", "allow-monitors-list", "allow-today-cities", "allow-attention-clear",
+    "allow-meetings-key-set", "allow-meetings-key-status", "allow-meetings-refresh"
+  ]
+}
