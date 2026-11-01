@@ -47,6 +47,7 @@ fn show_noactivate(w: &WebviewWindow) {
 /// يضع النافذة أعلى منتصف الشاشة المختارة، محترمًا monitor وoffsetX/offsetY وpillPosition (منطقة العمل).
 pub fn position_main(app: &AppHandle) {
     let Some(w) = app.get_webview_window(MAIN) else { return };
+    ensure_fixed_size(&w);
     let st = app.state::<AppState>();
     let p = *st.placement.lock().unwrap();
     let monitors = w.available_monitors().unwrap_or_default();
@@ -71,19 +72,28 @@ pub fn position_main(app: &AppHandle) {
     let x = base + p.offset_x;
     let y = area.0.y + (p.offset_y as f64 * scale).round() as i32;
     let _ = w.set_position(PhysicalPosition::new(x, y));
+    crate::backdrop::refresh_shape(app);
 }
 
-/// الواجهة تبلّغ بحجم الحبة (CSS px) → النافذة تلتفّ حولها تمامًا ثم تُعاد للمنتصف.
-pub fn resize_to_island(app: &AppHandle, width: f64, height: f64) {
-    let Some(w) = app.get_webview_window(MAIN) else { return };
-    // الخلفية الزجاجية الحقيقية منطقة بحجم النافذة الحالي: تُسقَط قبل تغيير الحجم وتعيد الواجهة طلبها بعد استقرار الحركة.
-    crate::backdrop::drop_for_resize(app);
+/// حجم النافذة الثابت (CSS px): يتّسع لأكبر لوحة (720×420) + ظل وهامش. لا يُغيَّر أبدًا أثناء الحركة (T03).
+pub const WIN_W: f64 = 800.0;
+pub const WIN_H: f64 = 500.0;
+
+/// يثبّت حجم النافذة على WIN_W×WIN_H (فيزيائيًا بحسب DPI) إن اختلف — يُستدعى من position_main (إقلاع/تغيّر DPI).
+fn ensure_fixed_size(w: &WebviewWindow) {
     let scale = w.scale_factor().unwrap_or(1.0);
-    let _ = w.set_size(PhysicalSize::new(
-        (width * scale).ceil() as u32,
-        (height * scale).ceil() as u32,
-    ));
-    position_main(app);
+    let (tw, th) = ((WIN_W * scale).round() as u32, (WIN_H * scale).round() as u32);
+    if let Ok(cur) = w.outer_size() {
+        if cur.width == tw && cur.height == th { return; }
+    }
+    let _ = w.set_size(PhysicalSize::new(tw, th));
+}
+
+/// الواجهة تبلّغ بشكل الجزيرة الهدف (CSS px): تُضبط المنطقة (اختبار الإصابة + شكل الأكريليك) والنافذة ثابتة لا تتغيّر.
+pub fn resize_to_island(app: &AppHandle, width: f64, height: f64, radius: Option<f64>) {
+    // الأكريليك يُسقَط قبل تغيّر الهدف (صبغته فقط) وتعيد الواجهة طلبه بعد استقرار الحركة؛ المنطقة تتبع الهدف فورًا.
+    crate::backdrop::drop_for_resize(app);
+    crate::backdrop::set_shape(app, width, height, radius.unwrap_or(height / 2.0));
 }
 
 /// إخفاء/إظهار ناعم: الحدث island:hidden يشغّل التلاشي في الواجهة ثم يُخفى الـ HWND.

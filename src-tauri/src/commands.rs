@@ -9,11 +9,11 @@ pub fn set_island_hidden(app: AppHandle, hidden: bool) {
     win::set_hidden(&app, hidden);
 }
 
-/// الواجهة تبلّغ بأبعاد الحبة (CSS px).
+/// الواجهة تبلّغ بشكل الجزيرة الهدف (CSS px؛ radius اختياري): تضبط منطقة النافذة الثابتة — لا تغيّر حجم النافذة.
 #[tauri::command]
-pub fn report_island_rect(app: AppHandle, state: State<AppState>, width: f64, height: f64) {
+pub fn report_island_rect(app: AppHandle, state: State<AppState>, width: f64, height: f64, radius: Option<f64>) {
     *state.island_size.lock().unwrap() = (width, height);
-    win::resize_to_island(&app, width, height);
+    win::resize_to_island(&app, width, height, radius);
 }
 
 /// الإعدادات المدموجة (DEFAULTS + kv) — الخلفية مصدر الحقيقة.
@@ -26,7 +26,7 @@ pub fn settings_get(state: State<AppState>) -> Map<String, Value> {
 #[tauri::command]
 pub fn settings_set(app: AppHandle, state: State<AppState>, patch: Map<String, Value>) -> Result<(), String> {
     let applied = state.apply_patch(patch)?;
-    if applied.keys().any(|k| matches!(k.as_str(), "monitor" | "offsetX" | "offsetY" | "pillPosition")) {
+    if applied.keys().any(|k| matches!(k.as_str(), "monitor" | "offsetX" | "offsetY" | "pillPosition" | "hoverZone")) {
         win::position_main(&app);
     }
     if applied.contains_key("hideInFullscreen") {

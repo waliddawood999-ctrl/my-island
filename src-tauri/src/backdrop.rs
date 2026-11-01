@@ -3,8 +3,9 @@
 // glassTint (0–80): ألفا = 0.28 + 0.0075·t (الافتراضي 45 ⇒ 0.62)، والفاتح +0.04 بسقف 0.92 — البلور من النظام والصبغة منّا وحدنا.
 // (سابقًا ≥22621 كان يستعمل DWMSBT_TRANSIENTWINDOW: أكريليك النظام يضيف طبقة luminosity/تفتيح خاصة به لا تُضبط، تتراكب مع صبغة CSS فيغسل اللون.)
 // أقدم/فشل أي نداء ⇒ يُبتلع بصمت ويعود "none" (الواجهة تبقى على الزجاج داخل الصفحة). لا خيوط ولا مؤقّتات: نداءات عند التغيّر فقط.
-// المنطقة (SetWindowRgn) كبسولة مستديرة بحجم النافذة كي لا يظهر مستطيل التمويه خارج الحبة؛ لذلك تُسقَط الخلفية قبل أي تغيير حجم
-// (win::resize_to_island) وتعيد الواجهة طلبها بعد استقرار الحركة. نافذتا overlay والإعدادات/المحرّر خارج النطاق عمدًا.
+// T03: نافذة main بحجم ثابت شفاف؛ «شكل الجزيرة» = منطقة النافذة (SetWindowRgn) بمقاس الهدف (حبة/لمحة/لوحة) تُضبط عبر report_island_rect
+// قبل نموّ الحركة وبعد انكماشها: خارجها شفاف ويمرّر الماوس (اختبار إصابة حقيقي بلا استطلاع). الأكريليك يُطبَّق على المنطقة نفسها بعد الاستقرار،
+// وتُسقَط صبغته (لا المنطقة) عند تغيّر الهدف. نافذتا overlay والإعدادات/المحرّر خارج النطاق عمدًا.
 use tauri::{AppHandle, Manager};
 
 // PURE-BEGIN
@@ -59,6 +60,24 @@ pub fn region_radius_px(radius_css: f64, scale: f64, w: u32, h: u32) -> i32 {
 /// الطلب المطبَّق سابقًا (لتجنّب نداءات مكرّرة): (زجاج، فاتح، عرض، ارتفاع، نصف قطر).
 pub type Key = (bool, bool, u32, u32, i32);
 // PURE-END
+
+/// شكل الجزيرة الهدف (CSS px): العرض، الارتفاع، نصف القطر. تحدّثه report_island_rect.
+static SHAPE: std::sync::Mutex<(f64, f64, f64)> = std::sync::Mutex::new((220.0, 34.0, 17.0));
+
+/// يضبط شكل الجزيرة الهدف ويطبّق المنطقة على النافذة الثابتة (ويندوز) — الواجهة تستدعيه قبل النمو وبعد الانكماش فقط.
+pub fn set_shape(app: &AppHandle, w: f64, h: f64, radius: f64) {
+    let ok = |v: f64| v.is_finite() && v > 0.0;
+    if ok(w) && ok(h) { *SHAPE.lock().unwrap() = (w, h, if ok(radius) { radius.min(w.min(h) / 2.0) } else { h / 2.0 }); }
+    refresh_shape(app);
+}
+
+/// يعيد تطبيق المنطقة من الشكل المخزَّن (بعد تغيّر DPI/الشاشة/الموضع/hoverZone).
+pub fn refresh_shape(app: &AppHandle) {
+    #[cfg(windows)]
+    imp::apply_region(app);
+    #[cfg(not(windows))]
+    let _ = app;
+}
 
 #[cfg(windows)]
 mod imp {
@@ -147,7 +166,6 @@ mod imp {
             }
             Mode::None => {}
         }
-        let _ = SetWindowRgn(h, None, true);
     }
 
     pub fn drop_for_resize(app: &AppHandle) {
@@ -160,24 +178,47 @@ mod imp {
         }
     }
 
+    /// المنطقة = مستطيل الجزيرة الهدف (مستدير) داخل النافذة الثابتة: x حسب pillPosition (يسار/منتصف/يمين)، y=0، + امتداد سفلي
+    /// حين hoverZone=islandAndBelow. تُحوَّل CSS→فيزيائي بمعامل DPI.
+    pub fn apply_region(app: &AppHandle) -> Option<(i32, i32, i32)> {
+        use tauri::Manager;
+        let w = app.get_webview_window(crate::win::MAIN)?;
+        let h = HWND(w.hwnd().ok()?.0);
+        let scale = w.scale_factor().unwrap_or(1.0);
+        let (cw, ch, cr) = *SHAPE.lock().unwrap();
+        let (align, below) = {
+            let st = app.state::<crate::state::AppState>();
+            let a = st.placement.lock().unwrap().align;
+            let z = st.settings.lock().unwrap().get("hoverZone").and_then(|v| v.as_str().map(String::from)).unwrap_or_default();
+            (a, if z == "islandAndBelow" { 24.0 } else { 0.0 })
+        };
+        unsafe {
+            let mut r = RECT::default();
+            GetWindowRect(h, &mut r).ok()?;
+            let ww = (r.right - r.left).max(0);
+            let (pw, ph) = ((cw * scale).round() as i32, ((ch + below) * scale).round() as i32);
+            let x0 = match align { -1 => 0, 1 => (ww - pw).max(0), _ => ((ww - pw) / 2).max(0) };
+            let rad = region_radius_px(cr, scale, pw as u32, (ch * scale) as u32);
+            let rgn: HRGN = CreateRoundRectRgn(x0, 0, x0 + pw + 1, ph + 1, rad * 2, rad * 2);
+            if rgn.is_invalid() || SetWindowRgn(h, Some(rgn), true) == 0 { return None; }
+            Some((pw, ph, rad))
+        }
+    }
+
     pub fn apply(app: &AppHandle, glass: bool, light: bool, radius_css: f64, tint: u32) -> Mode {
         let Some(w) = app.get_webview_window(crate::win::MAIN) else { return Mode::None };
         let Ok(h) = w.hwnd() else { return Mode::None };
         let h = HWND(h.0);
         let target = if glass && transparency_enabled() { mode_for_build(build_number()) } else { Mode::None };
         let mut cur = CUR.lock().unwrap();
+        // المنطقة تُطبَّق دائمًا (اختبار الإصابة)؛ الأكريليك فوقها فقط.
+        let Some((pw, ph, rad)) = apply_region(app) else { return Mode::None };
+        let _ = radius_css;
+        let key: Key = (glass, light, pw as u32, ph as u32, rad);
         unsafe {
-            let mut r = RECT::default();
-            if GetWindowRect(h, &mut r).is_err() {
-                return Mode::None;
-            }
-            let (ww, wh) = ((r.right - r.left).max(0) as u32, (r.bottom - r.top).max(0) as u32);
-            let rad = region_radius_px(radius_css, w.scale_factor().unwrap_or(1.0), ww, wh);
-            let key: Key = (glass, light, ww, wh, rad);
             if let Some((k, m, t)) = *cur {
                 if k == key {
-                    // نفس الهندسة/الثيم: تغيّر glassTint وحده ⇒ تحديث صبغة ويندوز 10 فقط (بلا مسح فلا وميض أثناء سحب المنزلق)؛
-                    // ويندوز 11 صبغته داخل الصفحة فلا شيء يُنفَّذ هنا.
+                    // نفس الهندسة/الثيم: تغيّر glassTint وحده ⇒ تحديث صبغة ويندوز 10 فقط (بلا مسح فلا وميض أثناء سحب المنزلق).
                     if m == Mode::Win10 && t != tint {
                         if set_accent(h, 4, tint_abgr(light, tint)) {
                             *cur = Some((k, m, tint));
@@ -185,15 +226,10 @@ mod imp {
                     }
                     return m;
                 }
-                clear(h, m); // تغيّر الطلب: ابدأ نظيفًا (يتفادى بقايا منطقة/صبغة قديمة)
+                clear(h, m); // تغيّر الطلب: ابدأ بلا صبغة قديمة
                 *cur = None;
             }
             if target == Mode::None {
-                return Mode::None;
-            }
-            // منطقة الكبسولة أولًا (يملكها النظام بعد SetWindowRgn)، ثم الخلفية.
-            let rgn: HRGN = CreateRoundRectRgn(0, 0, ww as i32 + 1, wh as i32 + 1, rad * 2, rad * 2);
-            if rgn.is_invalid() || SetWindowRgn(h, Some(rgn), true) == 0 {
                 return Mode::None;
             }
             let ok = match target {

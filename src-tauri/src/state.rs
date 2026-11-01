@@ -25,7 +25,6 @@ pub fn defaults() -> Map<String, Value> {
     let Value::Object(m) = json!({
         "language": "ar",
         "hoverDelayMs": 250,
-        "collapseDelayMs": 350,
         "clockFormat": "auto",
         "aiBaseUrl": "https://api.groq.com/openai/v1",
         "sttBaseUrl": "https://api.groq.com/openai/v1",
@@ -63,9 +62,29 @@ pub fn defaults() -> Map<String, Value> {
         "pillRadius": 0,
         "offsetY": 0,
         "pillPosition": "center",
-        "animSpeed": 100,
-        "springStyle": "snappy",
-        "reduceMotion": false,
+        "motionPreset": "calm",
+        "motionSpeed": 1.0,
+        "motionBounce": 0.1,
+        "reduceMotion": "system",
+        "peekWidth": 400,
+        "peekHeight": 120,
+        "peekRadius": 30,
+        "panelWidth": 520,
+        "panelHeight": 290,
+        "panelRadius": 34,
+        "hoverZone": "island",
+        "peekWheelCycle": true,
+        "peekCardOrder": ["player", "today", "weather", "timer"],
+        "panelWheelPaging": true,
+        "panelTabsStyle": "icons",
+        "backgroundOpacity": 1.0,
+        "accentMode": "auto",
+        "playerLayout": "compact",
+        "visualizer": "bars",
+        "showPlaybackTime": true,
+        "showSourceBadge": true,
+        "showProgress": true,
+        "artworkBackdrop": true,
         "glassTint": 45,
         "glassBlur": 24,
         "glassSaturation": 180,
@@ -84,7 +103,33 @@ pub fn defaults() -> Map<String, Value> {
 }
 
 /// مفاتيح إعدادات أُزيلت ميزاتها؛ تُحذف عند فتح القاعدة ولا تعود للواجهة.
-pub const OBSOLETE_KEYS: &[&str] = &["browserTabMode", "underTaskbar", "lyricsInHome", "lyricsInPlayer"];
+pub const OBSOLETE_KEYS: &[&str] = &["browserTabMode", "underTaskbar", "lyricsInHome", "lyricsInPlayer", "collapseDelayMs", "animSpeed", "springStyle"];
+
+/// ترحيل T03 في kv (idempotent): springStyle ⇒ motionPreset (snappy⇒snappy وغيره⇒calm مع ارتداد النمط) · animSpeed(50..150) ⇒ motionSpeed(0.5..2)
+/// · reduceMotion من bool إلى "always"|"system". المفاتيح القديمة تُحذف بعده (OBSOLETE_KEYS). يطابق منطق src/islandMotion.ts.
+pub fn migrate_t03(conn: &Connection) {
+    let get = |k: &str| -> Option<Value> {
+        conn.query_row("SELECT value FROM kv WHERE key = ?1", [k], |r| r.get::<_, String>(0)).ok().and_then(|v| serde_json::from_str(&v).ok())
+    };
+    let put = |k: &str, v: Value| {
+        let _ = conn.execute("INSERT INTO kv(key,value) VALUES(?1,?2) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (k, v.to_string()));
+    };
+    if get("motionPreset").is_none() {
+        if let Some(Value::String(st)) = get("springStyle") {
+            let snappy = st == "snappy";
+            put("motionPreset", json!(if snappy { "snappy" } else { "calm" }));
+            put("motionBounce", json!(if snappy { 0.15 } else { 0.1 }));
+        }
+    }
+    if get("motionSpeed").is_none() {
+        if let Some(n) = get("animSpeed").and_then(|v| v.as_f64()) {
+            put("motionSpeed", json!((n / 100.0).clamp(0.5, 2.0)));
+        }
+    }
+    if let Some(Value::Bool(b)) = get("reduceMotion") {
+        put("reduceMotion", json!(if b { "always" } else { "system" }));
+    }
+}
 
 pub struct AppState {
     pub placement: Mutex<PlacementSettings>,
@@ -120,6 +165,7 @@ impl AppState {
         conn.execute_batch(include_str!("../schema.sql")).map_err(|e| e.to_string())?;
         crate::migrate::run(&mut conn, crate::migrate::MIGRATIONS).map_err(|e| e.to_string())?;
         // ترحيل: مفاتيح أُزيلت ميزاتها (وضع تبويب المتصفح، «تحت شريط المهام»، كلمات الأغاني + ذاكرتها) تُحذف من kv مرة واحدة/دائمًا (idempotent).
+        migrate_t03(&conn); // قبل الحذف: يقرأ القيم القديمة ويكتب المفاتيح الجديدة
         for k in OBSOLETE_KEYS { let _ = conn.execute("DELETE FROM kv WHERE key = ?1", [k]); }
         let _ = conn.execute("DELETE FROM kv WHERE key LIKE 'lyrics:%'", []);
         let mut merged = defaults();
