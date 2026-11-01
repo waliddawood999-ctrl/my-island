@@ -23,7 +23,6 @@ export interface Settings {
   hideForAppsMode:string,
   through:boolean,
   hoverDelayMs:number,
-  collapseDelayMs:number,
   captureVisible:boolean,
   showClock:boolean,
   clockFormat:'auto'|'24'|'12',
@@ -99,9 +98,23 @@ export interface Settings {
   pillRadius:number,              // نصف قطر الحبة 0..22 (0 = كبسولة كاملة تلقائيًا)
   offsetY:number,                 // إزاحة رأسية عن الحافة العليا 0..60
   pillPosition:'center'|'left'|'right',
-  animSpeed:number,               // سرعة الحركة 50..150 (٪)
-  springStyle:'snappy'|'smooth'|'gentle',
-  reduceMotion:boolean,           // تقليل الحركة (يُحترم تفضيل النظام أيضًا)
+  motionPreset:'calm'|'snappy'|'bouncy'|'boringNotch'|'cultUi', // نوع الحركة (islandMotion.ts) — يحلّ محلّ springStyle
+  motionSpeed:number,             // 0.5..2.0 (يحلّ محلّ animSpeed ٪)
+  motionBounce:number,            // 0..0.40؛ الإغلاق دائمًا بلا ارتداد
+  reduceMotion:'system'|'always'|'never', // تقليل الحركة (كان bool: true⇒always، false⇒system)
+  // ── T03: حالات الجزيرة (حبة/لمحة/لوحة)
+  peekWidth:number, peekHeight:number, peekRadius:number,
+  panelWidth:number, panelHeight:number, panelRadius:number,
+  hoverZone:'island'|'islandAndBelow',
+  peekWheelCycle:boolean,
+  peekCardOrder:string[],         // ترتيب لمحات: تبديل مرتّب من player|today|weather|timer
+  panelWheelPaging:boolean,
+  panelTabsStyle:'labels'|'icons'|'dots'|'hidden',
+  backgroundOpacity:number,       // 0.3..1.0
+  accentMode:'auto'|'fixed',      // auto = من غلاف الأغنية
+  playerLayout:'compact'|'large'|'minimal',
+  visualizer:'bars'|'wave'|'off',
+  showPlaybackTime:boolean, showSourceBadge:boolean, showProgress:boolean, artworkBackdrop:boolean,
   settingsVersion:number,         // ترحيل الإعدادات (appearance.ts::migrateSettings)
   showNetSpeed:boolean,
   workspaces:Workspace[],
@@ -145,8 +158,7 @@ export interface Settings {
 
 export const DEFAULTS: Partial<Settings> = {
   language: "ar",
-  hoverDelayMs: 250,        // المدى في الأصل: 0..600 خطوة 25
-  collapseDelayMs: 350,     // المدى في الأصل: 100..1500 خطوة 50
+  hoverDelayMs: 250,        // مهلة فتح اللمحة (0..800 خطوة 50)
   clockFormat: "auto",
   aiBaseUrl: "https://api.groq.com/openai/v1",
   sttBaseUrl: "https://api.groq.com/openai/v1",
@@ -183,10 +195,23 @@ export const DEFAULTS: Partial<Settings> = {
   pillRadius: 0,           // 0 = كبسولة كاملة (نصف الارتفاع)
   offsetY: 0,
   pillPosition: 'center',
-  animSpeed: 100,
-  springStyle: 'snappy',
-  reduceMotion: false,
-  settingsVersion: 2,
+  motionPreset: 'calm',
+  motionSpeed: 1,
+  motionBounce: 0.1,
+  reduceMotion: 'system',
+  peekWidth: 400, peekHeight: 120, peekRadius: 30,
+  panelWidth: 520, panelHeight: 290, panelRadius: 34,
+  hoverZone: 'island',
+  peekWheelCycle: true,
+  peekCardOrder: ['player', 'today', 'weather', 'timer'],
+  panelWheelPaging: true,
+  panelTabsStyle: 'icons',
+  backgroundOpacity: 1,
+  accentMode: 'auto',
+  playerLayout: 'compact',
+  visualizer: 'bars',
+  showPlaybackTime: true, showSourceBadge: true, showProgress: true, artworkBackdrop: true,
+  settingsVersion: 3,
   glassSaturation: 180,    // تشبّع طبقة الزجاج CSS 100..200 (٪)؛ Eco يجعله 100
   showNetSpeed: false,     // سرعتا الشبكة (تحميل/رفع) في الكبسولة المدمجة؛ القراءة من عدّادات ويندوز فقط أثناء التفعيل (netspeed_active)
   eyesEnabled: true,       // عيون التميمة بجانب الساعة في الحبة المنكمشة (تُخفى تلقائيًا مع الميديا/التوفير/الحركة المتوقفة)

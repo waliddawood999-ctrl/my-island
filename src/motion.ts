@@ -13,7 +13,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { Transition, Variants } from "motion/react";
-import { springPresets, type SpringStyle } from "./tokens";
+import { deriveSpring, normBounce, normPreset, normSpeed, type MotionPresetKey } from "./islandMotion";
 
 export type MotionLevel = "full" | "reduced" | "off";
 export const MOTION_LEVELS: MotionLevel[] = ["full", "reduced", "off"];
@@ -26,35 +26,30 @@ export const ease = {
 
 type SpringKey = "island" | "content" | "press" | "tabLead" | "tabTrail" | "eye";
 
-/** سرعة الحركة (0.5..1.5) ونمط النابض (snappy/smooth/gentle): من الإعدادين animSpeed/springStyle عبر setMotionTuning.
- *  السرعة تضرب الصلابة في مربعها والتخميد في نفسها (نسبة التخميد ثابتة)، وتقسم المدد. */
+/** سرعة الحركة (0.5..2) ونوعها motionPreset وارتدادها motionBounce (T03): من الإعدادات عبر setMotionTuning.
+ *  island/content ← نوابض مشتقة (islandMotion.ts)؛ press/tab/eye مخصّصة وتتبع السرعة فقط. */
 let speed = 1;
-let style: SpringStyle = "snappy";
-/** كل النوابض (لا island/content فقط) تتبع نمط النابض: الصلابة × (صلابة النمط/500) والتخميد × (تخميد النمط/35)، ثم السرعة. */
-const sp = (stiffness: number, damping: number, mass: number): Transition => {
-  const p = springPresets[style];
-  return { type: "spring", stiffness: stiffness * (p.stiffness / 500) * speed * speed, damping: damping * (p.damping / 35) * speed, mass };
+let preset: MotionPresetKey = "calm";
+let bounce = 0.1;
+const sp = (stiffness: number, damping: number, mass: number): Transition => ({ type: "spring", stiffness: stiffness * speed * speed, damping: damping * speed, mass });
+
+/** نوابض الجزيرة الحيّة: open (لمحة) · panel · close (بلا ارتداد). تُحدَّث في مكانها عند الضبط. */
+export const islandSpring: { open: Transition; panel: Transition; close: Transition } = {
+  open: deriveSpring("open", "calm", 1, 0.1), panel: deriveSpring("panel", "calm", 1, 0.1), close: deriveSpring("close", "calm", 1, 0.1),
 };
 
-/** نوابض: تجاوز (overshoot) بسيط جدًا كحد أقصى. */
 function buildFullSpring(): Record<SpringKey, Transition> {
   return {
-    /** تحوّل الحبة↔اللوحة: الحجم والانحناء (عنصر واحد يتحوّل دون قطع). */
-    island: sp(500, 35, 0.9),
-    /** ظهور عناصر داخل اللوحة وأقسامها. */
-    content: sp(525, 37, 0.8),
-    /** ضغط/تحويم الأزرار — سريع بلا تجاوز. */
+    island: deriveSpring("open", preset, speed, bounce),
+    content: deriveSpring("open", preset, speed, bounce),
     press: sp(700, 40, 0.5),
-    /** حافة مؤشر التبويب القائدة (تتمدد أولًا). */
     tabLead: sp(620, 38, 0.7),
-    /** حافة مؤشر التبويب التابعة (أبطأ فيتمدد المؤشر ثم ينكمش). */
     tabTrail: sp(300, 34, 0.8),
-    /** عيون التميمة: انزلاق/تغيّر الحالة — فوق الحرج قليلًا (ζ≈1.1): ناعم بلا أي ارتداد. */
     eye: sp(240, 29, 0.7),
   };
 }
 let FULL_SPRING: Record<SpringKey, Transition> = buildFullSpring();
-const SHORT: Transition = { type: "tween", duration: 0.12, ease: ease.out };
+const SHORT: Transition = { type: "tween", duration: 0.15, ease: ease.out }; // تقليل الحركة: تلاشٍ 150ms
 const NONE: Transition = { type: "tween", duration: 0 };
 const flat = (t: Transition): Record<SpringKey, Transition> => ({ island: t, content: t, press: t, tabLead: t, tabTrail: t, eye: t });
 
@@ -168,6 +163,7 @@ export function resolveMotion(chosen: unknown, eco: boolean): MotionLevel {
 export function setMotionLevel(l: MotionLevel) {
   level = l;
   FULL_SPRING = buildFullSpring();
+  Object.assign(islandSpring, { open: deriveSpring("open", preset, speed, bounce), panel: deriveSpring("panel", preset, speed, bounce), close: deriveSpring("close", preset, speed, bounce) });
   FULL_DUR = buildFullDur();
   if (l === "full") {
     Object.assign(spring, FULL_SPRING);
@@ -183,8 +179,9 @@ export function setMotionLevel(l: MotionLevel) {
     eyeBlink.open = { type: "tween", duration: 0.13, ease: ease.out };
   } else {
     const t = l === "off" ? NONE : SHORT;
+    Object.assign(islandSpring, { open: NONE, panel: NONE, close: NONE }); // حجم الجزيرة يقفز؛ المحتوى يتلاشى 150ms
     Object.assign(spring, flat(t));
-    const d = l === "off" ? 0 : 0.1;
+    const d = l === "off" ? 0 : 0.15;
     Object.assign(dur, { fast: d * 0.8, base: d, swap: d, windowShrinkGuard: FULL_DUR.windowShrinkGuard, alert: FULL_DUR.alert });
     Object.assign(blur, { swap: 0, section: 0 });
     Object.assign(shift, { swap: l === "off" ? 0 : 2, section: l === "off" ? 0 : 3 });
@@ -202,12 +199,11 @@ export function setMotionLevel(l: MotionLevel) {
   subs.forEach((f) => f());
 }
 
-/** سرعة ونمط النابض من الإعدادات (قيم غير صالحة ⇒ الافتراضي)؛ تعيد بناء الثوابت الحيّة عند التغيّر فقط. */
-export function setMotionTuning(animSpeed: unknown, springStyle: unknown) {
-  const sp2 = typeof animSpeed === "number" && Number.isFinite(animSpeed) ? Math.min(150, Math.max(50, animSpeed)) / 100 : 1;
-  const st: SpringStyle = springStyle === "smooth" || springStyle === "gentle" ? springStyle : "snappy";
-  if (sp2 === speed && st === style) return;
-  speed = sp2; style = st;
+/** motionSpeed/motionPreset/motionBounce من الإعدادات (غير صالح ⇒ الافتراضي)؛ تعيد بناء الثوابت الحيّة عند التغيّر فقط. */
+export function setMotionTuning(motionSpeed: unknown, motionPreset: unknown, motionBounce?: unknown) {
+  const sp2 = normSpeed(motionSpeed), pr = normPreset(motionPreset), bo = normBounce(motionBounce);
+  if (sp2 === speed && pr === preset && bo === bounce) return;
+  speed = sp2; preset = pr; bounce = bo;
   setMotionLevel(level);
 }
 

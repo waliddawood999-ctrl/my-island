@@ -38,7 +38,9 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 800; }
   scroll-behavior: auto !important;
 }
 :root[data-motion="reduced"] *, :root[data-motion="reduced"] *::before, :root[data-motion="reduced"] *::after {
-  transition-duration: 0.1s !important;
+  /* تقليل الحركة: تلاشٍ 150ms للألوان/الشفافية فقط — الأبعاد والتحويلات (width/height/transform) تقفز بلا انتقال. */
+  transition-property: opacity, color, background-color, border-color, box-shadow, fill, stroke !important;
+  transition-duration: 0.15s !important;
 }
 
 /*

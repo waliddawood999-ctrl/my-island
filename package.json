@@ -25,7 +25,11 @@
     "test:shape": "node scripts/shape.regression.cjs",
     "test:appearance": "node scripts/appearance.test.mjs",
     "test:t02": "node scripts/t02.regression.cjs",
-    "test:motion-ui": "node scripts/motion.regression.cjs"
+    "test:motion-ui": "node scripts/motion.regression.cjs",
+    "test:island": "node scripts/island.test.mjs",
+    "test:eyes-ui": "node scripts/eyes.regression.cjs",
+    "test:t03": "node scripts/t03.regression.cjs",
+    "test:layout": "node scripts/layout.regression.cjs"
   },
   "dependencies": {
     "@fontsource/almarai": "^5.3.0",
@@ -38,6 +42,7 @@
     "@tiptap/extension-list": "latest",
     "@tiptap/react": "latest",
     "@tiptap/starter-kit": "latest",
+    "fast-average-color": "^9.6.0",
     "lucide-react": "latest",
     "motion": "^12.43.0",
     "react": "^19.0.0",

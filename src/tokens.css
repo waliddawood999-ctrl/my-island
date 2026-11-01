@@ -34,7 +34,7 @@
   --panel-width: 720px; --panel-height: 320px;
 
   /* قوة الحدّ/الظل من الإعدادات (1 = افتراضي) */
-  --border-k: 1; --shadow-k: 1;
+  --border-k: 1; --shadow-k: 1; --bg-k: 1;
 
   /* الظلال: ثلاثة مستويات ناعمة متعدّدة الطبقات */
   --shadow-1: 0 1px 2px rgb(0 0 0 / calc(0.14 * var(--shadow-k))), 0 1px 1px rgb(0 0 0 / calc(0.08 * var(--shadow-k)));

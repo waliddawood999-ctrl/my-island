@@ -76,7 +76,7 @@ export function useSettings(): Partial<Settings> & { loaded?: boolean } {
   setLang(s.language === "en" ? "en" : "ar");
   const env = useEnv();
   useAppearance(s, env);
-  useEffect(() => { setMotionTuning(s.animSpeed, s.springStyle); }, [s.animSpeed, s.springStyle]);
+  useEffect(() => { setMotionTuning(s.motionSpeed, s.motionPreset, s.motionBounce); }, [s.motionSpeed, s.motionPreset, s.motionBounce]);
   useMotionSync(effectiveMotion(s, env));
   return s;
 }

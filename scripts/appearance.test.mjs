@@ -22,8 +22,8 @@ ok("reduced transparency ⇒ solid fallback", a.appearanceVars({}, { ...env, red
 ok("explicit solid ⇒ no fallback flag", a.appearanceVars({ themeMaterial: "solid" }, env).attrs.fallback === "");
 ok("pill clamped 160..280 / 28..44", (() => { const x = a.appearanceVars({ pillWidth: 9999, pillHeight: 1 }, env).vars; return x["--pill-width"] === "280px" && x["--pill-height"] === "28px"; })());
 ok("pillRadius capped at h/2", a.appearanceVars({ pillHeight: 34, pillRadius: 22 }, env).vars["--pill-radius"] === "17px" && a.appearanceVars({ pillHeight: 40, pillRadius: 8 }, env).vars["--pill-radius"] === "8px");
-ok("garbage numbers fall back", (() => { const x = a.appearanceVars({ fontScale: "x", animSpeed: NaN, borderStrength: null }, env).vars; return x["--font-scale"] === "1" && x["--speed"] === "1" && x["--border-k"] === "1"; })());
-ok("font scale + speed", (() => { const x = a.appearanceVars({ fontScale: 115, animSpeed: 150 }, env).vars; return x["--font-scale"] === "1.15" && x["--speed"] === "1.5"; })());
+ok("garbage numbers fall back", (() => { const x = a.appearanceVars({ fontScale: "x", motionSpeed: NaN, borderStrength: null }, env).vars; return x["--font-scale"] === "1" && x["--speed"] === "1" && x["--border-k"] === "1"; })());
+ok("font scale + speed", (() => { const x = a.appearanceVars({ fontScale: 115, motionSpeed: 1.5 }, env).vars; return x["--font-scale"] === "1.15" && x["--speed"] === "1.5"; })());
 // الحركة
 ok("reduceMotion/OS ⇒ reduced; off stays off", a.effectiveMotion({ reduceMotion: true }, env) === "reduced" && a.effectiveMotion({}, { ...env, osReducedMotion: true }) === "reduced" && a.effectiveMotion({ motionLevel: "off", reduceMotion: true }, env) === "off");
 // لون التمييز
@@ -34,9 +34,9 @@ ok("4 presets with expected ids", a.STYLE_PRESETS.map((p) => p.id).join() === "l
 ok("clear preset ⇒ blur ≤ 8", a.STYLE_PRESETS.find((p) => p.id === "clear").values.glassBlur <= 8 && a.GLASS_STYLE_VALUES.clear.glassBlur <= 8);
 ok("all preset blurs ≤ 40", a.STYLE_PRESETS.every((p) => (p.values.glassBlur ?? 0) <= 40));
 // ترحيل
-ok("migrate v0: shrunken pill reset, crystal added, version 2", (() => { const m = a.migrateSettings({ pillWidth: 180, pillHeight: 30 }); return m.pillWidth === 220 && m.pillHeight === 34 && m.glassStyle === "crystal" && m.settingsVersion === 2; })());
+ok("migrate v0: shrunken pill reset, crystal added, version 2", (() => { const m = a.migrateSettings({ pillWidth: 180, pillHeight: 30 }); return m.pillWidth === 220 && m.pillHeight === 34 && m.glassStyle === "crystal" && m.settingsVersion === 3; })());
 ok("migrate keeps larger pill", (() => { const m = a.migrateSettings({ pillWidth: 260, pillHeight: 40, glassStyle: "clear" }); return !("pillWidth" in m) && !("pillHeight" in m) && !("glassStyle" in m); })());
-ok("migrate v2 ⇒ nothing", Object.keys(a.migrateSettings({ settingsVersion: 2, pillWidth: 100 })).length === 0);
+ok("migrate v3 ⇒ nothing", Object.keys(a.migrateSettings({ settingsVersion: 3, pillWidth: 100 })).length === 0);
 // تصدير/استيراد
 ok("export→import round-trip", (() => { const s = { pillWidth: 240, language: "en", clipExcludedApps: ["a.exe"] }; const p = a.parseImport(a.exportSettings(s), s); return p.pillWidth === 240 && p.clipExcludedApps[0] === "a.exe"; })());
 ok("import rejects wrong app/garbage", a.parseImport("{}", {}) === null && a.parseImport("nope", {}) === null && a.parseImport('{"app":"x","settings":{}}', {}) === null);

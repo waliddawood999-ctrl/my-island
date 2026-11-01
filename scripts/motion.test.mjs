@@ -21,11 +21,13 @@ eq("garbage + eco → reduced", m.resolveMotion(7, true), "reduced");
 
 // full: النوابض الأصلية (نابضة كما في MOTION.md)
 m.setMotionLevel("full");
-eq("full island spring (snappy 500/35)", m.spring.island, { type: "spring", stiffness: 500, damping: 35, mass: 0.9 });
-m.setMotionTuning(150, "gentle");
-eq("tuning: gentle at 1.5× scales island stiffness and damping", [m.spring.island.stiffness, m.spring.island.damping, m.dur.fast], [180 * 2.25, 24 * 1.5, 0.12 / 1.5]);
-eq("style drives EVERY spring (press/tab/eye too), not only island", m.spring.press.stiffness < 700 * 2.25 && m.spring.eye.stiffness === 240 * (180 / 500) * 2.25, true);
-m.setMotionTuning(100, "snappy");
+const near = (x, y, e = 0.6) => Math.abs(x - y) <= e;
+eq("full island spring = calm open (158/22.6, mass 1)", [Math.round(m.spring.island.stiffness), +m.spring.island.damping.toFixed(1), m.spring.island.mass], [158, 22.6, 1]);
+eq("islandSpring open/panel/close (calm)", [m.islandSpring.open, m.islandSpring.panel, m.islandSpring.close].map((t) => [Math.round(t.stiffness), +t.damping.toFixed(1)]), [[158, 22.6], [131, 20.6], [195, 27.9]]);
+m.setMotionTuning(1.5, "snappy", 0.15);
+eq("tuning: snappy @1.5× island spring", near(m.spring.island.stiffness, 273 * 2.25, 2) && near(m.dur.fast, 0.12 / 1.5, 1e-9), true);
+eq("tuning: press/tab/eye springs follow speed (not style)", [Math.round(m.spring.press.stiffness), Math.round(m.spring.eye.stiffness)], [700 * 2.25, 240 * 2.25].map(Math.round));
+m.setMotionTuning(1, "calm", 0.1);
 eq("full dur", [m.dur.fast, m.dur.base, m.dur.swap], [0.12, 0.18, 0.2]);
 eq("full tap", [m.tap.whileHover.scale, m.tap.whileTap.scale], [1.05, 0.97]);
 eq("full swap enter blur+shift", [m.swapVariants.initial.y, m.swapVariants.initial.filter], [6, "blur(6px)"]);

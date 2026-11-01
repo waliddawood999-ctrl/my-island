@@ -2,6 +2,7 @@
 // وحساب التباين (WCAG). يُختبر بـ scripts/glass.test.mjs. الواجهة: useSettings.ts::useAppearance.
 import { DEFAULTS, type Settings } from "./settings";
 import { PILL } from "./tokens";
+import { migratePreset, migrateReduce, migrateSpeed, normSpeed, resolveReduce } from "./islandMotion";
 
 export type ResolvedTheme = "dark" | "light";
 const num = (v: unknown, lo: number, hi: number, d: number) => (typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v))) : d);
@@ -57,7 +58,7 @@ export function appearanceVars(s: Partial<Settings>, env: Env): { attrs: Record<
   const pw = num(s.pillWidth, PILL.minW, PILL.maxW, PILL.w), ph = num(s.pillHeight, PILL.minH, PILL.maxH, PILL.h);
   const pr = num(s.pillRadius, 0, 22, 0);
   const radius = pr === 0 ? ph / 2 : Math.min(pr, ph / 2);
-  const speed = num(s.animSpeed, 50, 150, 100) / 100;
+  const speed = normSpeed(s.motionSpeed);
   return {
     attrs: {
       theme, material: glass ? "glass" : "solid", glass: style, density: s.density === "compact" ? "compact" : "comfortable",
@@ -69,6 +70,7 @@ export function appearanceVars(s: Partial<Settings>, env: Env): { attrs: Record<
       "--corner-scale": s.cornerStyle === "extra" ? "1.3" : "1", "--font-scale": String(num(s.fontScale, 90, 120, 100) / 100),
       "--speed": String(speed), "--pill-width": `${pw}px`, "--pill-height": `${ph}px`, "--pill-radius": `${radius}px`,
       "--glass-tint": String(num(s.glassTint, 0, 80, 45)),
+      "--bg-k": String(Math.min(1, Math.max(0.3, typeof s.backgroundOpacity === "number" && Number.isFinite(s.backgroundOpacity) ? s.backgroundOpacity : 1))),
     },
   };
 }
@@ -76,7 +78,7 @@ export function appearanceVars(s: Partial<Settings>, env: Env): { attrs: Record<
 /** الحركة الفعلية: الإعداد + «تقليل الحركة» + تفضيل النظام ⇒ على الأقل reduced. */
 export function effectiveMotion(s: Partial<Settings>, env: Env): "full" | "reduced" | "off" {
   const m = s.motionLevel === "off" ? "off" : s.motionLevel === "reduced" ? "reduced" : "full";
-  return m === "full" && (s.reduceMotion || env.osReducedMotion) ? "reduced" : m;
+  return m === "full" && resolveReduce(migrateReduce(s.reduceMotion), env.osReducedMotion) ? "reduced" : m;
 }
 
 type P = Partial<Settings>;
@@ -95,11 +97,11 @@ export const GLASS_STYLE_VALUES: Record<"crystal" | "clear", P> = {
 
 /** مفاتيح كل قسم (لزر «إعادة ضبط القسم»). المصدر الوحيد لخريطة الأقسام. */
 export const SECTION_KEYS: Record<string, (keyof Settings)[]> = {
-  general: ["autostart", "language", "monitor", "hoverDelayMs", "collapseDelayMs"],
-  island: ["pillWidth", "pillHeight", "pillRadius", "offsetX", "offsetY", "pillPosition", "autoHide", "hideInFullscreen", "opacityRest", "opacityOpen", "showClock", "clockFormat", "eyesEnabled", "captureVisible"],
-  appearance: ["themeMode", "themeMaterial", "glassStyle", "glassTint", "glassBlur", "glassSaturation", "accentColor", "borderStrength", "shadowStrength", "cornerStyle", "fontScale", "density"],
-  motion: ["motionLevel", "animSpeed", "springStyle", "reduceMotion"],
-  modules: ["showToday", "prayerCity", "showWeather", "weatherCity", "weatherUnits", "showCountdowns", "showWorldClock", "showBattery", "batteryTip", "btBatteries", "showNetSpeed", "clipLimit", "pasteOnClick", "clipExcludedApps", "privacyIndicator", "showVolume", "showMeetings", "screenshotDir", "recordFormat", "recordingFps", "recordingQuality", "recordingDir", "liveRates", "liquidSpectrum", "attentionTracking"],
+  general: ["autostart", "language", "monitor"],
+  island: ["pillWidth", "pillHeight", "pillRadius", "peekWidth", "peekHeight", "peekRadius", "panelWidth", "panelHeight", "panelRadius", "hoverDelayMs", "hoverZone", "peekWheelCycle", "peekCardOrder", "panelWheelPaging", "panelTabsStyle", "offsetX", "offsetY", "pillPosition", "autoHide", "hideInFullscreen", "opacityRest", "opacityOpen", "showClock", "clockFormat", "eyesEnabled", "captureVisible"],
+  appearance: ["themeMode", "themeMaterial", "glassStyle", "glassTint", "glassBlur", "glassSaturation", "backgroundOpacity", "accentMode", "accentColor", "borderStrength", "shadowStrength", "cornerStyle", "fontScale", "density"],
+  motion: ["motionLevel", "motionPreset", "motionSpeed", "motionBounce", "reduceMotion"],
+  modules: ["showToday", "prayerCity", "showWeather", "weatherCity", "weatherUnits", "showCountdowns", "showWorldClock", "showBattery", "batteryTip", "btBatteries", "showNetSpeed", "clipLimit", "pasteOnClick", "clipExcludedApps", "privacyIndicator", "showVolume", "showMeetings", "screenshotDir", "recordFormat", "recordingFps", "recordingQuality", "recordingDir", "liveRates", "liquidSpectrum", "playerLayout", "visualizer", "showPlaybackTime", "showSourceBadge", "showProgress", "artworkBackdrop", "attentionTracking"],
   notifications: ["soundChoice", "soundVolume", "prayerAlerts", "loadAlert", "meetingLeadMin", "breakReminders", "breakMinutes"],
   shortcuts: ["hotkeyPalette", "hotkeyArea", "hotkeyScreen", "hotkeyRecord", "hotkeyColor"],
   perf: ["ecoMode", "ecoOnBattery"],
@@ -110,11 +112,18 @@ export const SECTION_KEYS: Record<string, (keyof Settings)[]> = {
  *  v2: (أ) حبة أصغر من الافتراضي ⇒ تُعاد للافتراضي (تراجع «الانكماش» بعد التحديثات)، (ب) الزجاج الموجود ⇒ glassStyle=crystal، (ج) تثبيت themeMode الصريح. */
 export function migrateSettings(stored: P): P {
   const v = typeof stored.settingsVersion === "number" ? stored.settingsVersion : 0;
-  if (v >= 2) return {};
-  const patch: P = { settingsVersion: 2 };
-  if (typeof stored.pillWidth === "number" && stored.pillWidth < PILL.w) patch.pillWidth = PILL.w;
-  if (typeof stored.pillHeight === "number" && stored.pillHeight < PILL.h) patch.pillHeight = PILL.h;
-  if (!stored.glassStyle) patch.glassStyle = "crystal";
+  if (v >= 3) return {};
+  const patch: P = { settingsVersion: 3 };
+  if (v < 2) {
+    if (typeof stored.pillWidth === "number" && stored.pillWidth < PILL.w) patch.pillWidth = PILL.w;
+    if (typeof stored.pillHeight === "number" && stored.pillHeight < PILL.h) patch.pillHeight = PILL.h;
+    if (!stored.glassStyle) patch.glassStyle = "crystal";
+  }
+  // v3 (T03): reduceMotion bool ⇒ نص؛ springStyle/animSpeed ⇒ motionPreset/motionSpeed (الخلفية Rust تُرحّل kv عند الإقلاع؛ هذا للمتبقّي/المستورد).
+  const legacy = stored as Record<string, unknown>;
+  if (typeof stored.reduceMotion === "boolean") patch.reduceMotion = migrateReduce(stored.reduceMotion);
+  if ("springStyle" in legacy) patch.motionPreset = migratePreset(legacy.springStyle);
+  if ("animSpeed" in legacy) patch.motionSpeed = migrateSpeed(legacy.animSpeed);
   return patch;
 }
 
