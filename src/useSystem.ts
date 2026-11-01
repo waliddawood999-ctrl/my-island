@@ -78,3 +78,42 @@ export function useThrottled<T>(fn: (v: T) => void, ms = 80): (v: T) => void {
     else timer.current = window.setTimeout(() => { last.current = Date.now(); fnRef.current(v); }, wait);
   };
 }
+
+export type TopApp = { name: string; cpu: number };
+export type SysDepth = { gpu: number | null; temps: { cpu: number | null; gpu: number | null; ssd: number | null }; power_w: number | null; top: TopApp | null };
+
+/** عمق المراقبة (GPU/حرارة/قدرة/أعلى تطبيق) كل ~3s ما دام `active` (تبويب النظام ظاهر وليس Eco)؛ خارج ذلك لا مؤقّت ولا استدعاء. */
+export function useSysDepth(active: boolean): SysDepth | null {
+  const [d, setD] = useState<SysDepth | null>(null);
+  useEffect(() => {
+    if (!active) return;
+    let alive = true;
+    let t: number | undefined;
+    const tick = () => {
+      invoke<SysDepth>("sysdepth_get")
+        .then((v) => { if (alive && v) setD(v); })
+        .catch(() => {})
+        .finally(() => { if (alive) t = window.setTimeout(tick, document.hidden ? 6000 : 3000); });
+    };
+    tick();
+    return () => { alive = false; window.clearTimeout(t); };
+  }, [active]);
+  return d;
+}
+
+export const SPARK_CAP = 30;
+/** يضيف قيمة إلى سجلّ محدود الطول (بلا تعديل المصفوفة الأصلية). */
+export const pushCapped = (arr: readonly number[], v: number, cap = SPARK_CAP): number[] => [...arr, v].slice(-cap);
+
+/**
+ * سجلّ CPU/RAM للمنحنيين المصغّرين: يتراكم مع كل عيّنة جديدة فقط وهو `active`؛ التبويب يُفكَّك بإغلاقه فيسقط السجلّ
+ * (لا ذاكرة ولا عمل خارج التبويب). لا عيّنة جديدة (Eco/توقف القياس) ⇒ لا نمو.
+ */
+export function useSysHistory(sys: SysInfo | null, active: boolean): { cpu: number[]; mem: number[] } {
+  const [h, setH] = useState<{ cpu: number[]; mem: number[] }>({ cpu: [], mem: [] });
+  useEffect(() => {
+    if (!active || !sys) return;
+    setH((p) => ({ cpu: pushCapped(p.cpu, sys.cpu), mem: pushCapped(p.mem, sys.mem_percent) }));
+  }, [sys, active]);
+  return h;
+}

@@ -25,6 +25,7 @@ pub mod sysinfo;    // استخدام المعالج/الذاكرة عند ال�
 pub mod audio;      // مستوى الصوت والكتم (IAudioEndpointVolume)
 pub mod brightness; // سطوع الابتوب (WMI) عند الطلب
 pub mod privacy;    // مؤشر مايك/كاميرا من ConsentStore
+pub mod sysdepth;   // عمق مراقبة النظام: GPU/حرارة/قدرة/أعلى تطبيق + تنبيه حمل مستمر
 pub mod secrets;    // مخزن الأسرار المشفّر بـ DPAPI
 pub mod ical;       // محلّل ICS + RRULE + روابط الانضمام (منطق خالص)
 pub mod meetings;   // الاجتماعات القادمة من رابط iCal + تنبيهات
@@ -121,6 +122,7 @@ pub fn run() {
                     note::start(app.handle());
                     today::start(app.handle());
                     privacy::start(app.handle());
+                    sysdepth::start(app.handle());
                     meetings::start(app.handle());
                     // تحديث مسار exe في Run إن كان autostart مفعّلًا (يتتبّع نقل التطبيق).
                     let on = app.state::<state::AppState>().settings.lock().unwrap()
@@ -230,6 +232,7 @@ pub fn run() {
             today::today_get,
             today::weather_get,
             sysinfo::sysinfo_get,
+            sysdepth::sysdepth_get,
             audio::volume_get,
             audio::volume_set,
             audio::volume_step,

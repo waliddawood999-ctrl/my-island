@@ -275,6 +275,9 @@ function App() {
         <Row label={i("مؤشر الميكروفون والكاميرا", "Mic & camera indicator")} hint={i("نقطة في الحبة أثناء استخدام أي تطبيق لهما — قراءة محلية لسجلّ ويندوز فقط", "A dot in the pill while any app uses them — local Windows registry read only")}>
           <Toggle label={i("مؤشر الميكروفون والكاميرا", "Mic & camera indicator")} value={s.privacyIndicator ?? false} onChange={(v) => saveSettings({ privacyIndicator: v })} />
         </Row>
+        <Row label={i("تنبيه الحمل المرتفع", "High-load alert")} hint={i("معالج ≥90% لمدة 30 ثانية متواصلة ⇒ تنبيه يسمّي التطبيق المسبّب (مرة كل 10 دقائق كحدّ أقصى). مطفأ افتراضيًا ويتوقف في وضع التوفير", "CPU ≥90% for 30 s straight ⇒ an alert naming the app responsible (at most once per 10 min). Off by default and stopped in saving mode")}>
+          <Toggle label={i("تنبيه الحمل المرتفع", "High-load alert")} value={s.loadAlert ?? false} onChange={(v) => saveSettings({ loadAlert: v })} />
+        </Row>
         <Row label={i("التحكم بالصوت في قسم النظام", "Volume control in System")}>
           <Toggle label={i("التحكم بالصوت في قسم النظام", "Volume control in System")} value={s.showVolume ?? true} onChange={(v) => saveSettings({ showVolume: v })} />
         </Row>

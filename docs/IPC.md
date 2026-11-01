@@ -258,3 +258,16 @@ lyrics_get(artist: String, title: String, album?: String, duration: f64 ثوان
 - `meetings`: الجلب الدوري كل 15 دقيقة يتوقف في Eco؛ الجلب اليدوي (`meetings_refresh`) وإعادة الحساب المحلي وتنبيهات «بعد 5 دقائق/يبدأ الآن» من القائمة المخزّنة تبقى. (`meetings::periodic_fetch_allowed`)
 - `privacy.rs`: مؤشر المايك/الكاميرا ميزة أمان فلا يُوقَف في Eco بل يُخفَّف فحصه من 3s إلى 15s. (`privacy::scan_interval_secs`)
 - `useEco()` يحتفظ بآخر حالة معروفة على مستوى الوحدة كي لا يُطلق المكوّن المتأخّر استدعاءً قبل وصول `perf_status`.
+
+### مضاف: عمق مراقبة النظام (sysdepth.rs) + منحنيات النظام + إضافات «اليوم» + اجتماع قريب
+- `sysdepth_get() → {gpu: 0..100|null, temps: {cpu: °C|null, gpu: null, ssd: °C|null}, power_w: W|null, top: {name, cpu: 0..100}|null}` — **تبويب النظام فقط**؛ بلا حالة ولا خيط (كـ`perf_ram`: عيّنتان بينهما 250ms ثم يُحرَّر كل شيء)، تستدعيه الواجهة كل ~3s وهو مفتوح. Eco ⇒ `Err("eco")` بلا قراءة. المصادر وما لا يتيحه ويندوز:
+  - `gpu` ← عدّاد PDH «GPU Engine(*)\Utilization Percentage» (يجمع لكل محوّل+نوع محرّك ثم الأعلى). يحتاج WDDM 2.0+/ويندوز 10 1709+؛ غيابه ⇒ null.
+  - `temps.cpu` ← «Thermal Zone Information(*)\Temperature» (أسخن منطقة ACPI) — **تقريب** لا حرارة نواة؛ أجهزة كثيرة لا تكشفها ⇒ null.
+  - `temps.ssd` ← `Get-StorageReliabilityCounter` عبر PowerShell (تخزين مؤقّت 60s على خيط منفصل؛ أول استدعاء يعيد null ثم تصل القيمة).
+  - `temps.gpu` ← **دائمًا null**: ويندوز لا يتيحها بلا SDK المورّد (NVML/ADLX) ولا نستدعي أدوات مورّدين.
+  - `power_w` ← «Energy Meter(*)\Power» لحزمة المعالج (RAPL) على العتاد الداعم فقط ⇒ تقريبية أو null.
+  - `top` ← أعلى اسم exe بمجموع نسب المعالج ÷ عدد الأنوية (عملياتنا وSystem/Idle مستثناة؛ <1% ⇒ null).
+- **تنبيه الحمل المرتفع:** إعداد `loadAlert` (افتراضيًا `false`). مفعّلًا وخارج Eco: خيط يأخذ عيّنة معالج كل 5s؛ ≥90% لست عيّنات متتالية (30s) ⇒ `island:note` `{kind:"reminder", id:"load:<ms>", text:"حمل مرتفع منذ 30 ثانية: <app> يستهلك N% من المعالج"}` عبر `note::alert` نفسه (مرة كل 10 دقائق كحدّ أقصى). التطبيق المسبّب من متوسط الـ30s (خط أساس للعمليات يُلتقط عند أول عيّنة مرتفعة ويُحرَّر عند انكسار السلسلة). مطفأ/Eco ⇒ يفحص الإعداد كل 10s فقط بلا قراءة نظام.
+- **المنحنيان المصغّران (الواجهة فقط):** CPU/RAM بـ`Spark` الموجود (≤30 عيّنة) يتراكمان ما دام تبويب النظام ظاهرًا ويسقطان بإغلاقه.
+- **إعدادات جديدة (src/settings.ts):** `showCountdowns` (true) · `countdowns: [{id,name,date:YYYY-MM-DD}]` (حتى 12) · `showWorldClock` (false) · `worldClocks: string[]` (أسماء IANA، حتى 2) · `meetingLeadMin` (15، 1..60) · `loadAlert` (false). لا أوامر جديدة لها: الساعة الذهبية والعدّادات والساعة العالمية تُحسب في الواجهة بلا شبكة من مواقيت `today_get` وIntl.
+- **اجتماع قريب:** لا أمر جديد — `liveActivity.upcomingMeeting` على قائمة `meetings_list`/`meetings:update`؛ كبسولة وبطاقة بلون `--act-meeting` ضمن `meetingLeadMin` دقيقة قبل البدء و5 دقائق بعده.

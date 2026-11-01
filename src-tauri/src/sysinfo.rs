@@ -38,7 +38,7 @@ pub struct SysState {
 }
 
 #[cfg(windows)]
-fn times() -> Option<Times> {
+pub fn times() -> Option<Times> {
     use windows::Win32::Foundation::FILETIME;
     use windows::Win32::System::Threading::GetSystemTimes;
     let (mut i, mut k, mut u) = (FILETIME::default(), FILETIME::default(), FILETIME::default());
@@ -47,7 +47,7 @@ fn times() -> Option<Times> {
     Some((q(i), q(k), q(u)))
 }
 #[cfg(not(windows))]
-fn times() -> Option<Times> { None }
+pub fn times() -> Option<Times> { None }
 
 #[cfg(windows)]
 fn memory() -> (u64, u64) {

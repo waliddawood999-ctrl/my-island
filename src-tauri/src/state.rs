@@ -54,6 +54,7 @@ pub fn defaults() -> Map<String, Value> {
         "browserTabMode": false,
         "showNetSpeed": false,
         "meetingLeadMin": 15,
+        "loadAlert": false,
         "showToday": true,
         "prayerCity": "riyadh",
         "prayerAlerts": true

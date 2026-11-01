@@ -144,21 +144,33 @@ const SECRET_URL = "https://calendar.google.com/calendar/ical/secret-token-123/b
     const { ctx, page, errs } = await fresh(browser, { extra: {
       sysinfo_get: { cpu: 37, mem_used: 8e9, mem_total: 16e9, mem_percent: 50 },
       volume_get: { available: true, volume: 0.4, muted: false }, brightness_get: { available: true, level: 60 },
+      sysdepth_get: { gpu: 41.6, temps: { cpu: 55.2, gpu: null, ssd: 38 }, power_w: 12.34, top: { name: "chrome", cpu: 23.4 } },
     } });
     await open(page);
-    ok("نظام: لا قياس قبل فتح التبويب", (await nCalls(page, "sysinfo_get")) === 0);
+    ok("نظام: لا قياس قبل فتح التبويب (لا sysinfo_get ولا sysdepth_get)", (await nCalls(page, "sysinfo_get")) === 0 && (await nCalls(page, "sysdepth_get")) === 0);
     await tab(page, "System");
     await page.waitForTimeout(2500);
     const n1 = await nCalls(page, "sysinfo_get");
     ok("نظام: sysinfo_get يُستدعى أثناء الفتح (دورة 2s)", n1 >= 2, String(n1));
     const t = await body(page);
     ok("نظام: المعالج 37% والذاكرة 50%", /37%/.test(t) && /50%/.test(t), t.slice(0, 160));
+    const st = (id) => page.locator(`[data-testid="stat-${id}"]`).textContent();
+    ok("نظام: GPU 42% · حرارة 55°C · SSD 38°C · قدرة 12.3 W", /42%/.test(await st("gpu")) && /55°C/.test(await st("cpu-temp")) && /38°C/.test(await st("ssd-temp")) && /12\.3 W/.test(await st("power")), `${await st("gpu")} ${await st("cpu-temp")} ${await st("power")}`);
+    ok("نظام: حرارة GPU «—» صراحةً (ويندوز لا يتيحها) لا قيمة وهمية", (await st("gpu-temp")).replace(/\s/g, "").endsWith("—"), await st("gpu-temp"));
+    ok("نظام: أعلى تطبيق chrome · 23%", /chrome.*23%/.test(await st("top-app")), await st("top-app"));
+    await page.waitForTimeout(4500);
+    ok("نظام: منحنيان مصغّران (CPU وRAM) بنقاط بعد عدّة عيّنات", (await page.locator('[data-testid="activity-none"], svg[data-testid="spark"]').count()) === 2);
+    const pts = await page.locator('svg[data-testid="spark"] polyline').first().getAttribute("points");
+    ok("نظام: منحنى CPU فيه ≥2 نقطة", !!pts && pts.trim().split(" ").length >= 2, String(pts));
+    const fits = await page.evaluate(() => { const b = document.querySelector(".island-body"); const sec = document.querySelector('[data-testid="sys-depth"]'); if (!b || !sec) return null; const r = sec.getBoundingClientRect(), br = b.getBoundingClientRect(); return { bottom: Math.round(r.bottom), bodyBottom: Math.round(br.bottom) }; });
+    ok("نظام: شبكة العمق ضمن اللوحة 720×320 (بلا قصّ سفلي)", !!fits && fits.bottom <= fits.bodyBottom, JSON.stringify(fits));
     ok("نظام: volume_get وbrightness_get", (await nCalls(page, "volume_get")) >= 1 && (await nCalls(page, "brightness_get")) >= 1);
     await shot(page, "system");
     await tab(page, "Home");
-    const n2 = await nCalls(page, "sysinfo_get");
-    await page.waitForTimeout(5000);
-    ok("نظام: يتوقف القياس بمغادرة التبويب", (await nCalls(page, "sysinfo_get")) === n2, `${n2} → ${await nCalls(page, "sysinfo_get")}`);
+    const n2 = await nCalls(page, "sysinfo_get"), d2 = await nCalls(page, "sysdepth_get");
+    await page.waitForTimeout(7000);
+    ok("نظام: يتوقف القياس والمنحنيان بمغادرة التبويب (sysinfo_get وsysdepth_get)", (await nCalls(page, "sysinfo_get")) === n2 && (await nCalls(page, "sysdepth_get")) === d2, `${n2} → ${await nCalls(page, "sysinfo_get")} / ${d2} → ${await nCalls(page, "sysdepth_get")}`);
+    ok("نظام: لا svg منحنى خارج التبويب (يُفكَّك بإغلاقه)", (await page.locator('svg[data-testid="spark"]').count()) === 0);
     ok("نظام: لا أخطاء صفحة", errs.length === 0, errs.join("|"));
     await ctx.close();
   }
@@ -236,6 +248,7 @@ const SECRET_URL = "https://calendar.google.com/calendar/ical/secret-token-123/b
   // ---- Eco: يوقف الطقس (L1) وقياس النظام (L3) فعليًا ثم تعود الدورات عند الإطفاء ----
   {
     const extra = { today_get: TODAY, today_cities: [TODAY.city], weather_get: WEATHER,
+      sysdepth_get: { gpu: 10, temps: { cpu: 50, gpu: null, ssd: 30 }, power_w: null, top: null },
       sysinfo_get: { cpu: 37, mem_used: 8e9, mem_total: 16e9, mem_percent: 50 }, volume_get: { available: true, volume: 0.4, muted: false }, brightness_get: { available: true, level: 60 } };
     const { ctx, page, errs } = await fresh(browser, { eco: true, settings: { showWeather: true }, extra });
     await open(page);
@@ -244,11 +257,11 @@ const SECRET_URL = "https://calendar.google.com/calendar/ical/secret-token-123/b
     ok("Eco: «اليوم» المحلي يعمل بلا شبكة (مواقيت الصلاة تُحسب)", (await nCalls(page, "today_get")) >= 1 && /Next prayer/.test(await body(page)));
     await tab(page, "System");
     await page.waitForTimeout(4500);
-    ok("Eco: لا sysinfo_get أثناء فتح تبويب النظام", (await nCalls(page, "sysinfo_get")) === 0);
+    ok("Eco: لا sysinfo_get ولا sysdepth_get أثناء فتح تبويب النظام", (await nCalls(page, "sysinfo_get")) === 0 && (await nCalls(page, "sysdepth_get")) === 0);
     ok("Eco: التبويب يعلن التوقف", /Paused/.test(await body(page)), (await body(page)).slice(0, 120));
     await page.evaluate(() => window.__emit("perf:eco", { eco: false, reason: null, onBattery: null }));
     await page.waitForTimeout(3500);
-    ok("Eco مطفأ: تعود دورة sysinfo_get (≥2 في 3.5s)", (await nCalls(page, "sysinfo_get")) >= 2, String(await nCalls(page, "sysinfo_get")));
+    ok("Eco مطفأ: تعود دورة sysinfo_get (≥2 في 3.5s) وsysdepth_get", (await nCalls(page, "sysinfo_get")) >= 2 && (await nCalls(page, "sysdepth_get")) >= 1, `${await nCalls(page, "sysinfo_get")}/${await nCalls(page, "sysdepth_get")}`);
     await tab(page, "Home");
     await page.waitForTimeout(600);
     ok("Eco مطفأ: يعود الطقس (weather_get)", (await nCalls(page, "weather_get")) >= 1);
@@ -257,9 +270,9 @@ const SECRET_URL = "https://calendar.google.com/calendar/ical/secret-token-123/b
     await page.waitForTimeout(300);
     const w1 = await nCalls(page, "weather_get");
     await tab(page, "System");
-    const s1 = await nCalls(page, "sysinfo_get");
+    const s1 = await nCalls(page, "sysinfo_get"), sd1 = await nCalls(page, "sysdepth_get");
     await page.waitForTimeout(4500);
-    ok("Eco ثانية: لا استدعاءات جديدة للنظام ولا للطقس", (await nCalls(page, "sysinfo_get")) === s1 && (await nCalls(page, "weather_get")) === w1, `${s1}→${await nCalls(page, "sysinfo_get")} / ${w1}→${await nCalls(page, "weather_get")}`);
+    ok("Eco ثانية: لا استدعاءات جديدة للنظام ولا للطقس", (await nCalls(page, "sysinfo_get")) === s1 && (await nCalls(page, "sysdepth_get")) === sd1 && (await nCalls(page, "weather_get")) === w1, `${s1}→${await nCalls(page, "sysinfo_get")} / ${w1}→${await nCalls(page, "weather_get")}`);
     ok("Eco: لا أخطاء صفحة", errs.length === 0, errs.join("|"));
     await ctx.close();
   }

@@ -22,7 +22,7 @@ module.exports.bridge = (cfg) => `
       window.__calls.push([cmd, args]);
       if (cmd === 'plugin:event|listen') { (listeners[args.event] ||= []).push(args.handler); return Promise.resolve(args.handler); }
       if (cmd === 'plugin:event|unlisten') return Promise.resolve();
-      if (cfg.extra && Object.prototype.hasOwnProperty.call(cfg.extra, cmd)) return Promise.resolve(cfg.extra[cmd]);
+      if (cfg.extra && Object.prototype.hasOwnProperty.call(cfg.extra, cmd)) return Promise.resolve(JSON.parse(JSON.stringify(cfg.extra[cmd]))); // نسخة جديدة كل مرة كالاتصال الحقيقي
       if (cmd === 'settings_get') return Promise.resolve(cfg.settings);
       if (cmd === 'today_cities') return Promise.resolve([]);
       if (cmd === 'meetings_key_status') return Promise.resolve({ set: false });
