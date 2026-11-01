@@ -20,8 +20,10 @@ import { manualCheck } from "../../useUpdater";
 import type { ManualStatus } from "../../updater";
 import { GLASS_STYLE_VALUES, SECTION_KEYS, STYLE_PRESETS, exportSettings, parseImport, resetPatch } from "../../appearance";
 import { spring } from "../../motion";
+import { MOTION_PRESETS, MOTION_PRESET_KEYS, migrateReduce, normBounce, normPreset, normSpeed } from "../../islandMotion";
+import { normCardOrder } from "../../islandMachine";
 import { SOUND_IDS, SOUND_LABELS, normSound, normVolume, playSound } from "../../sounds";
-import { btnOutline, btnPrimary, ColorField, DirCtx, inputCls, LinesField, NumberField, Row, SearchCtx, Section, Segmented, Select, ShortcutField, Slider, SubHead, TextField, Toggle } from "./fields";
+import { btnOutline, btnPrimary, ColorField, DirCtx, inputCls, LinesField, NumberField, OrderField, Row, SearchCtx, Section, Segmented, Select, ShortcutField, Slider, SubHead, TextField, Toggle } from "./fields";
 
 interface CityOpt { id: string; ar: string; en: string }
 interface MonitorInfo { index: number; name: string; width: number; height: number; primary: boolean }
@@ -215,14 +217,6 @@ function App() {
             />
           </Row>
         </Section>
-        <Section title={i("السلوك", "Behavior")}>
-          <Row icon={ic(MousePointer2)} label={i("تأخير الفتح بالمرور", "Hover delay")} hint={i("المدة قبل فتح اللوحة عند وضع المؤشر على الحبة", "How long before the panel opens when you hover the pill")}>
-            <Slider label={i("تأخير الفتح بالمرور", "Hover delay")} value={s.hoverDelayMs ?? 250} min={0} max={600} step={25} format={ms} onCommit={(v) => set({ hoverDelayMs: v })} />
-          </Row>
-          <Row icon={ic(Hourglass)} label={i("تأخير الانكماش", "Collapse delay")} hint={i("المدة قبل إغلاق اللوحة بعد ابتعاد المؤشر", "How long before the panel closes after the pointer leaves")}>
-            <Slider label={i("تأخير الانكماش", "Collapse delay")} value={s.collapseDelayMs ?? 350} min={100} max={1500} step={50} format={ms} onCommit={(v) => set({ collapseDelayMs: v })} />
-          </Row>
-        </Section>
         <Backup s={s} />
       </>),
     },
@@ -230,7 +224,7 @@ function App() {
       id: "island", icon: <PictureInPicture2 size={16} />, label: i("الجزيرة", "Island"), desc: i("الحجم والموضع والظهور — الشكل ثابت ولا يتغيّر إلا من هنا.", "Size, position and visibility — the shape is fixed and only changes here."),
       body: (<>
         <Section title={i("الحجم والشكل", "Size & shape")}>
-          <Row icon={ic(Ruler)} label={i("عرض الحبة", "Pill width")} hint={i("عرض الحبة وهي مغلقة", "Width of the pill when closed")}>
+          <Row icon={ic(Ruler)} label={i("عرض الحبة", "Pill width")} hint={i("مقاس الحبة: العرض للحالة الصغيرة", "Pill size: the width of the small state")}>
             <Slider label={i("عرض الحبة", "Pill width")} value={s.pillWidth ?? 220} min={160} max={280} step={5} format={px} onLive={(v) => set({ pillWidth: v })} onCommit={(v) => set({ pillWidth: v })} />
           </Row>
           <Row icon={ic(Ruler)} label={i("ارتفاع الحبة", "Pill height")} hint={i("ارتفاع الحبة وهي مغلقة", "Height of the pill when closed")}>
@@ -238,6 +232,24 @@ function App() {
           </Row>
           <Row icon={ic(Square)} label={i("استدارة الحبة", "Pill corner radius")} hint={i("0 = كبسولة كاملة تلقائيًا", "0 = automatic full capsule")}>
             <Slider label={i("استدارة الحبة", "Pill corner radius")} value={s.pillRadius ?? 0} min={0} max={22} step={1} format={(v) => (v === 0 ? i("تلقائي", "Auto") : `${v} px`)} onCommit={(v) => set({ pillRadius: v })} />
+          </Row>
+          <Row icon={ic(Ruler)} label={i("عرض اللمحة", "Peek width")} hint={i("عرض الجزيرة لما تتمدد عند المرور", "Island width when it expands on hover")}>
+            <Slider label={i("عرض اللمحة", "Peek width")} value={s.peekWidth ?? 400} min={240} max={560} step={4} format={px} onLive={(v) => set({ peekWidth: v })} onCommit={(v) => set({ peekWidth: v })} />
+          </Row>
+          <Row icon={ic(Ruler)} label={i("ارتفاع اللمحة", "Peek height")} hint={i("ارتفاع الجزيرة في اللمحة", "Island height in the peek")}>
+            <Slider label={i("ارتفاع اللمحة", "Peek height")} value={s.peekHeight ?? 120} min={72} max={200} step={2} format={px} onLive={(v) => set({ peekHeight: v })} onCommit={(v) => set({ peekHeight: v })} />
+          </Row>
+          <Row icon={ic(Square)} label={i("زوايا اللمحة", "Peek corner radius")} hint={i("كل ما زادت صارت أنعم", "The higher, the softer")}>
+            <Slider label={i("زوايا اللمحة", "Peek corner radius")} value={s.peekRadius ?? 30} min={12} max={60} step={1} format={px} onLive={(v) => set({ peekRadius: v })} onCommit={(v) => set({ peekRadius: v })} />
+          </Row>
+          <Row icon={ic(Ruler)} label={i("عرض اللوحة", "Panel width")} hint={i("عرض اللوحة الكاملة", "Width of the full panel")}>
+            <Slider label={i("عرض اللوحة", "Panel width")} value={s.panelWidth ?? 520} min={420} max={720} step={4} format={px} onLive={(v) => set({ panelWidth: v })} onCommit={(v) => set({ panelWidth: v })} />
+          </Row>
+          <Row icon={ic(Ruler)} label={i("ارتفاع اللوحة", "Panel height")} hint={i("ارتفاع اللوحة الكاملة", "Height of the full panel")}>
+            <Slider label={i("ارتفاع اللوحة", "Panel height")} value={s.panelHeight ?? 290} min={220} max={420} step={2} format={px} onLive={(v) => set({ panelHeight: v })} onCommit={(v) => set({ panelHeight: v })} />
+          </Row>
+          <Row icon={ic(Square)} label={i("زوايا اللوحة", "Panel corner radius")} hint={i("استدارة زوايا اللوحة", "Roundness of the panel corners")}>
+            <Slider label={i("زوايا اللوحة", "Panel corner radius")} value={s.panelRadius ?? 34} min={16} max={60} step={1} format={px} onLive={(v) => set({ panelRadius: v })} onCommit={(v) => set({ panelRadius: v })} />
           </Row>
         </Section>
         <Section title={i("الموضع", "Position")}>
@@ -250,6 +262,29 @@ function App() {
           </Row>
           <Row icon={ic(MoveVertical)} label={i("الإزاحة الرأسية", "Vertical offset")} hint={i("المسافة بين الحبة وأعلى الشاشة", "Gap between the pill and the top of the screen")}>
             <Slider label={i("الإزاحة الرأسية", "Vertical offset")} value={s.offsetY ?? 0} min={0} max={60} step={2} format={px} onCommit={(v) => set({ offsetY: v })} />
+          </Row>
+        </Section>
+        <Section title={i("الفتح والتنقل", "Opening & navigation")}>
+          <Row icon={ic(Hourglass)} label={i("مهلة الفتح", "Open delay")} hint={i("كم يبقى الماوس على الجزيرة قبل ما تنفتح", "How long the mouse stays on the island before it opens")}>
+            <Slider label={i("مهلة الفتح", "Open delay")} value={s.hoverDelayMs ?? 250} min={0} max={800} step={50} format={ms} onCommit={(v) => set({ hoverDelayMs: v })} />
+          </Row>
+          <Row icon={ic(MousePointer2)} label={i("منطقة الفتح", "Hover zone")} hint={i("الجزيرة نفسها فقط، أو تحتها أيضاً", "The island itself only, or the area below it too")}>
+            <Segmented label={i("منطقة الفتح", "Hover zone")} value={s.hoverZone ?? "island"} onChange={(v) => set({ hoverZone: v })}
+              options={[{ value: "island", label: i("الجزيرة", "Island") }, { value: "islandAndBelow", label: i("وتحتها", "And below") }]} />
+          </Row>
+          <Row icon={ic(MousePointer2)} label={i("تبديل البطاقات بالعجلة", "Wheel switches cards")} hint={i("في اللمحة، العجلة تنقلك بين البطاقات", "In the peek, the mouse wheel moves between cards")}>
+            <Toggle label={i("تبديل البطاقات بالعجلة", "Wheel switches cards")} value={s.peekWheelCycle ?? true} onChange={(v) => set({ peekWheelCycle: v })} />
+          </Row>
+          <Row icon={ic(Layers)} label={i("ترتيب بطاقات اللمحة", "Peek cards order")} hint={i("أول بطاقة هي اللي تطلع أول", "The first card is the one shown first")}>
+            <OrderField label={i("ترتيب بطاقات اللمحة", "Peek cards order")} value={normCardOrder(s.peekCardOrder)} onChange={(v) => set({ peekCardOrder: v })}
+              labels={{ player: i("المشغّل", "Player"), today: i("اليوم", "Today"), weather: i("الطقس", "Weather"), timer: i("المؤقّت", "Timer") }} />
+          </Row>
+          <Row icon={ic(MousePointer2)} label={i("التنقل بالعجلة في اللوحة", "Wheel pages in the panel")} hint={i("فوق = الصفحة التالية، تحت = السابقة", "Up = next page, down = previous")}>
+            <Toggle label={i("التنقل بالعجلة في اللوحة", "Wheel pages in the panel")} value={s.panelWheelPaging ?? true} onChange={(v) => set({ panelWheelPaging: v })} />
+          </Row>
+          <Row icon={ic(PanelTop)} label={i("التبويبات في اللوحة", "Panel tabs")} hint={i("شكل أزرار التنقل أعلى اللوحة", "Style of the navigation buttons at the top of the panel")}>
+            <Segmented label={i("التبويبات في اللوحة", "Panel tabs")} value={s.panelTabsStyle ?? "icons"} onChange={(v) => set({ panelTabsStyle: v })}
+              options={[{ value: "labels", label: i("نصوص", "Labels") }, { value: "icons", label: i("أيقونات", "Icons") }, { value: "dots", label: i("نقاط", "Dots") }, { value: "hidden", label: i("مخفية", "Hidden") }]} />
           </Row>
         </Section>
         <Section title={i("الظهور", "Visibility")}>
@@ -298,31 +333,26 @@ function App() {
             <Segmented label={i("النمط", "Theme")} value={s.themeMode ?? "system"} onChange={(v) => set({ themeMode: v })}
               options={[{ value: "system", label: i("النظام", "System") }, { value: "light", label: i("فاتح", "Light") }, { value: "dark", label: i("داكن", "Dark") }]} />
           </Row>
-          <Row icon={ic(Layers)} label={i("المادة", "Material")} hint={i("زجاجية: شفافة مع تمويه · عادية: سطح غير شفاف", "Glass: see-through with blur · Solid: an opaque surface")}>
-            <Segmented label={i("المادة", "Material")} value={glassOn ? "glass" : "solid"} onChange={(v) => set({ themeMaterial: v })}
-              options={[{ value: "solid", label: i("عادية (مصمتة)", "Solid") }, { value: "glass", label: i("زجاجية", "Glass") }]} />
+          <Row icon={ic(Layers)} label={i("الخلفية", "Background")} hint={i("الزجاج يبيّن اللي خلف الجزيرة بشكل ضبابي", "Glass shows what is behind the island, blurred")}>
+            <Segmented label={i("الخلفية", "Background")} value={!glassOn ? "solid" : (s.glassStyle ?? "crystal")} onChange={(v) => set(v === "solid" ? { themeMaterial: "solid" } : GLASS_STYLE_VALUES[v])}
+              options={[{ value: "solid", label: i("أسود صلب", "Solid black") }, { value: "crystal", label: i("زجاج كريستال", "Crystal glass") }, { value: "clear", label: i("زجاج شفاف", "Clear glass") }]} />
           </Row>
-          {glassOn && (
-            <Row icon={ic(Sparkles)} label={i("أسلوب الزجاج", "Glass style")} hint={i("بلوري: سميك ولامع كالسائل · شفاف: خفيف يُظهر سطح المكتب", "Crystal: thick and luminous · Clear: light, the desktop shows through")} col>
-              <div className="st-gstyles" role="radiogroup" aria-label={i("أسلوب الزجاج", "Glass style")}>
-                {(["crystal", "clear"] as const).map((g) => (
-                  <button key={g} role="radio" aria-checked={(s.glassStyle ?? "crystal") === g} data-glass-style={g} className="st-gstyle" onClick={() => set(GLASS_STYLE_VALUES[g])}>
-                    <span className={`st-gprev ${g}`} />
-                    <span className="st-row-title">{g === "crystal" ? i("الزجاج البلوري", "Crystal glass") : i("الزجاج الشفاف", "Clear glass")}</span>
-                    <span className="st-row-hint">{g === "crystal" ? i("تمويه قوي، حافة لامعة، عمق وتوهّج", "Strong frost, bright rim, depth and glow") : i("تمويه خفيف، حدّ رفيع، رؤية واضحة للخلفية", "Light blur, thin border, clear see-through")}</span>
-                  </button>
-                ))}
-              </div>
-            </Row>
-          )}
+          <Row icon={ic(Percent)} label={i("الكثافة", "Density of background")} hint={i("كم تغطي الخلفية اللي خلف الجزيرة", "How much the background covers what is behind the island")}>
+            <Slider label={i("الكثافة", "Density of background")} value={s.backgroundOpacity ?? 1} min={0.3} max={1} step={0.05} format={(v) => `${Math.round(v * 100)}%`} onLive={(v) => set({ backgroundOpacity: v })} onCommit={(v) => set({ backgroundOpacity: v })} />
+          </Row>
+          <Row icon={ic(Brush)} label={i("لون التمييز", "Accent source")} hint={i("تلقائي من غلاف الأغنية أو لون ثابت", "Automatic from the album art, or a fixed color")}>
+            <Segmented label={i("لون التمييز", "Accent source")} value={s.accentMode ?? "auto"} onChange={(v) => set({ accentMode: v })}
+              options={[{ value: "auto", label: i("تلقائي", "Auto") }, { value: "fixed", label: i("ثابت", "Fixed") }]} />
+          </Row>
+          
           {glassOn && (
             <Row icon={ic(Moon)} label={i("قوة تظليل الزجاج", "Glass tint strength")} hint={i("كم تغمق لوحة الزجاج؛ كلما زاد صار النص أوضح", "How dark the glass looks; higher makes text easier to read")}>
               <Slider label={i("قوة تظليل الزجاج", "Glass tint strength")} value={s.glassTint ?? 45} min={0} max={80} step={1} format={pct} onLive={(v) => set({ glassTint: v })} onCommit={(v) => set({ glassTint: v })} />
             </Row>
           )}
           {glassOn && (s.glassStyle ?? "crystal") === "crystal" && (
-            <Row icon={ic(Waves)} label={i("تمويه الزجاج (CSS)", "Glass blur (CSS)")} hint={i("كم يتشوّش ما خلف الزجاج", "How blurry things behind the glass look")}>
-              <Slider label={i("تمويه الزجاج (CSS)", "Glass blur (CSS)")} value={clampGlassBlur(s.glassBlur)} min={0} max={40} step={1} format={px} onLive={(v) => set({ glassBlur: v })} onCommit={(v) => set({ glassBlur: v })} />
+            <Row icon={ic(Waves)} label={i("الضبابية", "Blur")} hint={i("للزجاج فقط، والحد ٤٠ عشان الأداء", "Glass only, capped at 40 for performance")}>
+              <Slider label={i("الضبابية", "Blur")} value={clampGlassBlur(s.glassBlur)} min={0} max={40} step={1} format={px} onLive={(v) => set({ glassBlur: v })} onCommit={(v) => set({ glassBlur: v })} />
             </Row>
           )}
           {glassOn && (s.glassStyle ?? "crystal") === "crystal" && (
@@ -332,8 +362,8 @@ function App() {
           )}
         </Section>
         <Section title={i("اللون والتفاصيل", "Color & details")}>
-          <Row icon={ic(Brush)} label={i("لون التمييز", "Accent color")} hint={i("لون الأزرار والمفاتيح المفعّلة", "Color of buttons and switches that are on")}>
-            <ColorField label={i("لون التمييز", "Accent color")} value={s.accentColor ?? "#4fd1c5"} onChange={(v) => set({ accentColor: v })} />
+          <Row icon={ic(Brush)} label={i("لون ثابت", "Fixed color")} hint={i("للموجة وشريط التقدم والأيقونات", "For the waveform, progress bar and icons")}>
+            <ColorField label={i("لون ثابت", "Fixed color")} value={s.accentColor ?? "#4fd1c5"} onChange={(v) => set({ accentColor: v })} />
           </Row>
           <Row icon={ic(Square)} label={i("قوة الحدود", "Border strength")} hint={i("وضوح الخط الرفيع حول العناصر", "How visible the thin outline around things is")}>
             <Slider label={i("قوة الحدود", "Border strength")} value={s.borderStrength ?? 50} min={0} max={100} step={5} format={pct} onLive={(v) => set({ borderStrength: v })} onCommit={(v) => set({ borderStrength: v })} />
@@ -363,15 +393,19 @@ function App() {
             <Segmented label={i("مستوى الحركة", "Motion level")} value={s.motionLevel === "reduced" || s.motionLevel === "off" ? s.motionLevel : "full"} onChange={(v) => set({ motionLevel: v })}
               options={[{ value: "full", label: i("كاملة", "Full") }, { value: "reduced", label: i("مخففة", "Reduced") }, { value: "off", label: i("متوقفة", "Off") }]} />
           </Row>
-          <Row icon={ic(Gauge)} label={i("سرعة الحركة", "Animation speed")} hint={i("يجعل كل الحركات أسرع أو أبطأ", "Makes every animation faster or slower")}>
-            <Slider label={i("سرعة الحركة", "Animation speed")} value={s.animSpeed ?? 100} min={50} max={150} step={10} format={(v) => `${(v / 100).toFixed(1)}×`} onCommit={(v) => set({ animSpeed: v })} />
+          <Row icon={ic(Waves)} label={i("نوع الحركة", "Motion style")} hint={i("إحساس التمدد والرجوع، والهادئ هو المقترح", "How expanding and closing feel; Calm is recommended")}>
+            <Select label={i("نوع الحركة", "Motion style")} value={normPreset(s.motionPreset)} onChange={(v) => set({ motionPreset: v, motionBounce: MOTION_PRESETS[v].bounce })}
+              options={MOTION_PRESET_KEYS.map((k) => ({ value: k, label: i(MOTION_PRESETS[k].ar, MOTION_PRESETS[k].en) }))} />
           </Row>
-          <Row icon={ic(Waves)} label={i("نمط النابض", "Spring style")} hint={i("طريقة تحرّك العناصر: حادّة وسريعة، أو ناعمة، أو هادئة وبطيئة", "How things move: quick, smooth, or slow and soft")}>
-            <Segmented label={i("نمط النابض", "Spring style")} value={s.springStyle ?? "snappy"} onChange={(v) => set({ springStyle: v })}
-              options={[{ value: "snappy", label: i("حاد", "Snappy") }, { value: "smooth", label: i("ناعم", "Smooth") }, { value: "gentle", label: i("هادئ", "Gentle") }]} />
+          <Row icon={ic(Gauge)} label={i("السرعة", "Speed")} hint={i("١ هو الافتراضي، والأعلى أسرع", "1 is the default; higher is faster")}>
+            <Slider label={i("السرعة", "Speed")} value={normSpeed(s.motionSpeed)} min={0.5} max={2} step={0.1} format={(v) => `${v.toFixed(1)}×`} onCommit={(v) => set({ motionSpeed: v })} />
           </Row>
-          <Row icon={ic(Eye)} label={i("تقليل الحركة", "Reduce motion")} hint={i("يستبدل الحركات الكبيرة بتلاشٍ سريع، ويتّبع إعداد ويندوز أيضًا", "Swaps big movements for quick fades, and also follows the Windows setting")}>
-            <Toggle label={i("تقليل الحركة", "Reduce motion")} value={s.reduceMotion ?? false} onChange={(v) => set({ reduceMotion: v })} />
+          <Row icon={ic(Waves)} label={i("الارتداد", "Bounce")} hint={i("صفر يعني بدون اهتزاز، والإغلاق دائماً بدون ارتداد", "Zero means no wobble; closing never bounces")}>
+            <Slider label={i("الارتداد", "Bounce")} value={normBounce(s.motionBounce)} min={0} max={0.4} step={0.02} format={(v) => v.toFixed(2)} onCommit={(v) => set({ motionBounce: v })} />
+          </Row>
+          <Row icon={ic(Eye)} label={i("تقليل الحركة", "Reduce motion")} hint={i("يتبع إعداد ويندوز، أو دائماً، أو أبداً", "Follows the Windows setting, always, or never")}>
+            <Segmented label={i("تقليل الحركة", "Reduce motion")} value={migrateReduce(s.reduceMotion)} onChange={(v) => set({ reduceMotion: v })}
+              options={[{ value: "system", label: i("النظام", "System") }, { value: "always", label: i("دائماً", "Always") }, { value: "never", label: i("أبداً", "Never") }]} />
           </Row>
         </Section>
       ),
@@ -409,6 +443,26 @@ function App() {
         <Section title={i("الميديا", "Media")}>
           <Row icon={ic(Music)} label={i("طيف الصوت والحبة السائلة", "Audio spectrum & liquid pill")} hint={i("يلتقط صوت الجهاز محليًا أثناء تشغيل الميديا فقط", "Captures system audio locally, only while media plays")}>
             <Toggle label={i("طيف الصوت والحبة السائلة", "Audio spectrum & liquid pill")} value={s.liquidSpectrum ?? false} onChange={(v) => set({ liquidSpectrum: v })} />
+          </Row>
+          <Row icon={ic(Music)} label={i("تخطيط المشغل", "Player layout")} hint={i("مضغوط، أو غلاف كبير، أو بسيط بدون غلاف", "Compact, large artwork, or minimal without artwork")}>
+            <Segmented label={i("تخطيط المشغل", "Player layout")} value={s.playerLayout ?? "compact"} onChange={(v) => set({ playerLayout: v })}
+              options={[{ value: "compact", label: i("مضغوط", "Compact") }, { value: "large", label: i("كبير", "Large") }, { value: "minimal", label: i("بسيط", "Minimal") }]} />
+          </Row>
+          <Row icon={ic(Waves)} label={i("المؤشر الصوتي", "Visualizer")} hint={i("شكل الحركة اللي تبيّن إن فيه صوت شغال", "The motion that shows sound is playing")}>
+            <Segmented label={i("المؤشر الصوتي", "Visualizer")} value={s.visualizer ?? "bars"} onChange={(v) => set({ visualizer: v })}
+              options={[{ value: "bars", label: i("أشرطة", "Bars") }, { value: "wave", label: i("موجة", "Wave") }, { value: "off", label: i("مطفأ", "Off") }]} />
+          </Row>
+          <Row icon={ic(Clock)} label={i("الوقت", "Playback time")} hint={i("الوقت المنقضي والمتبقي تحت شريط التقدم", "Elapsed and remaining time under the progress bar")}>
+            <Toggle label={i("الوقت", "Playback time")} value={s.showPlaybackTime ?? true} onChange={(v) => set({ showPlaybackTime: v })} />
+          </Row>
+          <Row icon={ic(Info)} label={i("شارة المصدر", "Source badge")} hint={i("من وين الصوت: YouTube أو Spotify أو غيره", "Where the sound comes from: YouTube, Spotify or others")}>
+            <Toggle label={i("شارة المصدر", "Source badge")} value={s.showSourceBadge ?? true} onChange={(v) => set({ showSourceBadge: v })} />
+          </Row>
+          <Row icon={ic(Gauge)} label={i("شريط التقدم", "Progress bar")} hint={i("الخط اللي يبيّن وين وصلت في الأغنية", "The line that shows how far into the song you are")}>
+            <Toggle label={i("شريط التقدم", "Progress bar")} value={s.showProgress ?? true} onChange={(v) => set({ showProgress: v })} />
+          </Row>
+          <Row icon={ic(Palette)} label={i("خلفية من الغلاف", "Artwork backdrop")} hint={i("خلفية ضبابية بلون غلاف الأغنية", "A blurred backdrop in the album art's colors")}>
+            <Toggle label={i("خلفية من الغلاف", "Artwork backdrop")} value={s.artworkBackdrop ?? true} onChange={(v) => set({ artworkBackdrop: v })} />
           </Row>
         </Section>
         <Section title={i("البطارية والشبكة", "Battery & network")}>
@@ -613,7 +667,7 @@ function App() {
           </aside>
           <main ref={mainRef} className="st-main">
             <AnimatePresence mode="wait" initial={false}>
-              <motion.div key={searching ? "search" : cur.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={spring.content}>
+              <motion.div key={searching ? "search" : cur.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.08 } }} transition={{ duration: 0.16, ease: [0.2, 0.8, 0.2, 1] }}>
                 {visible.map((x) => (
                   <div key={x.id} className="st-sec" data-group={x.id}>
                     <div className="st-head">

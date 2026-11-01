@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { motion } from "motion/react";
-import { ChevronDown, Keyboard, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, Keyboard, X } from "lucide-react";
 import { spring } from "../../motion";
 import { i } from "../../i18n";
 import { ACCENT_PRESETS } from "../../appearance";
@@ -217,5 +217,25 @@ export function TextField(p: { value: string; onCommit: (v: string) => void; lab
       onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
       className={`${inputCls} w-64`}
     />
+  );
+}
+
+/** ترتيب عناصر بأزرار أعلى/أسفل (ترتيب بطاقات اللمحة): يعيد مصفوفة جديدة عند التحريك. */
+export function OrderField({ value, labels, onChange, label }: { value: string[]; labels: Record<string, string>; onChange: (v: string[]) => void; label: string }) {
+  const move = (n: number, d: number) => {
+    const m = n + d; if (m < 0 || m >= value.length) return;
+    const next = [...value]; [next[n], next[m]] = [next[m], next[n]]; onChange(next);
+  };
+  return (
+    <ol aria-label={label} data-testid="order-field" className="flex w-60 flex-col gap-1">
+      {value.map((k, n) => (
+        <li key={k} data-key={k} className="flex items-center gap-2" style={{ background: "var(--c-surface)", borderRadius: "var(--radius-control)", boxShadow: "inset 0 0 0 1px var(--c-border)", padding: "4px 6px 4px 12px" }}>
+          <span className="st-val" style={{ minWidth: 14, textAlign: "start", opacity: 0.5 }}>{n + 1}</span>
+          <span dir="auto" className="flex-1 truncate" style={{ fontSize: 13 }}>{labels[k] ?? k}</span>
+          <button className="st-btn" style={{ width: 28, height: 28, paddingInline: 0 }} disabled={n === 0} aria-label={`${labels[k] ?? k} — ${i("أعلى", "Move up")}`} onClick={() => move(n, -1)}><ArrowUp size={13} /></button>
+          <button className="st-btn" style={{ width: 28, height: 28, paddingInline: 0 }} disabled={n === value.length - 1} aria-label={`${labels[k] ?? k} — ${i("أسفل", "Move down")}`} onClick={() => move(n, 1)}><ArrowDown size={13} /></button>
+        </li>
+      ))}
+    </ol>
   );
 }
