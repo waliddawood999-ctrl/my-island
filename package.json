@@ -20,7 +20,8 @@
     "test:home": "node scripts/home.test.mjs",
     "test:today": "node scripts/today.test.mjs",
     "test:clip": "node scripts/clipActions.test.mjs",
-    "test:lottie": "node scripts/lottie.regression.cjs"
+    "test:lottie": "node scripts/lottie.regression.cjs",
+    "test:glass": "node scripts/glass.test.mjs"
   },
   "dependencies": {
     "@fontsource/almarai": "^5.3.0",

@@ -7,6 +7,7 @@ import { saveSettings, useSettings } from "../../useSettings";
 import { EcoIndicator, RamUsage } from "./Perf";
 import { WorkspacesEditor } from "./Workspaces";
 import { CountdownsEditor, WorldClockEditor } from "./TodayExtras";
+import { clampGlassBlur, clampGlassSaturation } from "../../glass";
 import { manualCheck } from "../../useUpdater";
 import type { ManualStatus } from "../../updater";
 import { Blocks, Gauge, Palette, SlidersHorizontal } from "lucide-react";
@@ -232,6 +233,24 @@ function App() {
               label={i("قوة تظليل الزجاج", "Glass tint strength")} value={s.glassTint ?? 45} min={0} max={80} step={1} format={pct}
               onLive={(v) => saveSettings({ glassTint: v })}
               onCommit={(v) => saveSettings({ glassTint: v })}
+            />
+          </Row>
+        )}
+        {(s.themeMaterial ?? "solid") === "glass" && (
+          <Row label={i("تمويه الزجاج (CSS)", "Glass blur (CSS)")} hint={i("طبقة الصفحة فوق الزجاج الأصلي؛ يُحدّ تلقائيًا في وضع التوفير", "Page layer over the native glass; capped automatically in eco mode")}>
+            <Slider
+              label={i("تمويه الزجاج (CSS)", "Glass blur (CSS)")} value={clampGlassBlur(s.glassBlur)} min={0} max={40} step={1} format={px}
+              onLive={(v) => saveSettings({ glassBlur: v })}
+              onCommit={(v) => saveSettings({ glassBlur: v })}
+            />
+          </Row>
+        )}
+        {(s.themeMaterial ?? "solid") === "glass" && (
+          <Row label={i("تشبّع الزجاج", "Glass saturation")} hint={i("يزيد حيوية الألوان خلف الزجاج؛ 100% = بلا تعزيز", "Boosts colours behind the glass; 100% = no boost")}>
+            <Slider
+              label={i("تشبّع الزجاج", "Glass saturation")} value={clampGlassSaturation(s.glassSaturation)} min={100} max={200} step={5} format={pct}
+              onLive={(v) => saveSettings({ glassSaturation: v })}
+              onCommit={(v) => saveSettings({ glassSaturation: v })}
             />
           </Row>
         )}

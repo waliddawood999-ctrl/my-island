@@ -3,17 +3,26 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { DEFAULTS, type Settings } from "./settings";
 import { setLang } from "./i18n";
-import { useMotionSync } from "./motion";
+import { useMotionSync, useEco } from "./motion";
+import { glassVars } from "./glass";
 
 /** glassTint صالح 0..80 (غير ذلك ⇒ الافتراضي 45). */
 export const clampTint = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? Math.min(80, Math.max(0, Math.round(v))) : 45);
 
 /** يضبط data-theme/data-material على <html> (CSS في index.css/island.css يتكفّل بالباقي). */
-function useThemeAttrs(mode: unknown, material: unknown, tint: unknown) {
+function useThemeAttrs(mode: unknown, material: unknown, tint: unknown, blur: unknown, sat: unknown) {
   const m = mode === "light" ? "light" : "dark";
   const t = material === "glass" ? "glass" : "solid";
   // قوة التظليل 0..80 ⇒ متغيّر CSS رقمي (island.css يشتق منه صبغة الصفحة).
   const g = clampTint(tint);
+  // طبقة الزجاج CSS: متغيرات فقط (حيّة أثناء السحب بلا مسح للخلفية الأصلية)؛ Eco يختصرها.
+  const { eco } = useEco();
+  const gv = glassVars(blur, sat, eco);
+  useEffect(() => {
+    const st = document.documentElement.style;
+    st.setProperty("--glass-blur", gv.blur);
+    st.setProperty("--glass-saturate", gv.saturate);
+  }, [gv.blur, gv.saturate]);
   useEffect(() => {
     document.documentElement.dataset.theme = m;
     document.documentElement.dataset.material = t;
@@ -36,7 +45,7 @@ export function useSettings(): Partial<Settings> {
     return () => { alive = false; un.then((f) => f()); };
   }, []);
   setLang(s.language === "en" ? "en" : "ar");
-  useThemeAttrs(s.themeMode, s.themeMaterial, s.glassTint);
+  useThemeAttrs(s.themeMode, s.themeMaterial, s.glassTint, s.glassBlur, s.glassSaturation);
   useMotionSync(s.motionLevel); // مستوى الحركة الفعلي (الإعداد + Eco) لهذه النافذة
   return s;
 }

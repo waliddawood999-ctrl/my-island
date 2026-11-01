@@ -51,6 +51,8 @@ pub fn defaults() -> Map<String, Value> {
         "themeMode": "dark",
         "themeMaterial": "solid",
         "glassTint": 45,
+        "glassBlur": 24,
+        "glassSaturation": 180,
         "browserTabMode": false,
         "showNetSpeed": false,
         "meetingLeadMin": 15,

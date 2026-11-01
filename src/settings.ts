@@ -89,6 +89,8 @@ export interface Settings {
   themeMode:'dark'|'light',
   themeMaterial:'solid'|'glass',
   glassTint:number,
+  glassBlur:number,
+  glassSaturation:number,
   browserTabMode:boolean,
   showNetSpeed:boolean,
   workspaces:Workspace[],
@@ -159,6 +161,8 @@ export const DEFAULTS: Partial<Settings> = {
   themeMode: 'dark',       // dark = أسود كالمرجع · light = فاتح كالمرجع (كل النوافذ)
   themeMaterial: 'solid',  // solid = مصمت · glass = شفافية مع blur
   glassTint: 45,           // قوة تظليل الزجاج 0..80 (٪) — لا أثر إلا مع themeMaterial=glass؛ ويندوز 11: صبغة الصفحة · ويندوز 10: ألفا الأكريليك
+  glassBlur: 24,           // تمويه طبقة الزجاج CSS بالبكسل 0..40 (css.glass من المرجع) — مستقل عن الزجاج الأصلي؛ لا أثر إلا مع themeMaterial=glass؛ Eco يحدّه بـ8
+  glassSaturation: 180,    // تشبّع طبقة الزجاج CSS 100..200 (٪)؛ Eco يجعله 100
   browserTabMode: false,   // وضع تبويب المتصفح: حين يكون المتصفح (chrome/msedge/firefox/brave) أمامية ومكبَّرًا تتخذ الحبة هيئة تبويب في شريطه (إرساء بصري لا تبويب حقيقي)
   showNetSpeed: false,     // سرعتا الشبكة (تحميل/رفع) في الكبسولة المدمجة؛ القراءة من عدّادات ويندوز فقط أثناء التفعيل (netspeed_active)
   eyesEnabled: true,       // عيون التميمة بجانب الساعة في الحبة المنكمشة (تُخفى تلقائيًا مع الميديا/التوفير/الحركة المتوقفة)
