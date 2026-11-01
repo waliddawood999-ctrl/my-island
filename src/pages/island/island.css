@@ -7,40 +7,36 @@ html, body, #root {
 }
 
 /*
- * رموز التصميم الموحّدة (docs/MOTION.md §رموز بصرية): الزوايا، الأسطح، الحلقات، الضبابية، المسافات.
- * لا قيم مبعثرة في المكوّنات — استعمل هذه المتغيرات / الفئات.
+ * طبقة توافق: أسماء --island-* القديمة صارت مرادفات لرموز src/tokens.css (المصدر الوحيد). لا قيم مبعثرة في المكوّنات.
  */
 :root {
-  --island-radius-pill: 16px;
-  --island-radius-palette: 24px;
-  --island-radius-panel: 28px;
-  --island-radius-card: 14px;
-  --island-radius-control: 9999px;
+  --island-radius-pill: var(--radius-pill);
+  --island-radius-palette: var(--radius-palette);
+  --island-radius-panel: var(--radius-panel);
+  --island-radius-card: var(--radius-card);
+  --island-radius-control: var(--radius-chip);
 
   --island-surface: rgb(255 255 255 / 0.06);
   --island-surface-hover: rgb(255 255 255 / 0.11);
   --island-surface-active: rgb(255 255 255 / 0.18);
   --island-surface-strong: rgb(255 255 255 / 0.20);
-  --island-text-dim: rgb(255 255 255 / 0.60);
-  --island-text-faint: rgb(255 255 255 / 0.40);
+  --island-text-dim: var(--c-text-secondary);
+  --island-text-faint: var(--c-text-tertiary);
   /* حلقة داخلية رفيعة بدل الظل الخارجي (النافذة تُقصّ على حجم الحبة فلا يظهر ظل خارجي). */
-  --island-ring: inset 0 0 0 1px rgb(255 255 255 / 0.08);
-  --island-ring-open: inset 0 0 0 1px rgb(255 255 255 / 0.10), inset 0 1px 0 rgb(255 255 255 / 0.06);
+  --island-ring: inset 0 0 0 1px rgb(255 255 255 / calc(0.08 * var(--border-k)));
+  --island-ring-open: inset 0 0 0 1px rgb(255 255 255 / calc(0.10 * var(--border-k))), inset 0 1px 0 rgb(255 255 255 / 0.06);
   --island-blur: 14px;
-  /* طبقة الزجاج CSS (glassBlur/glassSaturation ⇒ useSettings/glass.ts)؛ احتياط = الافتراضيان. */
-  --glass-blur: 24px;
-  --glass-saturate: 1.8;
   /* جسم الحبة/اللوحة: الداكن أسود كالمرجع، والزجاجي نصف شفاف. */
   --island-bg: #000;
   --island-fg: #fff;
 
-  --island-gap: 12px;
-  --island-pad: 16px;
-  --island-section-gap: 12px;
+  --island-gap: var(--space-3);
+  --island-pad: var(--density-pad);
+  --island-section-gap: var(--space-3);
 }
 
 /* أسطح البطاقات والأزرار: hover/active أوضح، الحركة (الحجم) عبر motion لا CSS. */
-.i-card { background: var(--island-surface); border-radius: var(--island-radius-card); }
+.i-card { background: var(--island-surface); border-radius: var(--radius-card); box-shadow: inset 0 0 0 1px var(--c-border); }
 .i-card-hover:hover { background: var(--island-surface-hover); }
 .i-btn { border-radius: var(--island-radius-control); color: var(--island-text-dim); }
 .i-btn:hover:not(:disabled) { background: var(--island-surface-hover); color: #fff; }
@@ -97,40 +93,100 @@ html, body, #root {
   --island-surface-strong: rgb(13 16 23 / 0.18);
   --island-text-dim: rgb(13 16 23 / 0.62);
   --island-text-faint: rgb(13 16 23 / 0.42);
-  --island-ring: inset 0 0 0 1px rgb(13 16 23 / 0.12);
-  --island-ring-open: inset 0 0 0 1px rgb(13 16 23 / 0.14), inset 0 1px 0 rgb(255 255 255 / 0.7);
+  --island-ring: inset 0 0 0 1px rgb(13 16 23 / calc(0.12 * var(--border-k)));
+  --island-ring-open: inset 0 0 0 1px rgb(13 16 23 / calc(0.14 * var(--border-k))), inset 0 1px 0 rgb(255 255 255 / 0.7);
 }
 :root[data-theme="light"] .i-btn:hover:not(:disabled), :root[data-theme="light"] .i-btn:active:not(:disabled) { color: var(--island-fg); }
 :root[data-theme="light"] .i-btn:focus-visible { outline-color: rgb(13 16 23 / 0.6); }
 :root[data-theme="light"] .island-note-doc blockquote { border-inline-start-color: rgb(13 16 23 / 0.25); }
 :root[data-theme="light"] .island-note-doc code { background: rgb(13 16 23 / 0.08); }
 :root[data-theme="light"] .i-glass { background: rgb(240 242 246 / 0.72); }
-/* مادة زجاجية: جسم شفاف جزئيًا مع blur (يظهر أثره على ما خلف العناصر داخل الصفحة). */
-:root[data-material="glass"] { --island-bg: rgb(0 0 0 / calc(0.28 + var(--glass-tint, 45) * 0.0075)); --app-bg: rgb(18 19 26 / 0.80); }
-:root[data-material="glass"][data-theme="light"] { --island-bg: rgb(236 239 243 / calc(min(0.32 + var(--glass-tint, 45) * 0.0075, 0.92))); --app-bg: rgb(236 239 244 / 0.82); }
-.island-body { background: var(--island-bg); color: var(--island-fg); }
-:root[data-material="glass"] .island-body { -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)); backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)); }
-/* وصفة css.glass المرجعية على الأسطح (بطاقات اللوحة والقوائم المنبثقة): خلفية داكن 20/20/20 @0.35 وفاتح 255 @0.12، حدّ 1px أبيض @0.25،
-   ظل ناعم، ولمعة علوية متدرجة خفيفة؛ التمويه/التشبّع من المتغيرين فقط. glassTint يبقى على الخلفية الأصلية/جسم الحبة. */
-:root[data-material="glass"] .i-card, :root[data-material="glass"] .i-glass {
-  background: rgb(20 20 20 / 0.35) linear-gradient(180deg, rgb(255 255 255 / 0.10), rgb(255 255 255 / 0) 40%);
-  border: 1px solid rgb(255 255 255 / 0.25);
-  box-shadow: 0 8px 32px rgb(0 0 0 / 0.25);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+/* ───────── المادة (docs/GLASS.md) ─────────
+   solid  = سطح مصمت (الداكن #000 / الفاتح #eceff3).
+   glass  = أسلوبان: data-glass="crystal" (بلوري/Liquid Glass) و"clear" (شفاف). data-fallback="solid" ⇒ زجاج غير مسموح (Eco/توفير/تقليل الشفافية)
+            فيُرسم سطح مصبوغ شبه مصمت بنفس الحدّ واللمعة بلا blur. كل ما يتجاوز الشكل المستدير شفاف: html/body/#root شفافة والنافذة شفافة. */
+.island-body { background: var(--island-bg); color: var(--island-fg); box-shadow: var(--island-ring); }
+.island-body[data-open="true"] { box-shadow: var(--island-ring-open); }
+:root[data-fallback="solid"] { --island-bg: #0a0b10; }
+:root[data-fallback="solid"][data-theme="light"] { --island-bg: #eceff3; }
+
+/* صبغة الاحتياط داخل الصفحة: ألفا = 0.28 + 0.0075·t (الافتراضي 45 ≈ 0.62)؛ الفاتح +0.04 بسقف 0.92. مع الأكريليك الأصلي الصبغة داخله فقط (جسم شفاف). */
+:root[data-material="glass"][data-glass="crystal"] { --island-bg: rgb(0 0 0 / calc(0.28 + var(--glass-tint) * 0.0075)); --app-bg: rgb(18 19 26 / 0.80); }
+:root[data-material="glass"][data-glass="crystal"][data-theme="light"] { --island-bg: rgb(236 239 243 / calc(min(0.32 + var(--glass-tint) * 0.0075, 0.92))); --app-bg: rgb(236 239 244 / 0.82); }
+:root[data-material="glass"][data-glass="crystal"][data-backdrop="win10"] { --island-bg: transparent; }
+:root[data-material="glass"][data-glass="clear"] { --island-bg: rgb(0 0 0 / calc(0.04 + var(--glass-tint) * 0.0023)); --app-bg: rgb(18 19 26 / 0.62); }
+:root[data-material="glass"][data-glass="clear"][data-theme="light"] { --island-bg: rgb(255 255 255 / calc(0.10 + var(--glass-tint) * 0.0035)); --app-bg: rgb(236 239 244 / 0.66); }
+
+/* — بلوري: زجاج سميك مضيء: تمويه قوي + حافة تكسير ساطعة + لمعة علوية + توهّج داخلي وعمق + لمعان لوني خفيف على الحواف — */
+:root[data-material="glass"][data-glass="crystal"] .island-body {
+  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.16), rgb(255 255 255 / 0.03) 42%, rgb(255 255 255 / 0.07));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(1.05);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(1.05);
+  box-shadow: inset 0 1.5px 0 var(--glass-spec), inset 0 -1px 0 rgb(255 255 255 / 0.10), inset 0 0 18px rgb(255 255 255 / 0.09), inset 0 -14px 28px rgb(0 0 0 / 0.14);
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.35);
 }
-:root[data-material="glass"][data-theme="light"] .i-card, :root[data-material="glass"][data-theme="light"] .i-glass {
-  background: rgb(255 255 255 / 0.12) linear-gradient(180deg, rgb(255 255 255 / 0.35), rgb(255 255 255 / 0) 40%);
+:root[data-material="glass"][data-glass="crystal"][data-theme="light"] .island-body {
+  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.55), rgb(255 255 255 / 0.10) 45%, rgb(255 255 255 / 0.22));
+  box-shadow: inset 0 1.5px 0 var(--glass-spec), inset 0 -1px 0 rgb(13 16 23 / 0.06), inset 0 0 18px rgb(255 255 255 / 0.35), inset 0 -14px 28px rgb(13 16 23 / 0.06);
+  text-shadow: 0 1px 0 rgb(255 255 255 / 0.45);
+}
+:root[data-material="glass"][data-glass="crystal"] .island-body::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 39;
+  background:
+    radial-gradient(120% 70% at 50% -12%, rgb(255 255 255 / 0.26), transparent 62%),
+    linear-gradient(90deg, rgb(120 220 255 / 0.10), transparent 16%, transparent 84%, rgb(255 140 220 / 0.10));
+}
+:root[data-material="glass"][data-glass="crystal"][data-theme="light"] .island-body::after {
+  background:
+    radial-gradient(120% 70% at 50% -12%, rgb(255 255 255 / 0.65), transparent 62%),
+    linear-gradient(90deg, rgb(80 170 255 / 0.07), transparent 16%, transparent 84%, rgb(255 110 200 / 0.07));
 }
 
-/* قوة التظليل glassTint (0..80، افتراضي 45) ⇒ --glass-tint (useSettings). الاحتياط داخل الصفحة: ألفا = 0.28 + 0.0075·t (الافتراضي ≈0.62 كالسابق)، الفاتح +0.04 بسقف 0.92.
-   مع الأكريليك الأصلي (data-backdrop=win10) الصبغة ألفا الأكريليك نفسه فقط. */
-/* الزجاج الحقيقي من النظام (backdrop.rs ⇒ data-backdrop): التمويه من DWM خلف النافذة، فتخفّ صبغة الصفحة أو تُزال (الصبغة داخل الأكريليك نفسه)، ولا blur مزدوجًا. none = الاحتياط: الزجاج داخل الصفحة كما هو. */
-:root[data-material="glass"][data-backdrop="win10"] { --island-bg: transparent; } /* صبغة واحدة: ألفا الأكريليك الأصلي من glassTint (backdrop.rs)؛ لا طبقة صفحة ثانية فوقه. */
-/* INSERT M: سطح الزجاج الظاهر على جسم الحبة/اللوحة = حدّ 1px أبيض @0.25 + لمعة علوية + ظل داخلي ناعم (inset لأن النافذة مقصوصة)، بلا لون خلفية إضافي
-   (glassTint هو التظليل الوحيد). */
-:root[data-material="glass"] .island-body { box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.25), inset 0 1px 0 rgb(255 255 255 / 0.30), inset 0 -12px 32px rgb(0 0 0 / 0.12); }
-/* INSERT L: جسم الحبة يتلقّى blur/saturate من المنزلقين حتى فوق الأكريليك الأصلي (0 = بلا تمويه CSS إضافي)؛ لا استثناء لـdata-backdrop. */
+/* — شفاف: شبه عديم اللون، حدّ دقيق 1px، لمعة ناعمة، سطح المكتب ظاهر خلفه، وscrim خلف النص (داخل الخلفية نفسها) — */
+:root[data-material="glass"][data-glass="clear"] .island-body {
+  background-image: radial-gradient(ellipse 90% 140% at 50% 50%, rgb(0 0 0 / 0.52), rgb(0 0 0 / 0.22) 72%, transparent),
+                    linear-gradient(180deg, rgb(255 255 255 / 0.10), transparent 40%);
+  -webkit-backdrop-filter: blur(min(var(--glass-blur), 8px)) saturate(1.1);
+  backdrop-filter: blur(min(var(--glass-blur), 8px)) saturate(1.1);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22);
+  text-shadow: 0 1px 3px rgb(0 0 0 / 0.6);
+}
+:root[data-material="glass"][data-glass="clear"][data-theme="light"] .island-body {
+  background-image: radial-gradient(ellipse 90% 140% at 50% 50%, rgb(255 255 255 / 0.62), rgb(255 255 255 / 0.26) 72%, transparent),
+                    linear-gradient(180deg, rgb(255 255 255 / 0.30), transparent 40%);
+  text-shadow: 0 1px 2px rgb(255 255 255 / 0.7);
+}
+/* لوحة مفتوحة بالشفاف: scrim منتظم (النص يملأ المساحة كلها) */
+:root[data-material="glass"][data-glass="clear"] .island-body[data-open="true"] {
+  background-image: linear-gradient(rgb(0 0 0 / 0.34), rgb(0 0 0 / 0.34)), linear-gradient(180deg, rgb(255 255 255 / 0.10), transparent 40%);
+}
+:root[data-material="glass"][data-glass="clear"][data-theme="light"] .island-body[data-open="true"] {
+  background-image: linear-gradient(rgb(255 255 255 / 0.46), rgb(255 255 255 / 0.46)), linear-gradient(180deg, rgb(255 255 255 / 0.30), transparent 40%);
+}
+
+/* حدّ 1px: أعلى ساطع ← أسفل خافت (قناع mask-composite)، يتبع قوة الحدّ ويشمل الاحتياط المصمت */
+:root:is([data-material="glass"], [data-fallback="solid"]) .island-body::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; z-index: 40;
+  background: linear-gradient(180deg, var(--glass-rim-hi), var(--glass-rim-lo) 45%, var(--glass-rim-lo) 62%, rgb(255 255 255 / 0.2));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  opacity: min(1, var(--border-k));
+}
+/* احتياط مصبوغ: لمعة علوية فقط بلا blur */
+:root[data-fallback="solid"] .island-body { box-shadow: inset 0 1.5px 0 var(--glass-spec), inset 0 -12px 24px rgb(0 0 0 / 0.14); }
+:root[data-fallback="solid"][data-theme="light"] .island-body { box-shadow: inset 0 1.5px 0 var(--glass-spec); }
+
+/* بطاقات اللوحة والقوائم المنبثقة على الزجاج: سطح شفاف + حدّ + ظل ناعم؛ التمويه/التشبّع من المتغيرين فقط */
+:root[data-material="glass"] .i-card, :root[data-material="glass"] .i-glass {
+  background: rgb(255 255 255 / 0.07) linear-gradient(180deg, rgb(255 255 255 / 0.10), rgb(255 255 255 / 0) 40%);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / calc(0.18 * var(--border-k))), var(--shadow-2);
+  -webkit-backdrop-filter: blur(min(var(--glass-blur), 20px)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(min(var(--glass-blur), 20px)) saturate(var(--glass-saturate));
+}
+:root[data-material="glass"][data-theme="light"] .i-card, :root[data-material="glass"][data-theme="light"] .i-glass {
+  background: rgb(255 255 255 / 0.45) linear-gradient(180deg, rgb(255 255 255 / 0.5), rgb(255 255 255 / 0) 40%);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / calc(0.7 * var(--border-k))), var(--shadow-2);
+}
 
 /* ───────── النشاط الحي (docs/MOTION.md §النشاط الحي) ─────────
    لمسة واحدة لكل نوع نشاط، تُستعمل بالاتساق في الكبسولة المدمجة والبطاقة معًا. ألوان مصمتة (بلا تدرّجات ولا توهّج)،
@@ -172,3 +228,4 @@ html, body, #root {
 .act-btn-solid:hover:not(:disabled) { background: color-mix(in srgb, var(--act, #fff) 88%, #fff); }
 /* وضع تبويب المتصفح: الجسم يلتحم بحافة الشريط، فلا حلقة سفلية. */
 .island-body[data-docked="true"] { box-shadow: none !important; }
+.island-body[data-docked="true"]::before, .island-body[data-docked="true"]::after { display: none; }

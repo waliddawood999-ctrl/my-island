@@ -211,8 +211,8 @@ function App() {
           className="absolute"
           style={{
             left: selected.x, top: selected.y, width: selected.w, height: selected.h,
-            boxShadow: "0 0 0 100vmax rgba(0,0,0,0.5)",
-            outline: `1px solid ${mode === "record" ? "#ff5a5a" : "#4fd1c5"}`,
+            boxShadow: "0 0 0 100vmax rgb(0 0 0 / 0.5)",
+            outline: `1px solid ${mode === "record" ? "var(--c-danger)" : "var(--accent)"}`,
           }}
         />
       )}

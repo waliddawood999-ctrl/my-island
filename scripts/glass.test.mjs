@@ -37,16 +37,17 @@ eq("eco default", g.glassVars(24, 180, true), { blur: "8px", saturate: "1" });
 // الوصفة في CSS
 const css = readFileSync("src/pages/island/island.css", "utf8");
 eq("css recipe filter", css.includes("blur(var(--glass-blur)) saturate(var(--glass-saturate))"), true);
-eq("css dark bg", css.includes("rgb(20 20 20 / 0.35)"), true);
-eq("css light bg", css.includes("rgb(255 255 255 / 0.12)"), true);
-eq("css body covered by glass vars", /:root\[data-material="glass"\] \.island-body\s*\{[^}]*blur\(var\(--glass-blur\)\) saturate\(var\(--glass-saturate\)\)/.test(css), true);
+eq("css crystal dark layers (gradient + saturate + brightness)", css.includes("rgb(255 255 255 / 0.16)") && css.includes("brightness(1.05)"), true);
+eq("css crystal light layers", css.includes("rgb(255 255 255 / 0.55), rgb(255 255 255 / 0.10) 45%"), true);
+eq("css body covered by glass vars (crystal)", /data-glass="crystal"\] \.island-body\s*\{[^}]*blur\(var\(--glass-blur\)\) saturate\(var\(--glass-saturate\)\)/.test(css), true);
+eq("css clear blur capped at 8px", css.includes("blur(min(var(--glass-blur), 8px))"), true);
 eq("css no backdrop exemption for body", /data-backdrop="win1[01]"\] \.island-body\s*\{[^}]*backdrop-filter:\s*none/.test(css), false);
-eq("css border", css.includes("1px solid rgb(255 255 255 / 0.25)"), true);
+eq("css 1px rim via mask-composite", css.includes("padding: 1px") && css.includes("mask-composite") && css.includes(".island-body::before"), true);
 
 // INSERT M: لا طبقة صبغة صفحة ثانية فوق الأكريليك الأصلي، وأشرطة التمرير مخفية، وحدّ/لمعة جسم الحبة
 eq("no win11 page tint", css.includes('data-backdrop="win11"'), false);
 eq("native tint only", css.includes('[data-backdrop="win10"] { --island-bg: transparent; }'), true);
-eq("body glass border", /data-material="glass"\] \.island-body \{ box-shadow: inset 0 0 0 1px rgb\(255 255 255 \/ 0\.25\)/.test(css), true);
+eq("crystal specular + inner glow + depth", /data-glass="crystal"\] \.island-body \{[^}]*inset 0 1\.5px 0 var\(--glass-spec\)[^}]*inset 0 0 18px[^}]*inset 0 -14px 28px/.test(css), true);
 const base = readFileSync("src/index.css", "utf8");
 eq("scrollbars hidden (firefox/webview)", base.includes("scrollbar-width: none !important"), true);
 eq("scrollbars hidden (webkit)", base.includes("::-webkit-scrollbar { display: none"), true);

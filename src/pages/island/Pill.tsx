@@ -6,10 +6,11 @@ import { Coffee, Settings as SettingsIcon, Timer as TimerIcon } from "lucide-rea
 import { AnimatePresence, motion } from "motion/react";
 import { alertShake, dur, ease, paletteVariants, useMotionLevel, sectionVariants, spring, swapVariants, tap } from "../../motion";
 import { i } from "../../i18n";
-import { clampTint, useSettings } from "../../useSettings";
+import { clampTint, useResolvedTheme, useSettings } from "../../useSettings";
+import { PANEL as PANEL_TOKEN, PANEL_PALETTE, PILL as PILL_TOKEN } from "../../tokens";
 import { useMedia } from "../../useMedia";
 import { useBattery } from "../../useBattery";
-import { activeKinds, clampLeadMin, compactWidth, fmtStopwatch, nextKind, shownKind, tabShape, type ActivityKind } from "../../liveActivity";
+import { activeKinds, clampLeadMin, fmtStopwatch, nextKind, shownKind, tabShape, type ActivityKind } from "../../liveActivity";
 import { useStopwatchNow } from "../../useStopwatch";
 import { useNetSpeed } from "../../useNetSpeed";
 import { useDock } from "../../useDock";
@@ -47,12 +48,12 @@ import { useMeetings, useUpcomingMeeting } from "../../useMeetings";
 import { usePrivacy } from "../../useSystem";
 
 /** المقاس الافتراضي للحبة المنكمشة (الفعلي من pillWidth/pillHeight). */
-const PILL_DEFAULT = { w: 220, h: 34 };
+const PILL_DEFAULT = { w: PILL_TOKEN.w, h: PILL_TOKEN.h };
 const clampN = (v: unknown, lo: number, hi: number, d: number) => Math.min(hi, Math.max(lo, typeof v === "number" && Number.isFinite(v) ? v : d));
 /** اللوحة عرضية (أعرض من ارتفاعها): 720×320 ثابتة (قرار وليد: تقصير بعد لقطة فعلية)؛ أي محتوى أطول يمرّر داخليًا في منطقة المحتوى فقط. */
-const PANEL = { w: 720, h: 320 };
+const PANEL = { w: PANEL_TOKEN.w, h: PANEL_TOKEN.h };
 const panelSize = () => PANEL;
-const PALETTE = { w: 640, h: 440 };
+const PALETTE = { w: PANEL_PALETTE.w, h: PANEL_PALETTE.h };
 /** احتياط (ms): لو لم يصل رد اكتمال الحركة تُصغَّر النافذة بعد هذه المدة. */
 const SHRINK_GUARD_MS = dur.windowShrinkGuard * 1000;
 
@@ -119,11 +120,13 @@ function PillTitle({ text, inset }: { text: string; inset: number }) {
 export function Pill() {
   const settings = useSettings();
   const motion_level = useMotionLevel();
+  const { theme, glassOk } = useResolvedTheme(settings);
   const fmt = settings.clockFormat ?? "auto";
   // مقاس الحبة المنكمشة من الإعدادات؛ k = الارتفاع/32 يقيس الخط والعيون والأيقونات معًا (بلا تشوّه).
-  const pill = { w: clampN(settings.pillWidth, 160, 280, PILL_DEFAULT.w), h: clampN(settings.pillHeight, 28, 44, PILL_DEFAULT.h) };
+  const pill = { w: clampN(settings.pillWidth, PILL_TOKEN.minW, PILL_TOKEN.maxW, PILL_DEFAULT.w), h: clampN(settings.pillHeight, PILL_TOKEN.minH, PILL_TOKEN.maxH, PILL_DEFAULT.h) };
+  // نصف قطر الحبة: pillRadius=0 ⇒ كبسولة كاملة (نصف الارتفاع)، وإلا مقيّد بنصف الارتفاع.
+  const pillR = settings.pillRadius && settings.pillRadius > 0 ? Math.min(settings.pillRadius, pill.h / 2) : pill.h / 2;
   const k = pill.h / 32;
-  const alertSz = { w: Math.max(340, Math.round(pill.w * 1.55)), h: pill.h + 4 };
   const ic = (n: number) => Math.round(n * k);
   const [time, setTime] = useState(() => fmtTime(fmt));
   const [hover, setHover] = useState(false);
@@ -352,18 +355,19 @@ export function Pill() {
 
   // الحالة الاستراحية: تنبيه/نشاط مدمج/ارتفاع الشريط عند الإرساء.
   const alertShown = !!alert && !open && shownCap !== "rec";
-  const restContent = alertShown ? alertSz : shownCap ? { w: compactWidth(pill.w), h: pill.h } : pill;
+  // شكل الحبة المنكمشة ثابت دائمًا: التنبيه/النشاط/المؤقّت/البطارية تُرسم داخلها ولا تغيّر مقاسها أبدًا (الإعدادات وحدها تغيّره).
+  const restContent = pill;
   const tabS = tabShape(dock, restContent.w, restContent.h);
   const restWin = dock.active ? { w: restContent.w, h: tabS.winH } : restContent;
   const restBody = dock.active ? { w: restContent.w, h: tabS.bodyH } : restContent;
   restWinRef.current = restWin;
   // تغيّر المقاس الاستراحي والحبة منكمشة: النمو ⇒ تكبير النافذة قبل الحركة؛ الانكماش ⇒ تصغيرها بعد انتهاء الحركة.
   useEffect(() => {
-    if (open || paletteRef.current) return;
+    if (open || paletteRef.current || !settings.loaded) return; // لا مقاس قبل وصول الإعدادات: الحبة لا تقفز من الافتراضي إلى مقاس المستخدم
     const grow = restWin.w > reported.current.w || restWin.h > reported.current.h;
     if (grow) { cancelShrink(); report(restWin.w, restWin.h); }
     else scheduleShrink();
-  }, [restWin.w, restWin.h]);
+  }, [restWin.w, restWin.h, settings.loaded]);
 
   const size = palette ? PALETTE : open ? panel : restBody;
   // الشفافية من الإعدادات؛ autoHide يخفي الحبة في الراحة (النافذة تبقى تستقبل المرور فتظهر عند الهوفر).
@@ -373,8 +377,8 @@ export function Pill() {
 
   // كبسولة كاملة الاستدارة؛ مرسيّة في شريط المتصفح: زوايا علوية مدوّرة وقاع مسطّح (هيئة تبويب).
   const dockedRest = dock.active && !open && !palette;
-  const rTop = palette ? 24 : open ? 28 : dockedRest ? tabS.top : restBody.h / 2;
-  const rBot = palette ? 24 : open ? 28 : dockedRest ? tabS.bottom : restBody.h / 2;
+  const rTop = palette ? 24 : open ? 28 : dockedRest ? tabS.top : pillR;
+  const rBot = palette ? 24 : open ? 28 : dockedRest ? tabS.bottom : pillR;
   const radius = rTop;
   // مفتاح الحجم المستهدف؛ أول عرض = مستقر. مؤقّت احتياطي أحادي إن لم يصل رد الاكتمال (كحارس التصغير).
   const sizeKey = `${size.w}x${size.h}`;
@@ -388,8 +392,9 @@ export function Pill() {
     return () => window.clearTimeout(settleT.current);
   }, [sizeKey, settled]);
   useBackdrop({
-    glass: (settings.themeMaterial ?? "solid") === "glass",
-    light: settings.themeMode === "light",
+    // الأكريليك الأصلي للأسلوب البلوري فقط وحين يُسمح بالزجاج (ليس Eco/تقليل الشفافية)؛ الشفاف يُظهر سطح المكتب بلا تمويه DWM (docs/GLASS.md).
+    glass: (settings.themeMaterial ?? "glass") === "glass" && settings.glassStyle !== "clear" && glassOk,
+    light: theme === "light",
     ready: settled && !hidden && opacity >= 0.99,
     radius,
     tint: clampTint(settings.glassTint),
@@ -441,7 +446,7 @@ export function Pill() {
         }}
         transition={{ default: spring.island, opacity: { duration: dur.base, ease: ease.out } }}
         onAnimationComplete={() => { if (!flushShrink()) settleNow(); }}
-        style={{ boxShadow: open || palette ? "var(--island-ring-open)" : "var(--island-ring)" }}
+        data-open={open || palette ? "true" : "false"}
         data-docked={dockedRest ? "true" : "false"}
         className="island-body relative overflow-hidden"
       >
@@ -463,8 +468,8 @@ export function Pill() {
             title={[privacy.cam && i("الكاميرا قيد الاستخدام", "Camera in use"), privacy.mic && i("الميكروفون قيد الاستخدام", "Microphone in use")].filter(Boolean).join(" · ")}
             className="pointer-events-none absolute left-3 top-3 z-30 flex gap-1"
           >
-            {privacy.cam && <span className="h-2 w-2 rounded-full bg-green-400 shadow-[0_0_6px_rgb(74_222_128)]" />}
-            {privacy.mic && <span className="h-2 w-2 rounded-full bg-orange-400 shadow-[0_0_6px_rgb(251_146_60)]" />}
+            {privacy.cam && <span className="h-2 w-2 rounded-full bg-[var(--c-success)] shadow-[0_0_6px_var(--c-success)]" />}
+            {privacy.mic && <span className="h-2 w-2 rounded-full bg-[var(--c-warning)] shadow-[0_0_6px_var(--c-warning)]" />}
           </div>
         )}
         <motion.div

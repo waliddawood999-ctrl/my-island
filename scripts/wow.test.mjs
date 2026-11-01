@@ -75,7 +75,6 @@ eq("fmt hours drops centis", m.fmtStopwatch(3_725_000), "1:02:05");
 eq("fmtSpeed", [m.fmtSpeed(0), m.fmtSpeed(2048), m.fmtSpeed(1_572_864), m.fmtSpeed(250 * 1048576)], ["0 KB/s", "2 KB/s", "1.5 MB/s", "250 MB/s"]);
 
 // ── مقاسات الكبسولة وهيئة تبويب المتصفح
-eq("compact width", [m.compactWidth(220), m.compactWidth(160), m.compactWidth(280)], [286, 268, 364]);
 eq("dock sanitize good", m.sanitizeDock({ active: true, browser: "edge", strip: 41, inset: 6 }), { active: true, browser: "edge", strip: 41, inset: 6 });
 eq("dock sanitize garbage ⇒ off", [m.sanitizeDock(null), m.sanitizeDock({}), m.sanitizeDock({ active: true, strip: 900, inset: 1 }), m.sanitizeDock({ active: true, strip: "x", inset: 1 }), m.sanitizeDock({ active: false, strip: 41, inset: 6 })].every((d) => d.active === false), true);
 const tab = m.tabShape({ active: true, browser: "chrome", strip: 41, inset: 6 }, 220, 34);

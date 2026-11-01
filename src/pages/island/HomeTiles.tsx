@@ -70,7 +70,7 @@ export function HomeTiles({ settings, meetings, battery, liveShown }: {
               <span className="truncate text-[13px] font-bold">{prayerLabel(next.id, lang)}</span>
               <span dir="ltr" className="shrink-0 tabular-nums text-white/60">{fmtClock(next.at, clock)}</span>
             </div>
-            <span dir="ltr" className="text-[18px] font-bold leading-tight tabular-nums text-[#8ea2ff]">{countdown(next.at - now)}</span>
+            <span dir="ltr" className="text-[18px] font-bold leading-tight tabular-nums text-[var(--c-info)]">{countdown(next.at - now)}</span>
             <span className="truncate text-[11px] text-white/50">{hijri}</span>
           </div>
         );

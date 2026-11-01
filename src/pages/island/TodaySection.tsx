@@ -43,7 +43,7 @@ export function TodaySection({ settings }: { settings: Partial<Settings> }) {
 
       {info && gold && (
         <div data-testid="golden-hour" className="flex items-center gap-1.5 text-[11px] text-white/70" title={i("الساعة الذهبية للتصوير: الساعة بعد الشروق وقبل الغروب", "Golden hour for photography: the hour after sunrise and before sunset")}>
-          <Sunset size={13} className="shrink-0 text-[#f5b041]" />
+          <Sunset size={13} className="shrink-0 text-[var(--c-warning)]" />
           <span className="truncate">
             {gold.state === "now"
               ? i("الساعة الذهبية الآن", "Golden hour now")
@@ -57,9 +57,9 @@ export function TodaySection({ settings }: { settings: Partial<Settings> }) {
         <ul data-testid="countdowns" className="flex flex-col gap-0.5 text-[11px]">
           {counts.map((c) => (
             <li key={c.id} className="flex items-center gap-1.5">
-              <PartyPopper size={13} className="shrink-0 text-[#8ea2ff]" />
+              <PartyPopper size={13} className="shrink-0 text-[var(--c-info)]" />
               <span dir="auto" className="min-w-0 flex-1 truncate">{c.name}</span>
-              <span className={`shrink-0 tabular-nums ${c.days <= 1 ? "font-bold text-[#8ea2ff]" : "text-white/60"}`}>{daysLabel(c.days, lang)}</span>
+              <span className={`shrink-0 tabular-nums ${c.days <= 1 ? "font-bold text-[var(--c-info)]" : "text-white/60"}`}>{daysLabel(c.days, lang)}</span>
             </li>
           ))}
         </ul>

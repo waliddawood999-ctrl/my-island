@@ -102,7 +102,7 @@ function App() {
         g.clearRect(b.x, b.y, b.w, b.h);
       }
       g.setLineDash([8, 6]); g.lineWidth = Math.max(2, d.width / 600);
-      g.strokeStyle = "#4fd1c5"; g.strokeRect(b.x, b.y, b.w, b.h);
+      g.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#4fd1c5"; // canvas لا يقرأ var() g.strokeRect(b.x, b.y, b.w, b.h);
     }
   };
 
@@ -168,7 +168,7 @@ function App() {
             title={t.label}
             aria-pressed={tool === t.id}
             onClick={() => { setTool(t.id); setTextAt(null); }}
-            className={`${btn} ${tool === t.id ? "bg-[#3cbfb3]" : "bg-white/8 hover:bg-white/15"}`}
+            className={`${btn} ${tool === t.id ? "bg-[var(--accent)] text-[var(--accent-fg)]" : "bg-white/8 hover:bg-white/15"}`}
           >
             <t.icon size={16} /><span className="hidden sm:inline">{t.label}</span>
           </button>
@@ -180,20 +180,20 @@ function App() {
             aria-label={c}
             onClick={() => setColor(c)}
             className="h-6 w-6 rounded-full border-2"
-            style={{ background: c, borderColor: color === c ? "#4fd1c5" : "rgba(255,255,255,0.3)" }}
+            style={{ background: c, borderColor: color === c ? "var(--accent)" : "var(--c-border)" }}
           />
         ))}
         <input
           type="range" min={2} max={16} value={width}
           aria-label={i("السماكة", "Thickness")}
           onChange={(e) => setWidth(Number(e.target.value))}
-          className="mx-1 w-24 accent-[#3cbfb3]"
+          className="mx-1 w-24 accent-[var(--accent)]"
         />
         <span className="mx-1 h-6 w-px bg-white/15" />
         <button aria-label={i("تراجع", "Undo")} title="Ctrl+Z" disabled={!ops.length} onClick={undo} className={`${btn} bg-white/8 hover:bg-white/15 disabled:opacity-30`}><Undo2 size={16} /></button>
         <button aria-label={i("إعادة", "Redo")} title="Ctrl+Y" disabled={!redo.length} onClick={redoOp} className={`${btn} bg-white/8 hover:bg-white/15 disabled:opacity-30`}><Redo2 size={16} /></button>
         <span className="flex-1" />
-        <button aria-label={i("حفظ نسخة جديدة", "Save as new copy")} title="Ctrl+S" disabled={!out} onClick={() => save("new")} className={`${btn} bg-[#3cbfb3] hover:bg-[#8196ff] disabled:opacity-40`}>
+        <button aria-label={i("حفظ نسخة جديدة", "Save as new copy")} title="Ctrl+S" disabled={!out} onClick={() => save("new")} className={`${btn} bg-[var(--accent)] text-[var(--accent-fg)] hover:brightness-110 disabled:opacity-40`}>
           <Save size={16} /><span>{i("حفظ نسخة", "Save copy")}</span>
         </button>
         <button aria-label={i("حفظ فوق الأصل", "Overwrite original")} disabled={!out} onClick={() => save("overwrite")} className={`${btn} bg-white/8 hover:bg-white/15 disabled:opacity-40`}>
@@ -261,7 +261,7 @@ function App() {
                 else if (e.key === "Escape") { e.stopPropagation(); setTextAt(null); }
               }}
               onBlur={(e) => commitText(e.currentTarget.value)}
-              className="absolute min-w-40 rounded border border-[#4fd1c5] bg-black/70 px-2 py-1 text-sm leading-normal text-white outline-none"
+              className="absolute min-w-40 rounded border border-[var(--accent)] bg-black/70 px-2 py-1 text-sm leading-normal text-white outline-none"
               style={{ left: textAt.left, top: textAt.top }}
             />
           )}
@@ -276,7 +276,7 @@ function App() {
         <div
           role="status"
           dir="auto"
-          className={`pointer-events-none absolute bottom-10 left-1/2 max-w-[90%] -translate-x-1/2 truncate rounded-full px-4 py-1.5 text-sm ${msg.err ? "bg-red-600/90" : "bg-black/85"}`}
+          className={`pointer-events-none absolute bottom-10 left-1/2 max-w-[90%] -translate-x-1/2 truncate rounded-full px-4 py-1.5 text-sm ${msg.err ? "bg-[var(--c-danger)] text-black" : "bg-[var(--c-surface-raised)] text-[var(--c-text-primary)] shadow-[var(--shadow-2)] ring-1 ring-[var(--c-border)]"}`}
         >
           {msg.text}
         </div>

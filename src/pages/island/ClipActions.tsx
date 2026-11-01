@@ -33,7 +33,7 @@ export function ClipActions({ text, onDone }: { text: string | null; onDone: (ms
       {a.kind === "hex" && <Chip icon={<Copy size={11} />} label={i("نسخ RGB", "Copy RGB")} onClick={() => copy(a.rgb)} />}
       {a.kind === "calc" && (
         <>
-          <span dir="ltr" className="text-[12px] font-semibold tabular-nums text-[#8ea2ff]">= {a.result}</span>
+          <span dir="ltr" className="text-[12px] font-semibold tabular-nums text-[var(--c-info)]">= {a.result}</span>
           <Chip icon={<Copy size={11} />} label={i("نسخ النتيجة", "Copy result")} onClick={() => copy(a.result)} />
         </>
       )}

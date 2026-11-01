@@ -166,7 +166,6 @@ export function nextMeetingWake(items: readonly MeetingLite[], now: number, lead
 
 // ───────────────────────────── مقاسات الكبسولة ─────────────────────────────
 /** عرض الكبسولة المدمجة المنقسمة (طرفان) من عرض الحبة الأساسي. */
-export const compactWidth = (pillW: number) => Math.max(268, Math.round(pillW * 1.3));
 
 export interface DockInfo { active: boolean; browser: string; strip: number; inset: number }
 export const DOCK_OFF: DockInfo = { active: false, browser: "", strip: 0, inset: 0 };
