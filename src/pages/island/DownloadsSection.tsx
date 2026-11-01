@@ -1,6 +1,7 @@
 import { motion } from "motion/react";
 import { itemVariants, spring } from "../../motion";
 import { Battery as BatteryIcon, BatteryCharging, CheckCircle2, Download } from "lucide-react";
+import { LottieIcon } from "../../lottie";
 import { i } from "../../i18n";
 import { fmtBytes, type Battery, type DownloadsSnap } from "../../useDownloads";
 
@@ -59,7 +60,7 @@ export function DownloadsSection({ snap, battery, showDownloads }: { snap: Downl
           ))}
           {recent.map((d, n) => (
             <motion.div key={`${d.at}-${d.name}`} custom={active.length + n} variants={itemVariants} initial="initial" animate="animate" className="flex items-center gap-2 text-white/70" dir="auto">
-              <CheckCircle2 size={14} className="shrink-0 text-emerald-400" />
+              {n === 0 && active.length === 0 ? <LottieIcon name="loader" size={20} /> : <CheckCircle2 size={14} className="shrink-0 text-emerald-400" />}
               <span className="min-w-0 flex-1 truncate">{d.name}</span>
               <span dir="ltr" className="shrink-0 tabular-nums text-white/50">{fmtBytes(d.size)}</span>
             </motion.div>

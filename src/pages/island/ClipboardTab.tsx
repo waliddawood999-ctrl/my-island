@@ -3,6 +3,7 @@ import { dur, ease, MAX_STAGGER_ITEMS, spring, stagger, tap } from "../../motion
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Pin, PinOff, Search, Trash2, X } from "lucide-react";
+import { LottieIcon } from "../../lottie";
 import { i } from "../../i18n";
 import { ClipActions } from "./ClipActions";
 
@@ -100,9 +101,10 @@ export function ClipboardTab() {
 
       <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto scroll-smooth pe-1">
         {shown.length === 0 && (
-          <p className="pt-10 text-center text-[13px] text-white/40">
-            {q ? i("لا نتائج", "No results") : i("الحافظة فارغة", "Clipboard is empty")}
-          </p>
+          <div className="flex flex-col items-center gap-1 pt-4 text-center text-[13px] text-white/40">
+            <LottieIcon name="empty" size={64} />
+            <p>{q ? i("لا نتائج", "No results") : i("الحافظة فارغة", "Clipboard is empty")}</p>
+          </div>
         )}
         <AnimatePresence mode="popLayout">
         {shown.map((c, n) => (
@@ -162,7 +164,7 @@ export function ClipboardTab() {
           animate={{ opacity: 1, y: 0, filter: "blur(0px)", transition: spring.content }}
           className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center"
         >
-          <span className="rounded-full bg-white/90 px-4 py-1.5 text-[12px] font-medium text-black">{toast}</span>
+          <span className="flex items-center gap-1 rounded-full bg-white/90 py-1 pe-4 ps-2 text-[12px] font-medium text-black"><LottieIcon name="tick" size={20} />{toast}</span>
         </motion.div>
       )}
     </div>

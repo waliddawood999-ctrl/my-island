@@ -7,6 +7,7 @@ import { i } from "../../i18n";
 import type { MediaView } from "../../useMedia";
 import { useLyrics } from "../../useLyrics";
 import { LyricsView } from "./LyricsView";
+import { LottieIcon } from "../../lottie";
 import { ICON, Ring, STROKE } from "./primitives";
 
 /** سطر نصي يتبدّل: دخول بتأخير مستقل وخروج سريع (docs/MOTION.md §تبديل المحتوى). */
@@ -46,7 +47,7 @@ export function MediaSection({ media, showLyrics = false }: { media: MediaView; 
   if (!info.session) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 text-white/40">
-        <Music size={28} strokeWidth={STROKE} />
+        <LottieIcon name="empty" size={56} />
         <span className="text-[13px]">{i("لا يوجد تشغيل حالي", "Nothing playing")}</span>
       </div>
     );
@@ -74,8 +75,10 @@ export function MediaSection({ media, showLyrics = false }: { media: MediaView; 
           initial={false}
           animate={{ scale: info.playing ? 1 : 0.94 }}
           transition={spring.content}
-          className={`${showLyrics ? "h-16 w-16" : "h-[88px] w-[88px]"} shrink-0 overflow-hidden rounded-2xl bg-white/10`}
+          className={`${showLyrics ? "h-16 w-16" : "h-[88px] w-[88px]"} relative shrink-0 overflow-hidden rounded-2xl bg-white/10`}
         >
+          {/* مؤشر «يشتغل الآن»: يدور أثناء التشغيل فقط؛ إطار ثابت عند الإيقاف المؤقت (الظهور/المستوى في LottieIcon) */}
+          <span className="absolute bottom-1 end-1 z-10 flex rounded-md bg-black/45 p-0.5 text-white"><LottieIcon name="equalizer" size={showLyrics ? 14 : 18} play={info.playing} loop /></span>
           {cover ? (
             <img src={cover} alt={i("غلاف الألبوم", "Album cover")} className="h-full w-full object-cover" />
           ) : (

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { i } from "../../i18n";
+import { LottieIcon } from "../../lottie";
 import type { LyricsState } from "../../useLyrics";
 
 /** فهرس السطر الجاري: آخر سطر زمنه ≤ الموضع (-1 قبل أول سطر). */
@@ -12,8 +13,8 @@ function activeIndex(times: number[], pos: number): number {
   return ans;
 }
 
-const Note = ({ text }: { text: string }) => (
-  <div className="flex h-full items-center justify-center text-[13px] text-white/40">{text}</div>
+const Note = ({ text, icon }: { text: string; icon?: React.ReactNode }) => (
+  <div className="flex h-full items-center justify-center gap-2 text-[13px] text-white/40">{icon}{text}</div>
 );
 
 /** عرض الكلمات: متزامنة (تمرير تلقائي + توسيط السطر الجاري) أو عادية قابلة للتمرير. */
@@ -33,7 +34,7 @@ export function LyricsView({ lyrics, pos }: { lyrics: LyricsState; pos: number }
 
   if (lyrics.status === "loading") return <Note text={i("جارٍ تحميل الكلمات…", "Loading lyrics…")} />;
   if (!d) return <Note text={i("لا كلمات متاحة", "No lyrics available")} />;
-  if (d.offline) return <Note text={i("تعذّر تحميل الكلمات — لا يوجد اتصال بالإنترنت", "Couldn't load lyrics — you're offline")} />;
+  if (d.offline) return <Note icon={<LottieIcon name="offline" size={36} />} text={i("تعذّر تحميل الكلمات — لا يوجد اتصال بالإنترنت", "Couldn't load lyrics — you're offline")} />;
   if (d.found && d.instrumental) return <Note text={i("مقطوعة موسيقية بلا كلمات", "Instrumental — no lyrics")} />;
   if (!d.found) return <Note text={i("لا كلمات متاحة", "No lyrics available")} />;
 

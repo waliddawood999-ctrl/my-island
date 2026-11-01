@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Cloud, CloudDrizzle, CloudFog, CloudLightning, CloudRain, CloudSnow, CloudSun, Globe2, Moon, PartyPopper, Sun, Sunset, WifiOff } from "lucide-react";
+import { Cloud, CloudDrizzle, CloudFog, CloudLightning, CloudRain, CloudSnow, CloudSun, Globe2, Moon, PartyPopper, Sun, Sunset } from "lucide-react";
 import { i } from "../../i18n";
 import {
   countdown, currentSlot, dateLines, daysLabel, fmtClock, goldenHour, nextPrayer, prayerLabel, sanitizeWorldClocks, upcomingCountdowns,
@@ -7,6 +7,7 @@ import {
 } from "../../today";
 import { useToday, useWeather } from "../../useToday";
 import { useEco } from "../../motion";
+import { LottieIcon } from "../../lottie";
 import type { Settings } from "../../settings";
 
 const ICONS: Record<WeatherKind, typeof Sun> = {
@@ -25,6 +26,9 @@ export function TodaySection({ settings }: { settings: Partial<Settings> }) {
   const next = info ? nextPrayer(info.prayers, now) : null;
   const slot = info ? currentSlot(info.prayers, now) : null;
   const WIcon = weather && weather.enabled && !weather.offline ? (weather.code <= 1 && !weather.is_day ? Moon : ICONS[weatherKind(weather.code)]) : null;
+  // أيقونة Lottie متحركة لحالتين فقط: مشمس (نهارًا) واحتمال مطر (رذاذ)؛ بقية الحالات والليل تبقى Lucide.
+  const wk = weather && weather.enabled && !weather.offline ? weatherKind(weather.code) : null;
+  const animWeather = wk === "drizzle" || (wk === "clear" && !!weather?.is_day);
   const unit = weather?.units === "f" ? "°F" : "°C";
   // محلي بالكامل: لا شبكة ولا IPC. مفتاحا العرض مطفآن ⇒ لا حساب (الفارغ يمنع Intl).
   const gold = info ? goldenHour(info.prayers, now) : null;
@@ -106,11 +110,11 @@ export function TodaySection({ settings }: { settings: Partial<Settings> }) {
 
       {((settings.showWeather && weather?.offline) || WIcon) && <div className="mt-auto flex items-center gap-2 border-t border-white/10 pt-1.5 text-white/80">
         {settings.showWeather && weather?.offline && (
-          <span className="ms-auto flex items-center gap-1 text-white/40" title={i("لا اتصال بالإنترنت", "No internet connection")}><WifiOff size={13} />{i("لا اتصال", "Offline")}</span>
+          <span className="ms-auto flex items-center gap-1 text-white/40" title={i("لا اتصال بالإنترنت", "No internet connection")}><LottieIcon name="offline" size={24} />{i("لا اتصال", "Offline")}</span>
         )}
         {WIcon && weather && (
           <span className="ms-auto flex items-center gap-1.5" title={`${i("المحسوس", "Feels like")} ${Math.round(weather.feels)}${unit} · ${i("الرطوبة", "Humidity")} ${Math.round(weather.humidity)}%`}>
-            <WIcon size={15} />
+            {animWeather ? <LottieIcon name="weather" size={24} /> : <WIcon size={15} />}
             <span dir="ltr" className="font-bold tabular-nums">{Math.round(weather.temp)}{unit}</span>
             <span className="text-white/60">{weatherLabel(weatherKind(weather.code), lang)}</span>
           </span>

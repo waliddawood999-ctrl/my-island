@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { AnimatePresence, motion } from "motion/react";
-import { ClipboardPaste, File as FileIcon, FileText, Folder, Trash2 } from "lucide-react";
+import { ClipboardPaste, File as FileIcon, Folder, Trash2 } from "lucide-react";
 import { dur, ease, MAX_STAGGER_ITEMS, spring, stagger, tap } from "../../motion";
+import { LottieIcon } from "../../lottie";
 import { i } from "../../i18n";
 import { fmtBytes } from "../../useDownloads";
 import type { ShelfItem } from "../../useShelf";
@@ -184,7 +185,7 @@ export function ShelfTab({ items, dragging, reload }: { items: ShelfItem[]; drag
       <div className="min-h-0 flex-1 overflow-y-auto scroll-smooth pe-1">
         {items.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-white/40">
-            <FileText size={28} />
+            <LottieIcon name="empty" size={64} />
             <p className="text-[13px]">{i("الرفّ فارغ", "Shelf is empty")}</p>
           </div>
         ) : (

@@ -6,6 +6,7 @@ import {
   Search, Trash2, X,
 } from "lucide-react";
 import { dur, ease, MAX_STAGGER_ITEMS, spring, stagger, tap } from "../../motion";
+import { LottieIcon } from "../../lottie";
 import { i } from "../../i18n";
 import { useShellIcon } from "./ShelfTab";
 import type { useLauncher } from "../../useLauncher";
@@ -363,7 +364,7 @@ export function LauncherTab({ launcher }: { launcher: Launcher }) {
       <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto pe-1">
         {items.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-white/40">
-            <Rocket size={28} />
+            <LottieIcon name="empty" size={64} />
             <p className="text-[13px]">{i("اللانشر فارغ", "Launcher is empty")}</p>
             <p className="text-[11px]">{i("أضف تطبيقًا أو ملفًا أو مجلدًا أو رابطًا من «إضافة»", "Add an app, file, folder or link with “Add”")}</p>
           </div>

@@ -1,7 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { Bell, Coffee, Settings as SettingsIcon, Timer as TimerIcon } from "lucide-react";
+import { LottieIcon, LottieShownProvider } from "../../lottie";
+import { Coffee, Settings as SettingsIcon, Timer as TimerIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { alertShake, dur, ease, paletteVariants, useMotionLevel, sectionVariants, spring, swapVariants, tap } from "../../motion";
 import { i } from "../../i18n";
@@ -420,6 +421,7 @@ export function Pill() {
   ) : undefined;
 
   return (
+    <LottieShownProvider shown={!hidden && opacity > 0}>
     <div className="flex w-full justify-center">
       <motion.div
         onMouseEnter={onEnter}
@@ -484,9 +486,13 @@ export function Pill() {
             >
               {pillKey === "alert" && alert ? (
                 <span dir="auto" className="flex max-w-full items-center gap-2 px-3" role="alert">
-                  <motion.span animate={alertShake.animate} transition={alertShake.transition}>
-                    {alert.kind === "timer" ? <TimerIcon size={ic(15)} /> : alert.kind === "break" ? <Coffee size={ic(15)} /> : <Bell size={ic(15)} />}
-                  </motion.span>
+                  {alert.kind === "timer" || alert.kind === "break" ? (
+                    <motion.span animate={alertShake.animate} transition={alertShake.transition}>
+                      {alert.kind === "timer" ? <TimerIcon size={ic(15)} /> : <Coffee size={ic(15)} />}
+                    </motion.span>
+                  ) : (
+                    <LottieIcon name="bell" size={ic(20)} loops={3} />
+                  )}
                   <span className="truncate">
                     {alert.text || (alert.kind === "timer" ? i("انتهى المؤقّت", "Timer finished") : i("تذكير", "Reminder"))}
                   </span>
@@ -593,7 +599,7 @@ export function Pill() {
                 dir="auto"
                 className="absolute bottom-3 left-1/2 z-20 flex max-w-[80%] -translate-x-1/2 items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-[13px] backdrop-blur"
               >
-                {alert.kind === "timer" ? <TimerIcon size={15} /> : alert.kind === "break" ? <Coffee size={15} /> : <Bell size={15} />}
+                {alert.kind === "timer" ? <TimerIcon size={15} /> : alert.kind === "break" ? <Coffee size={15} /> : <LottieIcon name="bell" size={20} loops={3} />}
                 <span className="truncate">{alert.text || (alert.kind === "timer" ? i("انتهى المؤقّت", "Timer finished") : i("تذكير", "Reminder"))}</span>
               </motion.button>
             )}
@@ -688,5 +694,6 @@ export function Pill() {
         </motion.div>
       </motion.div>
     </div>
+    </LottieShownProvider>
   );
 }
