@@ -16,6 +16,7 @@
     "test:updater": "node scripts/updater.test.mjs",
     "test:updater-ui": "node scripts/updater.regression.cjs",
     "test:quit": "node scripts/quit.regression.cjs",
+    "test:settings": "node scripts/settings.regression.cjs",
     "test:home": "node scripts/home.test.mjs",
     "test:today": "node scripts/today.test.mjs",
     "test:clip": "node scripts/clipActions.test.mjs",

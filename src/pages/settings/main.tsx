@@ -9,7 +9,8 @@ import { WorkspacesEditor } from "./Workspaces";
 import { CountdownsEditor, WorldClockEditor } from "./TodayExtras";
 import { manualCheck } from "../../useUpdater";
 import type { ManualStatus } from "../../updater";
-import { Group, LinesField, Nav, NumberField, Row, Section, Select, Slider, SubHead, TextField, Toggle } from "./fields";
+import { Blocks, Gauge, Palette, SlidersHorizontal } from "lucide-react";
+import { Group, LinesField, NumberField, Row, Section, Select, SideNav, Slider, SubHead, TextField, Toggle } from "./fields";
 
 interface CityOpt { id: string; ar: string; en: string }
 interface MonitorInfo { index: number; name: string; width: number; height: number; primary: boolean }
@@ -103,26 +104,31 @@ function App() {
     invoke<MonitorInfo[]>("monitors_list").then(setMonitors).catch(() => {});
     invoke<CityOpt[]>("today_cities").then(setCities).catch(() => {});
   }, []);
+  const [tab, setTab] = useState("general");
   const pct = (v: number) => `${v}%`;
   const ms = (v: number) => `${v} ms`;
   const px = (v: number) => `${v} px`;
 
   return (
-    <div dir="auto" className="mx-auto max-w-3xl px-5 pb-8 text-white">
+    <div dir="auto" className="mx-auto max-w-4xl px-5 pb-8 text-white">
       <header className="sticky top-0 z-20 -mx-5 flex h-12 items-center gap-3 bg-[var(--app-bg)] px-5" data-testid="settings-bar">
         <h1 className="text-xl font-bold">{i("الإعدادات", "Settings")}</h1>
         <QuitButton />
       </header>
 
-      <Nav
+      <div className="flex gap-5">
+      <SideNav
+        current={tab}
+        onSelect={setTab}
         items={[
-          { id: "general", label: i("عام", "General") },
-          { id: "look", label: i("المظهر والميديا", "Appearance & media") },
-          { id: "modules", label: i("الوحدات", "Modules") },
-          { id: "perf", label: i("الأداء والتوفير", "Performance") },
+          { id: "general", label: i("عام", "General"), icon: <SlidersHorizontal size={16} /> },
+          { id: "look", label: i("المظهر والميديا", "Appearance & media"), icon: <Palette size={16} /> },
+          { id: "modules", label: i("الوحدات", "Modules"), icon: <Blocks size={16} /> },
+          { id: "perf", label: i("الأداء والتوفير", "Performance"), icon: <Gauge size={16} /> },
         ]}
       />
-
+      <main className="min-w-0 flex-1">
+      {tab === "general" && (
       <Group id="general" title={i("عام", "General")}>
       <Section title={i("التحديثات", "Updates")}>
         <Row label={i("فحص التحديثات تلقائيًا", "Check for updates automatically")} hint={i("فحص صامت واحد بعد الإقلاع؛ لا يظهر شيء إن لم يوجد تحديث", "One silent check after launch; nothing shows if there is no update")}>
@@ -187,7 +193,9 @@ function App() {
         </Row>
       </Section>
       </Group>
+      )}
 
+      {tab === "look" && (
       <Group id="look" title={i("المظهر والميديا", "Appearance & media")}>
       <Section title={i("الميديا والمظهر", "Media & appearance")}>
         <SubHead>{i("الحجم", "Size")}</SubHead>
@@ -258,7 +266,9 @@ function App() {
         </Row>
       </Section>
       </Group>
+      )}
 
+      {tab === "modules" && (
       <Group id="modules" title={i("الوحدات", "Modules")}>
       <Section title={i("اليوم والصلاة", "Today & prayer")}>
         <Row label={i("إظهار قسم «اليوم»", "Show the Today section")} hint={i("هجري + مواقيت الصلاة في الرئيسية — محلي بلا إنترنت", "Hijri date + prayer times on Home — local, offline")}>
@@ -441,7 +451,9 @@ function App() {
         </Row>
       </Section>
       </Group>
+      )}
 
+      {tab === "perf" && (
       <Group id="perf" title={i("الأداء والتوفير", "Performance & saving")}>
       <Section title={i("الأداء والتوفير", "Performance & saving")}>
         <Row label={i("حالة وضع التوفير", "Eco mode status")}>
@@ -476,6 +488,9 @@ function App() {
         </div>
       </Section>
       </Group>
+      )}
+      </main>
+      </div>
     </div>
   );
 }

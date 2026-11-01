@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 /** مجموعة رئيسية في الإعدادات (عام · المظهر والميديا · الوحدات · الأداء): عنوان واحد متّسق ثم أقسامها بتباعد ثابت. */
 export function Group({ id, title, children }: { id: string; title: string; children: ReactNode }) {
   return (
-    <div id={`grp-${id}`} data-group={id} className="scroll-mt-14 pt-6">
+    <div id={`grp-${id}`} data-group={id} className="pt-2">
       <h2 className="mb-3 text-[15px] font-bold text-white">{title}</h2>
       <div className="flex flex-col gap-4">{children}</div>
     </div>
@@ -24,33 +24,20 @@ export function SubHead({ children }: { children: ReactNode }) {
   return <div dir="auto" className="border-t border-white/10 pt-3 text-[11px] font-semibold text-white/40 first:border-t-0 first:pt-0">{children}</div>;
 }
 
-/** شريط تنقّل ثابت بين المجموعات: تمرير ناعم، والمجموعة الظاهرة تُميَّز (IntersectionObserver — بلا مؤقّتات). */
-export function Nav({ items }: { items: { id: string; label: string }[] }) {
-  const [cur, setCur] = useState(items[0]?.id ?? "");
-  useEffect(() => {
-    if (typeof IntersectionObserver === "undefined") return;
-    const io = new IntersectionObserver((es) => {
-      const vis = es.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-      const id = vis?.target.getAttribute("data-group");
-      if (id) setCur(id);
-    }, { rootMargin: "-104px 0px -65% 0px" });
-    items.forEach((x) => { const el = document.getElementById(`grp-${x.id}`); if (el) io.observe(el); });
-    return () => io.disconnect();
-  }, [items.map((x) => x.id).join("|")]);
-  const go = (id: string) => {
-    setCur(id);
-    document.getElementById(`grp-${id}`)?.scrollIntoView({ behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
-  };
+/** شريط جانبي لقائمة الأقسام: قسم واحد نشط في كل مرة (تنقّل بالقائمة لا تمرير). */
+export function SideNav({ items, current, onSelect }: { items: { id: string; label: string; icon: ReactNode }[]; current: string; onSelect: (id: string) => void }) {
   return (
-    <nav aria-label="Settings sections" className="sticky top-12 z-10 -mx-5 flex gap-1 border-b border-white/10 bg-[var(--app-bg)] px-5 py-2">
+    <nav aria-label="Settings sections" className="sticky top-12 flex w-44 shrink-0 flex-col gap-1 self-start py-2">
       {items.map((x) => (
         <button
           key={x.id}
-          onClick={() => go(x.id)}
-          aria-current={cur === x.id ? "true" : undefined}
-          className={`rounded-full px-3 py-1 text-[13px] ${cur === x.id ? "bg-white/15 text-white" : "text-white/60 hover:bg-white/10 hover:text-white"}`}
+          data-nav={x.id}
+          onClick={() => onSelect(x.id)}
+          aria-current={current === x.id ? "true" : undefined}
+          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-start text-[13px] ${current === x.id ? "bg-white/15 text-white" : "text-white/60 hover:bg-white/10 hover:text-white"}`}
         >
-          {x.label}
+          <span aria-hidden className="shrink-0">{x.icon}</span>
+          <span dir="auto" className="min-w-0 truncate">{x.label}</span>
         </button>
       ))}
     </nav>
