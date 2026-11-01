@@ -132,15 +132,52 @@ pub fn shell_invocation(cmd: &str) -> (String, String) {
     ("cmd.exe".into(), format!("/k {c}"))
 }
 
-/// وسيطات explorer لإظهار مسار في مجلده (مجلد ⇒ يُفتح مباشرة).
-pub fn folder_args(path: &str, is_dir: bool) -> String {
-    if is_dir { format!("\"{path}\"") } else { format!("/select,\"{path}\"") }
+/// وسيطات explorer لإظهار مسار في مجلده (مجلد ⇒ يُفتح مباشرة). None إن احتوى المسار على علامة اقتباس (لا هروب ممكن داخل وسيطات explorer).
+pub fn folder_args(path: &str, is_dir: bool) -> Option<String> {
+    if path.contains('"') {
+        return None;
+    }
+    Some(if is_dir { format!("\"{path}\"") } else { format!("/select,\"{path}\"") })
 }
 
-/// الأهداف المسموحة لـ open: مسارات، shell:، ms-settings:، http(s)/mailto. (أمر النظام الحر يمر عبر mode="shell" فقط.)
-pub fn open_target_ok(t: &str) -> bool {
+/// أسماء تنفيذية مجردة مسموحة صراحةً (تستعملها أوامر Palette.tsx الثابتة)؛ تُحلّ من System32.
+const BARE_EXES: &[&str] = &["taskmgr.exe"];
+
+/// مسار محلي مطلق بحرف قرص (C:\… أو C:/…) موجود فعلًا — يرفض UNC (\\ و //) والمسارات النسبية. `exists` يُحقن للاختبار.
+fn is_local_abs_path(t: &str, exists: impl Fn(&str) -> bool) -> bool {
+    let b = t.as_bytes();
+    b.len() >= 3 && b[0].is_ascii_alphabetic() && b[1] == b':' && (b[2] == b'\\' || b[2] == b'/') && exists(t)
+}
+
+/// منطق خالص لـ open_target_ok. المسموح فقط: http(s):// وmailto: وms-settings: وshell: ومسار محلي مطلق موجود وBARE_EXES.
+/// مرفوض: فارغ، أي محرف تحكم (NUL/CR/LF…)، علامة اقتباس، UNC، file: وأي مخطط آخر.
+fn open_target_ok_with(t: &str, exists: impl Fn(&str) -> bool) -> bool {
     let t = t.trim();
-    !t.is_empty() && !t.contains('\0') && !t.contains('\n')
+    if t.is_empty() || t.chars().any(|c| c.is_control() || c == '"') {
+        return false;
+    }
+    if t.starts_with("\\\\") || t.starts_with("//") {
+        return false;
+    }
+    let lower = t.to_ascii_lowercase();
+    for p in ["http://", "https://", "mailto:", "ms-settings:", "shell:"] {
+        if let Some(rest) = lower.strip_prefix(p) {
+            // الرابط/المخطط وحده بلا مضمون مرفوض، عدا ms-settings: الذي يفتح الصفحة الرئيسية للإعدادات.
+            return !rest.is_empty() || p == "ms-settings:";
+        }
+    }
+    BARE_EXES.contains(&lower.as_str()) || is_local_abs_path(t, exists)
+}
+
+/// الأهداف المسموحة لـ open/admin/folder: http(s) وmailto: وms-settings: وshell: ومسار محلي مطلق موجود. (أمر النظام الحر يمر عبر mode="shell" فقط.)
+pub fn open_target_ok(t: &str) -> bool {
+    open_target_ok_with(t, |p| std::path::Path::new(p).exists())
+}
+
+/// شرط mode="shell"/"admin-shell": أمر حر يكتبه المستخدم عمدًا — فحص سلامة الإدخال فقط (ليس مفتاح أمان).
+fn shell_cmd_ok(t: &str) -> bool {
+    let t = t.trim();
+    !t.is_empty() && !t.contains('\0') && !t.contains('\n') && !t.contains('\r')
 }
 
 #[cfg(windows)]
@@ -173,16 +210,26 @@ fn shell_execute(_verb: &str, _file: &str, _params: Option<&str>) -> Result<(), 
 /// إن مُرّر name يُسجَّل الاستعمال في الأخيرة (للتطبيقات والملفات).
 #[tauri::command]
 pub fn run_shell(app: AppHandle, target: String, mode: Option<String>, name: Option<String>) -> Result<(), String> {
-    if !open_target_ok(&target) {
+    let mode = mode.unwrap_or_else(|| "open".into());
+    let free_cmd = matches!(mode.as_str(), "shell" | "admin-shell");
+    if free_cmd && !shell_cmd_ok(&target) {
         return Err("هدف فارغ".into());
     }
+    if !free_cmd && !open_target_ok(&target) {
+        return Err("هدف غير مسموح".into());
+    }
     win::drop_focus(&app); // الحبة تعود NOACTIVATE دون سحب الفوكس من الهدف الجديد
-    let mode = mode.unwrap_or_else(|| "open".into());
-    let is_dir = std::path::Path::new(&target).is_dir();
+    let is_dir = std::path::Path::new(target.trim()).is_dir();
     let res = match mode.as_str() {
         "open" => shell_execute("open", target.trim(), None),
         "admin" => shell_execute("runas", target.trim(), None),
-        "folder" => shell_execute("open", "explorer.exe", Some(&folder_args(target.trim(), is_dir))),
+        "folder" => {
+            // «إظهار في المجلد» لمسار محلي فقط (لا روابط ولا shell:) وبلا علامة اقتباس.
+            match folder_args(target.trim(), is_dir) {
+                Some(args) if is_local_abs_path(target.trim(), |p| std::path::Path::new(p).exists()) => shell_execute("open", "explorer.exe", Some(&args)),
+                _ => Err("مسار غير صالح للإظهار في المجلد".into()),
+            }
+        }
         "shell" | "admin-shell" => {
             let (exe, args) = shell_invocation(&target);
             shell_execute(if mode == "admin-shell" { "runas" } else { "open" }, &exe, Some(&args))
@@ -274,7 +321,8 @@ pub async fn workspace_open(app: AppHandle, id: String) -> Result<WorkspaceOpene
             if n > 0 {
                 std::thread::sleep(std::time::Duration::from_millis(150));
             }
-            match shell_execute("open", t, None) {
+            // نفس فحص open_path: المساحات المخزّنة في kv قد تكون عبث بها، فلا نمرّر لـShellExecute إلا الأهداف المسموحة.
+            match if open_target_ok(t) { shell_execute("open", t.trim(), None) } else { Err("هدف غير مسموح".into()) } {
                 Ok(()) => res.opened += 1,
                 Err(_) => res.failed.push(t.clone()),
             }
@@ -319,10 +367,58 @@ mod tests {
 
     #[test]
     fn folder_args_selects_files_only() {
-        assert_eq!(folder_args("C:\\x\\a.txt", false), "/select,\"C:\\x\\a.txt\"");
-        assert_eq!(folder_args("C:\\x", true), "\"C:\\x\"");
+        assert_eq!(folder_args("C:\\x\\a.txt", false).as_deref(), Some("/select,\"C:\\x\\a.txt\""));
+        assert_eq!(folder_args("C:\\x", true).as_deref(), Some("\"C:\\x\""));
+        assert_eq!(folder_args("C:\\x\" /e,\\\\evil\\s", true), None);
         assert!(!open_target_ok("  "));
         assert!(open_target_ok("shell:Downloads"));
+    }
+
+    fn ok(t: &str) -> bool {
+        open_target_ok_with(t, |_| true) // كل مسار «موجود»
+    }
+
+    #[test]
+    fn open_target_allows_known_schemes() {
+        for t in ["http://example.com", "HTTPS://example.com/a?b=1", "mailto:a@b.c", "ms-settings:", "ms-settings:display", "shell:Downloads", "shell:My Pictures", "shell:MyComputerFolder", "SHELL:AppsFolder\\Microsoft.WindowsCalculator_8wekyb3d8bbwe!App", "taskmgr.exe"] {
+            assert!(ok(t), "{t}");
+        }
+    }
+
+    #[test]
+    fn open_target_rejects_dangerous() {
+        for t in ["", "   ", "file:///C:/Windows/System32/calc.exe", "\\\\server\\share\\a.exe", "//server/share/a.exe", "javascript:alert(1)", "vbscript:x", "data:text/html,x", "search-ms:query=a&crumb=location:\\\\evil\\s", "C:\\a\" /e,\\\\evil\\s", "C:\\a\nb", "C:\\a\rb", "C:\\a\0b", "https://x.y/\"", "http://", "relative\\path.exe", "cmd.exe", "ftp://h/x"] {
+            assert!(!ok(t), "{t:?}");
+        }
+    }
+
+    #[test]
+    fn open_target_local_path_requires_existence() {
+        assert!(open_target_ok_with("C:\\Users\\a\\x.lnk", |_| true));
+        assert!(open_target_ok_with("  d:/dir/file.txt ", |_| true));
+        assert!(!open_target_ok_with("C:\\missing.exe", |_| false));
+        // التنسيق الصحيح وحده لا يكفي: القرص بلا مسار، ومسار نسبي، ومسار فارغ بعد القرص.
+        assert!(!open_target_ok_with("C:", |_| true));
+        assert!(!open_target_ok_with("C:foo", |_| true));
+        assert!(!is_local_abs_path("\\\\?\\C:\\x", |_| true));
+    }
+
+    #[test]
+    fn open_target_real_fs() {
+        // الإصدار الحقيقي (Path::exists) على مجلد مؤقت: على ويندوز المسار مطلق بحرف قرص فيُقبل، وعلى غيره يُرفض شكلًا.
+        let tmp = std::env::temp_dir();
+        let p = tmp.to_string_lossy().into_owned();
+        assert_eq!(open_target_ok(&p), cfg!(windows));
+        assert!(!open_target_ok(&format!("{p}\\definitely-missing-\u{1F600}.exe")));
+    }
+
+    #[test]
+    fn shell_cmd_ok_is_lenient_but_safe() {
+        assert!(shell_cmd_ok("dir /b"));
+        assert!(shell_cmd_ok("ps Get-Date"));
+        assert!(!shell_cmd_ok(" "));
+        assert!(!shell_cmd_ok("a\nb"));
+        assert!(!shell_cmd_ok("a\0b"));
     }
 
     #[test]
