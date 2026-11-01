@@ -29,6 +29,7 @@ pub mod note;       // الملاحظة + التذكيرات + المؤقّت (k
 // pub mod vpn; pub mod controls; pub mod audio; pub mod privacy;
 pub mod files;      // فهرس شريط الأوامر (ذاكرة فقط) + تطبيقات + أيقونات
 pub mod perf;       // الأداء والتوفير: وضع Eco + استهلاك رام التطبيق
+pub mod lazywin;    // نافذتا الإعدادات/المحرّر عند الطلب (تُنشآن عند أول فتح وتُدمَّران عند الإغلاق)
 pub mod backdrop;   // زجاج حقيقي (Acrylic عبر DWM) لنافذة main عند themeMaterial=glass
 pub mod mascot;     // عيون التميمة: موضع المؤشر الحقيقي (mascot:look)، خيط مركون ما لم يُفعَّل
 pub mod rates;      // أسعار العملات الحية لشريط الأوامر (open.er-api.com، كاش 12 ساعة)
@@ -123,15 +124,6 @@ pub fn run() {
                 eprintln!("تعذّر تسجيل Ctrl+Alt+I: {e}");
             }
             Ok(())
-        })
-        .on_window_event(|window, event| {
-            // نافذة الإعدادات تُخفى عند الإغلاق (لا تُدمَّر) كي يعيد open_settings فتحها.
-            if window.label() == "settings" || window.label() == editor::EDITOR {
-                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                    api.prevent_close();
-                    let _ = window.hide();
-                }
-            }
         })
         .invoke_handler(tauri::generate_handler![
             commands::set_island_hidden,

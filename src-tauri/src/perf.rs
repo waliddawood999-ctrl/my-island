@@ -59,15 +59,16 @@ pub struct RamSnapshot {
     pub cpu: f32,
     /// true إن تجاوز المعالج العتبة (وإلا خامل)
     pub active: bool,
+    /// المقياس المستعمل: "private" = Private Working Set (لا تُحسب الصفحات المشتركة بين عمليات WebView2 مكررة) ·
+    /// "mixed" = تعذّرت قراءته لبعض العمليات فعوّضنا بـWorking Set لها · "working" = Working Set كاملًا (نظام/صلاحيات لا تدعمه).
+    pub metric: &'static str,
 }
 
 const ACTIVE_CPU: f32 = 1.5;
 const WEBVIEW_EXE: &str = "msedgewebview2.exe";
 
-/// عملية التطبيق + أحفاد msedgewebview2.exe فقط (الأحفاد الآخرون — كتطبيقات أطلقها المستخدم — لا يُحتسبون).
-pub fn summarize(procs: &[Proc], me: u32) -> RamSnapshot {
-    let mut snap = RamSnapshot::default();
-    // مجموعة أحفاد me (لأن عمليات WebView2 الفرعية (renderer/gpu) أبناء المتصفّح لا أبناؤنا المباشرون)
+/// pids عملية التطبيق وأحفادها (WebView2 renderer/gpu أبناء المتصفّح لا أبناؤنا المباشرون).
+pub fn our_pids(procs: &[Proc], me: u32) -> std::collections::HashSet<u32> {
     let mut ours: std::collections::HashSet<u32> = std::collections::HashSet::from([me]);
     loop {
         let before = ours.len();
@@ -82,6 +83,43 @@ pub fn summarize(procs: &[Proc], me: u32) -> RamSnapshot {
             break;
         }
     }
+    ours
+}
+
+/// pids التي تُحتسب في الرام: العملية الرئيسية + أحفاد msedgewebview2.exe فقط (الأحفاد الآخرون — كتطبيقات أطلقها المستخدم — لا يُحتسبون).
+pub fn counted_pids(procs: &[Proc], me: u32) -> Vec<u32> {
+    let ours = our_pids(procs, me);
+    procs
+        .iter()
+        .filter(|p| ours.contains(&p.pid) && (p.pid == me || p.name.eq_ignore_ascii_case(WEBVIEW_EXE)))
+        .map(|p| p.pid)
+        .collect()
+}
+
+/// يستبدل `mem` بقيمة `private(pid)` للعمليات المحتسبة حيث توفّرت؛ يعيد المقياس الناتج ("private" | "mixed" | "working").
+pub fn apply_private(procs: &mut [Proc], me: u32, private: impl Fn(u32) -> Option<u64>) -> &'static str {
+    let counted: std::collections::HashSet<u32> = counted_pids(procs, me).into_iter().collect();
+    let (mut ok, mut total) = (0usize, 0usize);
+    for p in procs.iter_mut().filter(|p| counted.contains(&p.pid)) {
+        total += 1;
+        if let Some(v) = private(p.pid) {
+            p.mem = v;
+            ok += 1;
+        }
+    }
+    if total > 0 && ok == total {
+        "private"
+    } else if ok > 0 {
+        "mixed"
+    } else {
+        "working"
+    }
+}
+
+/// خلاصة العمليات المحتسبة (mem = Private Working Set إن طُبّق apply_private وإلا Working Set).
+pub fn summarize(procs: &[Proc], me: u32) -> RamSnapshot {
+    let mut snap = RamSnapshot::default();
+    let ours = our_pids(procs, me);
     for p in procs.iter().filter(|p| ours.contains(&p.pid)) {
         if p.pid == me {
             snap.main += p.mem;
@@ -145,6 +183,27 @@ pub fn perf_status(app: AppHandle) -> EcoStatus {
     recompute(&app)
 }
 
+/// Private Working Set لعملية (بايت) عبر GetProcessMemoryInfo(PROCESS_MEMORY_COUNTERS_EX2): الصفحات الخاصة بالعملية فقط،
+/// فلا تتكرر الصفحات المشتركة بين عمليات WebView2 في المجموع. None عند تعذّر الفتح/القراءة (ويندوز أقدم من 1809 أو صلاحيات).
+#[cfg(windows)]
+fn private_working_set(pid: u32) -> Option<u64> {
+    use windows::Win32::Foundation::CloseHandle;
+    use windows::Win32::System::ProcessStatus::{GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS, PROCESS_MEMORY_COUNTERS_EX2};
+    use windows::Win32::System::Threading::{OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION};
+    unsafe {
+        let h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).ok()?;
+        let mut c = PROCESS_MEMORY_COUNTERS_EX2::default();
+        c.cb = std::mem::size_of::<PROCESS_MEMORY_COUNTERS_EX2>() as u32;
+        let r = GetProcessMemoryInfo(h, &mut c as *mut _ as *mut PROCESS_MEMORY_COUNTERS, c.cb);
+        let _ = CloseHandle(h);
+        r.ok().filter(|_| c.PrivateWorkingSetSize > 0).map(|_| c.PrivateWorkingSetSize as u64)
+    }
+}
+#[cfg(not(windows))]
+fn private_working_set(_pid: u32) -> Option<u64> {
+    None
+}
+
 /// استهلاك رام التطبيق الآن (عملياته فقط). stateless: عيّنتان بينهما 250ms لحساب المعالج، ثم يُحرَّر كل شيء.
 #[tauri::command]
 pub async fn perf_ram() -> Result<RamSnapshot, String> {
@@ -155,7 +214,7 @@ pub async fn perf_ram() -> Result<RamSnapshot, String> {
         sys.refresh_processes_specifics(ProcessesToUpdate::All, true, kind);
         std::thread::sleep(std::time::Duration::from_millis(250));
         sys.refresh_processes_specifics(ProcessesToUpdate::All, true, kind);
-        let procs: Vec<Proc> = sys
+        let mut procs: Vec<Proc> = sys
             .processes()
             .iter()
             .map(|(pid, p): (&Pid, &sysinfo::Process)| Proc {
@@ -166,7 +225,11 @@ pub async fn perf_ram() -> Result<RamSnapshot, String> {
                 cpu: p.cpu_usage(),
             })
             .collect();
-        summarize(&procs, std::process::id())
+        let me = std::process::id();
+        let metric = apply_private(&mut procs, me, private_working_set);
+        let mut snap = summarize(&procs, me);
+        snap.metric = metric;
+        snap
     })
     .await
     .map_err(|e| e.to_string())
@@ -222,5 +285,36 @@ mod tests {
         assert!(s.active);
         assert_eq!(s.total, 15);
         assert_eq!(summarize(&[], 1), RamSnapshot::default());
+    }
+
+    #[test]
+    fn private_working_set_replaces_shared_counted_working_set() {
+        // WebView2: كل renderer يُظهر Working Set 80 بينها صفحات مشتركة؛ الخاص الحقيقي أقل.
+        let mut procs = vec![
+            p(100, Some(1), "my-island.exe", 42, 0.0),
+            p(200, Some(100), "msedgewebview2.exe", 80, 0.0),
+            p(201, Some(200), "msedgewebview2.exe", 80, 0.0),
+            p(202, Some(200), "msedgewebview2.exe", 80, 0.0),
+            p(300, Some(100), "notepad.exe", 999, 0.0),
+        ];
+        let private = |pid: u32| match pid { 100 => Some(30), 200 => Some(25), 201 => Some(20), 202 => Some(15), _ => Some(1) };
+        let metric = apply_private(&mut procs, 100, private);
+        assert_eq!(metric, "private");
+        let s = summarize(&procs, 100);
+        assert_eq!((s.main, s.webview, s.total), (30, 60, 90));
+        assert_eq!(procs.iter().find(|p| p.pid == 300).unwrap().mem, 999, "العمليات غير المحتسبة لا تُمسّ");
+    }
+
+    #[test]
+    fn private_metric_falls_back_per_process() {
+        let mk = || vec![p(1, None, "my-island.exe", 50, 0.0), p(2, Some(1), "msedgewebview2.exe", 70, 0.0)];
+        let mut a = mk();
+        assert_eq!(apply_private(&mut a, 1, |_| None), "working");
+        assert_eq!(summarize(&a, 1).total, 120, "Working Set كاملًا عند تعذّر القراءة");
+        let mut b = mk();
+        assert_eq!(apply_private(&mut b, 1, |pid| (pid == 1).then_some(10)), "mixed");
+        assert_eq!(summarize(&b, 1).total, 80, "الرئيسية خاصة 10 + WebView2 تعويض 70");
+        let mut c: Vec<Proc> = vec![];
+        assert_eq!(apply_private(&mut c, 1, |_| Some(1)), "working", "لا عمليات محتسبة");
     }
 }

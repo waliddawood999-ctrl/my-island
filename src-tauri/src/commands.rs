@@ -2,7 +2,7 @@
 use crate::{state::AppState, win};
 use serde_json::{Map, Value};
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Emitter, State};
 
 #[tauri::command]
 pub fn set_island_hidden(app: AppHandle, hidden: bool) {
@@ -77,14 +77,10 @@ pub fn release_focus(app: AppHandle, restore: Option<bool>) {
     }
 }
 
-/// يفتح نافذة الإعدادات (يُظهرها ويمنحها الفوكس — هي نافذة عادية لا NOACTIVATE).
+/// يفتح نافذة الإعدادات (تُنشأ عند أول طلب ثم تُعرض وتُركَّز؛ هي نافذة عادية لا NOACTIVATE). async كي لا يُبنى الـwebview على الخيط الرئيسي.
 #[tauri::command]
-pub fn open_settings(app: AppHandle) {
-    if let Some(w) = app.get_webview_window("settings") {
-        let _ = w.unminimize();
-        let _ = w.show();
-        let _ = w.set_focus();
-    }
+pub async fn open_settings(app: AppHandle) {
+    let _ = crate::lazywin::open(&app, &crate::lazywin::SETTINGS);
 }
 
 #[derive(Serialize)]

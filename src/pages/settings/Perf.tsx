@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { i } from "../../i18n";
 import { useEco } from "../../motion";
 
-interface Ram { total: number; main: number; webview: number; webviewCount: number; cpu: number; active: boolean }
+interface Ram { total: number; main: number; webview: number; webviewCount: number; cpu: number; active: boolean; metric?: "private" | "mixed" | "working" }
 
 const mb = (b: number) => `${(b / 1048576).toFixed(b >= 104857600 ? 0 : 1)} MB`;
 
@@ -65,7 +65,9 @@ export function RamUsage() {
         </span>
       </div>
       <div className="mt-1 text-xs text-white/40">
-        {i("الذاكرة الفعلية (Working Set) لعمليات التطبيق فقط؛ قد تتضمن صفحات مشتركة بين عمليات WebView2 فيختلف المجموع قليلًا عن مدير المهام.", "Working-set memory of this app's own processes only; shared pages across WebView2 processes may make the total differ slightly from Task Manager.")}
+        {ram.metric === "working"
+          ? i("تعذّرت قراءة الذاكرة الخاصة على هذا النظام فيُعرض Working Set الكلي لعمليات التطبيق فقط؛ يتضمن صفحات مشتركة بين عمليات WebView2 مكرَّرة فيزيد عن الواقع وعن عمود «الذاكرة الخاصة» في مدير المهام.", "Private memory could not be read on this system, so the full Working Set of this app's own processes is shown; it counts pages shared between WebView2 processes repeatedly, so it overstates real usage and the Task Manager \"Memory\" column.")
+          : i(`الذاكرة الخاصة (Private Working Set) لعمليات التطبيق فقط: لا تُحسب الصفحات المشتركة بين عمليات WebView2 مكرّرة، فهي أقرب لما يشغله التطبيق فعلًا من Working Set الكلي${ram.metric === "mixed" ? " (قُدِّر بعض العمليات بالكلي لتعذّر قراءة خاصتها)" : ""}. قد تختلف قليلًا عن مدير المهام، وتتغيّر مع كل قياس.`, `Private Working Set of this app's own processes only: pages shared between WebView2 processes are not counted repeatedly, so it is closer to what the app really uses than the full Working Set${ram.metric === "mixed" ? " (some processes fell back to the full Working Set because their private memory could not be read)" : ""}. It may differ slightly from Task Manager and varies per sample.`)}
       </div>
     </div>
   );

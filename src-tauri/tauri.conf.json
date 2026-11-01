@@ -7,9 +7,7 @@
   "app": {
     "windows": [
       { "label": "main", "url": "index.html", "width": 760, "height": 560, "decorations": false, "transparent": true, "alwaysOnTop": true, "skipTaskbar": true, "shadow": false, "focus": false, "x": 0, "y": 0 },
-      { "label": "overlay", "url": "overlay.html", "decorations": false, "shadow": false, "resizable": false, "transparent": true, "alwaysOnTop": true, "skipTaskbar": true, "visible": false },
-      { "label": "settings", "url": "settings.html", "title": "Settings", "width": 880, "height": 620, "visible": false },
-      { "label": "editor", "url": "editor.html", "title": "Editor", "width": 900, "height": 640, "visible": false }
+      { "label": "overlay", "url": "overlay.html", "decorations": false, "shadow": false, "resizable": false, "transparent": true, "alwaysOnTop": true, "skipTaskbar": true, "visible": false }
     ],
     "security": { "csp": null }
   },

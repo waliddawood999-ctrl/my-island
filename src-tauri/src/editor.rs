@@ -69,17 +69,15 @@ fn newest_capture(app: &AppHandle) -> Option<String> {
 /// يفتح نافذة المحرّر على صورة (يُستدعى من اللقطة بـShift ومن editor_open).
 pub fn open_path(app: &AppHandle, path: &str) {
     *app.state::<EditorState>().pending.lock().unwrap() = Some(path.to_string());
-    if let Some(w) = app.get_webview_window(EDITOR) {
-        let _ = w.show();
-        let _ = w.unminimize();
-        let _ = w.set_focus();
+    // نافذة جديدة تقرأ المعلّق عند تحميلها (editor_image)؛ الموجودة تُبلَّغ بالحدث.
+    if let Some((_, false)) = crate::lazywin::open(app, &crate::lazywin::EDITOR) {
+        let _ = app.emit_to(EDITOR, "editor:open", path.to_string());
     }
-    let _ = app.emit_to(EDITOR, "editor:open", path.to_string());
 }
 
 /// editor_open(path?) — يفتح المحرّر على `path`، وبدونه على أحدث لقطة في screenshotDir.
 #[tauri::command]
-pub fn editor_open(app: AppHandle, path: Option<String>) -> Result<(), String> {
+pub async fn editor_open(app: AppHandle, path: Option<String>) -> Result<(), String> {
     let path = match path {
         Some(p) if !p.is_empty() => p,
         _ => newest_capture(&app).ok_or("لا لقطات لفتحها")?,

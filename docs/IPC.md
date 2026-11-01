@@ -209,3 +209,7 @@ lyrics_get(artist: String, title: String, album?: String, duration: f64 ثوان
 
 ### مضاف: الزجاج الحقيقي (backdrop)
 - `island_backdrop(glass: bool, light: bool, radius: f64) → "none"|"win11"|"win10"` — أمر داخلي من `Pill` (عبر `useBackdrop`) لنافذة **main فقط**. `glass=true` ⇒ Acrylic حقيقي خلف النافذة بصبغة تتبع `light`، مع منطقة (SetWindowRgn) كبسولية بنصف قطر `radius` (CSS px؛ الارتفاع/2 منكمشة · 28 مفتوحة · 24 شريط الأوامر)؛ `glass=false` ⇒ إزالة كاملة. الناتج = الآلية الفعلية؛ `"none"` = غير مدعوم/فشل (يُبتلع بصمت) فتبقى الواجهة على الزجاج داخل الصفحة. بلا حدث ولا خيط ولا مؤقّت. `report_island_rect` يُسقط الخلفية قبل تغيير الحجم (المنطقة بحجم النافذة)، والواجهة تعيد الطلب بعد استقرار الحركة.
+
+### مضاف: رام أدق + نوافذ كسولة (بلا أوامر جديدة)
+- `perf_ram()` — نفس الأمر والشكل + حقل `metric`: `"private"` = **Private Working Set** (`GetProcessMemoryInfo` بـ`PROCESS_MEMORY_COUNTERS_EX2`؛ لا تُحسب الصفحات المشتركة بين عمليات WebView2 مكررة) · `"mixed"` = بعض العمليات رجعت لـWorking Set لتعذّر قراءتها · `"working"` = Working Set كاملًا (ويندوز < 1809/صلاحيات). يُقرأ لعمليات شجرة التطبيق المحتسبة فقط (الرئيسية + WebView2 الأحفاد).
+- `open_settings()` / `editor_open(path?)` (وقدَم `editor::open_path` من الالتقاط): **نفس الأسماء والسلوك المرئي**، لكن النافذتان لا تُنشآن عند الإقلاع — تُنشآن عند أول طلب ثم تُعرضان وتُركَّزان فقط إن وُجدتا، وتُدمَّران فعليًا عند الإغلاق. النوافذ أربع في التطبيق: `main` و`overlay` من `tauri.conf.json`، و`settings` و`editor` عند الطلب (`lazywin.rs`). الأمران async.
