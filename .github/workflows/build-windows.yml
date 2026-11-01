@@ -7,9 +7,10 @@ on:
         description: 'Publish this build to the auto-updater (my-island-releases)'
         type: boolean
         default: false
-  # الدفع إلى main = بناء فقط؛ النشر يدوي وبموافقة صريحة.
+  # الدفع إلى main = بناء فقط. النشر يكون بوسم v* أو بتشغيل يدوي مع publish.
   push:
     branches: [main]
+    tags: ['v*']
 
 permissions:
   contents: read
@@ -61,21 +62,23 @@ jobs:
 
       # نشر التحديث: يعمل فقط حين يوجد السرّان TAURI_SIGNING_PRIVATE_KEY وRELEASES_TOKEN.
       # الشرط عبر خطوة تفحص الأسرار (لا يمكن استعمال secrets مباشرة في if).
-      # النشر لا يحدث أبدًا عند الدفع إلى main: فقط عند تشغيل يدوي مع تفعيل خيار publish.
+      # النشر لا يحدث أبدًا عند الدفع إلى main: فقط بوسم v* أو تشغيل يدوي مع publish.
+      # النشر يستخدم RELEASES_TOKEN لمستودع آخر، فلا يحتاج GITHUB_TOKEN صلاحية كتابة.
       - name: Check release secrets
         id: rel
         shell: bash
         run: |
-          if [ "$EVENT" != "workflow_dispatch" ] || [ "$PUBLISH" != "true" ]; then echo "نشر التحديث متخطّى: لم يُطلب النشر يدويًا (شغّل المسار يدويًا وفعّل publish)."; fi
+          if [[ "$REF" != refs/tags/v* ]] && { [ "$EVENT" != "workflow_dispatch" ] || [ "$PUBLISH" != "true" ]; }; then echo "نشر التحديث متخطّى: لم يُطلب النشر (ادفع وسم v* أو شغّل المسار يدويًا وفعّل publish)."; fi
           if [ -n "$K" ] && [ -n "$T" ]; then echo "go=true" >> "$GITHUB_OUTPUT"; else echo "go=false" >> "$GITHUB_OUTPUT"; echo "نشر التحديث متخطّى: السرّان غير مكتملين."; fi
         env:
           K: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           T: ${{ secrets.RELEASES_TOKEN }}
           EVENT: ${{ github.event_name }}
           PUBLISH: ${{ inputs.publish }}
+          REF: ${{ github.ref }}
 
       - name: Publish update release
-        if: steps.rel.outputs.go == 'true' && github.event_name == 'workflow_dispatch' && inputs.publish == true
+        if: steps.rel.outputs.go == 'true' && (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish == true))
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
