@@ -27,7 +27,7 @@ export function AttentionSection({ snap }: { snap: AttentionSnap | null }) {
               <span className="shrink-0 tabular-nums text-white/60"><bdi>{dur(a.seconds)}</bdi></span>
             </div>
             <div className="h-1 overflow-hidden rounded-full bg-white/15">
-              <div className="h-full rounded-full bg-[#8ea2ff]" style={{ width: `${Math.max(4, (a.seconds / max) * 100)}%` }} />
+              <div className="h-full rounded-full bg-white/70" style={{ width: `${Math.max(4, (a.seconds / max) * 100)}%` }} />
             </div>
           </div>
         ))

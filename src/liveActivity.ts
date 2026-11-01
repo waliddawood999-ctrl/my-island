@@ -1,0 +1,161 @@
+/**
+ * نموذج «النشاط الحي» (منطق خالص بلا React — يُختبر بـ scripts/wow.test.mjs):
+ * أولوية موحّدة تُطبَّق على الكبسولة المدمجة واللوحة الموسّعة معًا، ولون لمسة واحد لكل نوع، ومساعدات الرسم الخفيفة
+ * (حلقة تقدّم، مراحل، منحنى مصغّر، سحب للتأكيد، هيئة تبويب المتصفح). انظر docs/MOTION.md §النشاط الحي.
+ */
+
+export type ActivityKind = "rec" | "timer" | "stopwatch" | "dl" | "media" | "meeting" | "battery" | "net";
+
+/**
+ * ترتيب الأولوية الثابت والمعلن: تسجيل جارٍ ← مؤقّت/ساعة إيقاف ← تنزيل جارٍ ← ميديا مشغّلة ← اجتماع قريب ← بطارية ← سرعتا الشبكة (محيطي).
+ * «اجتماع قريب» محجوز: وحدة الاجتماعات ليست في main بعد فلا يُنتجه أي مدخل (انظر docs/STATUS.md).
+ */
+export const PRIORITY: readonly ActivityKind[] = ["rec", "timer", "stopwatch", "dl", "media", "meeting", "battery", "net"];
+
+export type ActivityInput = Partial<Record<ActivityKind, boolean>>;
+
+/** الأنشطة القائمة بترتيب الأولوية. */
+export function activeKinds(inp: ActivityInput): ActivityKind[] {
+  return PRIORITY.filter((k) => !!inp[k]);
+}
+
+/** النشاط المعروض: التثبيت اليدوي (مفتاح التبديل) إن كان لا يزال قائمًا وإلا الأعلى أولوية؛ لا شيء ⇒ null. */
+export function shownKind(kinds: readonly ActivityKind[], pinned: ActivityKind | null): ActivityKind | null {
+  if (kinds.length === 0) return null;
+  return pinned && kinds.includes(pinned) ? pinned : kinds[0];
+}
+
+/** التالي دوريًا بين الأنشطة القائمة (مفتاح التبديل/السحب). */
+export function nextKind(kinds: readonly ActivityKind[], cur: ActivityKind | null): ActivityKind | null {
+  if (kinds.length === 0) return null;
+  const n = cur ? kinds.indexOf(cur) : -1;
+  return kinds[(n + 1) % kinds.length];
+}
+
+/** النشاط الثانوي المضغوط أسفل البطاقة الأولوية (د2): الأعلى أولوية بعد المعروض. */
+export function secondaryKind(kinds: readonly ActivityKind[], shown: ActivityKind | null): ActivityKind | null {
+  return kinds.find((k) => k !== shown) ?? null;
+}
+
+/** لون اللمسة الواحد لكل نوع (متغيرات CSS في island.css تتبدّل مع الثيم). */
+export const ACCENT: Record<ActivityKind, string> = {
+  rec: "var(--act-rec)",
+  timer: "var(--act-timer)",
+  stopwatch: "var(--act-timer)",
+  dl: "var(--act-dl)",
+  media: "var(--act-media)",
+  meeting: "var(--act-meeting)",
+  battery: "var(--act-battery)",
+  net: "var(--act-net)",
+};
+
+// ───────────────────────────── مراحل وتقدّم ─────────────────────────────
+export type StageState = "done" | "now" | "next";
+
+/** حالة كل مرحلة: المنجزة قبل الحالية، الحالية مضيئة، القادمة باهتة. */
+export function stageStates(total: number, current: number): StageState[] {
+  const c = Math.max(0, Math.min(total - 1, Math.floor(current)));
+  return Array.from({ length: Math.max(0, total) }, (_, n): StageState => (n < c ? "done" : n === c ? "now" : "next"));
+}
+
+/** مرحلة التنزيل الحالية من النسبة (مشتقّة: ربع كل مرحلة)؛ نسبة مجهولة ⇒ الأولى. 100% ⇒ تُحتسب الأخيرة منجزة بالمرحلة الحالية. */
+export function downloadStage(percent: number | null | undefined, total = 4): number {
+  if (percent == null || !Number.isFinite(percent)) return 0;
+  return Math.max(0, Math.min(total - 1, Math.floor((percent / 100) * total)));
+}
+
+/** حلقة التقدّم: محيط الدائرة وإزاحة الشرطة لنسبة 0..1. */
+export function ringDash(p: number, r: number): { c: number; offset: number } {
+  const c = 2 * Math.PI * r;
+  const q = Number.isFinite(p) ? Math.max(0, Math.min(1, p)) : 0;
+  return { c, offset: c * (1 - q) };
+}
+
+/** نسبة السحب 0..1 لمقبض عرضه thumb داخل مسار عرضه track. */
+export function swipeProgress(dx: number, track: number, thumb: number): number {
+  const span = Math.max(1, track - thumb);
+  return Math.max(0, Math.min(1, dx / span));
+}
+/** يُؤكَّد الإجراء الحساس عند بلوغ هذه النسبة (سحب بالماوس لا نقرة). */
+export const SWIPE_CONFIRM_AT = 0.9;
+export const swipeDone = (p: number) => p >= SWIPE_CONFIRM_AT;
+
+// ───────────────────────────── منحنى مصغّر ─────────────────────────────
+/** نقاط SVG polyline لسجلّ قيم (0..max) داخل w×h بحشوة pad؛ أقل من نقطتين ⇒ سلسلة فارغة (لا رسم). */
+export function sparkPoints(values: readonly number[], w: number, h: number, pad = 2, lo?: number, hi?: number): string {
+  const v = values.filter((x) => Number.isFinite(x));
+  if (v.length < 2) return "";
+  const min = lo ?? Math.min(...v);
+  let max = hi ?? Math.max(...v);
+  if (max - min < 1e-9) max = min + 1; // خط مستقيم عند ثبات القيم
+  const dx = (w - pad * 2) / (v.length - 1);
+  return v
+    .map((x, n) => `${(pad + n * dx).toFixed(1)},${(pad + (h - pad * 2) * (1 - (x - min) / (max - min))).toFixed(1)}`)
+    .join(" ");
+}
+
+/** يضيف عيّنة إلى سجلّ محدود الطول، بفاصل أدنى بين العيّنات (ms) كي يعني المنحنى زمنًا لا ضجيج أحداث. */
+export function pushSample<T extends { t: number; v: number }>(hist: readonly T[], s: T, minGapMs: number, cap: number): T[] {
+  const last = hist[hist.length - 1];
+  if (last && s.t - last.t < minGapMs) {
+    // نفس الفترة: تحديث آخر عيّنة بالقيمة الأحدث (بلا نمو)
+    return last.v === s.v ? (hist as T[]) : [...hist.slice(0, -1), { ...last, v: s.v }];
+  }
+  return [...hist, s].slice(-cap);
+}
+
+// ───────────────────────────── تنسيقات ─────────────────────────────
+/** سرعة شبكة بايت/ث ⇒ «1.4 MB/s» (1024). */
+export function fmtSpeed(bps: number): string {
+  if (!Number.isFinite(bps) || bps < 1024) return "0 KB/s";
+  const u = ["KB/s", "MB/s", "GB/s"];
+  let v = bps / 1024, k = 0;
+  while (v >= 1024 && k < u.length - 1) { v /= 1024; k++; }
+  return `${v.toFixed(v >= 100 || k === 0 ? 0 : 1)} ${u[k]}`;
+}
+
+/** ساعة إيقاف: «م:ث.سس» (أو «س:م:ث» عند الساعة فأكثر)؛ centis=false يحذف الأجزاء (الكبسولة). */
+export function fmtStopwatch(ms: number, centis = true): string {
+  const t = Math.max(0, Math.floor(ms));
+  const h = Math.floor(t / 3_600_000), m = Math.floor((t % 3_600_000) / 60_000), s = Math.floor((t % 60_000) / 1000);
+  const c = Math.floor((t % 1000) / 10);
+  const p = (n: number) => String(n).padStart(2, "0");
+  const base = h > 0 ? `${h}:${p(m)}:${p(s)}` : `${p(m)}:${p(s)}`;
+  return centis && h === 0 ? `${base}.${p(c)}` : base;
+}
+
+/** حالة ساعة الإيقاف: المنقضي = المتراكم + (الآن − البدء) أثناء الجريان. */
+export interface StopwatchState { running: boolean; startedAt: number; acc: number }
+export const SW_IDLE: StopwatchState = { running: false, startedAt: 0, acc: 0 };
+export const swElapsed = (s: StopwatchState, now: number) => s.acc + (s.running ? Math.max(0, now - s.startedAt) : 0);
+export const swStart = (s: StopwatchState, now: number): StopwatchState => (s.running ? s : { running: true, startedAt: now, acc: s.acc });
+export const swPause = (s: StopwatchState, now: number): StopwatchState => (s.running ? { running: false, startedAt: 0, acc: swElapsed(s, now) } : s);
+export const swReset = (): StopwatchState => SW_IDLE;
+/** قائمة بوجود ما يُعرض (جرى أو توقّف بقيمة). */
+export const swActive = (s: StopwatchState) => s.running || s.acc > 0;
+
+// ───────────────────────────── مقاسات الكبسولة ─────────────────────────────
+/** عرض الكبسولة المدمجة المنقسمة (طرفان) من عرض الحبة الأساسي. */
+export const compactWidth = (pillW: number) => Math.max(268, Math.round(pillW * 1.3));
+
+export interface DockInfo { active: boolean; browser: string; strip: number; inset: number }
+export const DOCK_OFF: DockInfo = { active: false, browser: "", strip: 0, inset: 0 };
+
+/** استجابة سليمة فقط: أي حمولة مشوّهة ⇒ الوضع الطبيعي (لا تُترك الحبة خارج موضعها أبدًا). */
+export function sanitizeDock(p: unknown): DockInfo {
+  const d = p as Partial<DockInfo> | null | undefined;
+  if (!d || d.active !== true) return DOCK_OFF;
+  const strip = Number(d.strip), inset = Number(d.inset);
+  if (!Number.isFinite(strip) || strip < 24 || strip > 80 || !Number.isFinite(inset) || inset < 0 || inset > 16) return DOCK_OFF;
+  return { active: true, browser: String(d.browser ?? ""), strip, inset };
+}
+
+/**
+ * هيئة التبويب: ارتفاع النافذة = ارتفاع الشريط، والجسم يهبط بحيّز الأعلى (y) فيكون ارتفاعه strip−inset،
+ * زوايا علوية مدوّرة وقاع مسطّح يلتحم بحافة الشريط. العرض: عرض الحبة الأساسي (محتواها كما هو).
+ */
+export function tabShape(d: DockInfo, pillW: number, pillH: number): { w: number; winH: number; bodyH: number; y: number; top: number; bottom: number } {
+  if (!d.active) return { w: pillW, winH: pillH, bodyH: pillH, y: 0, top: pillH / 2, bottom: pillH / 2 };
+  const bodyH = Math.max(20, d.strip - d.inset);
+  return { w: pillW, winH: d.strip, bodyH, y: d.inset, top: Math.min(12, bodyH / 2), bottom: 0 };
+}

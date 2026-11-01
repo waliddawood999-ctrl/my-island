@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { spring } from "../../motion";
+import { itemVariants, spring } from "../../motion";
 import { Battery as BatteryIcon, BatteryCharging, CheckCircle2, Download } from "lucide-react";
 import { i } from "../../i18n";
 import { fmtBytes, type Battery, type DownloadsSnap } from "../../useDownloads";
@@ -38,8 +38,8 @@ export function DownloadsSection({ snap, battery, showDownloads }: { snap: Downl
           {active.length === 0 && recent.length === 0 && (
             <span className="text-white/40">{i("لا تنزيلات حاليًا", "No downloads right now")}</span>
           )}
-          {active.map((d) => (
-            <div key={d.id} className="flex flex-col gap-1">
+          {active.map((d, n) => (
+            <motion.div key={d.id} custom={n} variants={itemVariants} initial="initial" animate="animate" className="flex flex-col gap-1">
               <div className="flex items-center gap-2" dir="auto">
                 <span className="min-w-0 flex-1 truncate">{d.name}</span>
                 <span dir="ltr" className="shrink-0 tabular-nums text-white/60">
@@ -50,19 +50,19 @@ export function DownloadsSection({ snap, battery, showDownloads }: { snap: Downl
               </div>
               <div className="h-1.5 overflow-hidden rounded-full bg-white/20">
                 {d.percent != null ? (
-                  <motion.div initial={false} animate={{ width: `${d.percent}%` }} transition={spring.content} className="h-full rounded-full bg-white" />
+                  <motion.div initial={false} animate={{ scaleX: d.percent / 100 }} transition={spring.content} style={{ transformOrigin: "left" }} className="h-full w-full rounded-full bg-white" />
                 ) : (
-                  <div className="h-full w-full animate-pulse rounded-full bg-white/60" />
+                  <div className="h-full w-full rounded-full bg-white/40" />
                 )}
               </div>
-            </div>
+            </motion.div>
           ))}
-          {recent.map((d) => (
-            <div key={`${d.at}-${d.name}`} className="flex items-center gap-2 text-white/70" dir="auto">
+          {recent.map((d, n) => (
+            <motion.div key={`${d.at}-${d.name}`} custom={active.length + n} variants={itemVariants} initial="initial" animate="animate" className="flex items-center gap-2 text-white/70" dir="auto">
               <CheckCircle2 size={14} className="shrink-0 text-emerald-400" />
               <span className="min-w-0 flex-1 truncate">{d.name}</span>
               <span dir="ltr" className="shrink-0 tabular-nums text-white/50">{fmtBytes(d.size)}</span>
-            </div>
+            </motion.div>
           ))}
         </div>
       )}

@@ -34,6 +34,7 @@ pub mod backdrop;   // زجاج حقيقي (Acrylic عبر DWM) لنافذة mai
 pub mod mascot;     // عيون التميمة: موضع المؤشر الحقيقي (mascot:look)، خيط مركون ما لم يُفعَّل
 pub mod rates;      // أسعار العملات الحية لشريط الأوامر (open.er-api.com، كاش 12 ساعة)
 pub mod palette;    // اختصار شريط الأوامر + الأخيرة + run_shell
+pub mod netspeed;   // سرعتا الشبكة للكبسولة المدمجة (مفتاح showNetSpeed، خيط مركون ما لم يُفعَّل)
 // linkicon: مدمج في launcher.rs (favicon الروابط)
 // pub mod drop_target;
 // pub mod obs;        // WebSocket محلي
@@ -100,6 +101,7 @@ pub fn run() {
                     attention::start(app.handle());
                     perf::start(app.handle());
                     mascot::start(app.handle());
+                    netspeed::start(app.handle());
                     files::start(app.handle());
                     palette::rebind(app.handle());
                     capture::rebind(app.handle());
@@ -164,6 +166,8 @@ pub fn run() {
             perf::perf_status,
             perf::perf_ram,
             mascot::mascot_active,
+            netspeed::netspeed_active,
+            win::island_dock_get,
             backdrop::island_backdrop,
             capture::capture_start,
             capture::capture_frame,

@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "motion/react";
-import { dur, ease, spring, tap } from "../../motion";
+import { dur, ease, MAX_STAGGER_ITEMS, spring, stagger, tap } from "../../motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Pin, PinOff, Search, Trash2, X } from "lucide-react";
@@ -103,13 +103,13 @@ export function ClipboardTab() {
             {q ? i("لا نتائج", "No results") : i("الحافظة فارغة", "Clipboard is empty")}
           </p>
         )}
-        <AnimatePresence initial={false} mode="popLayout">
-        {shown.map((c) => (
+        <AnimatePresence mode="popLayout">
+        {shown.map((c, n) => (
           <motion.div
             key={c.id}
             layout="position"
             initial={{ opacity: 0, y: 6, filter: "blur(4px)" }}
-            animate={{ opacity: 1, y: 0, filter: "blur(0px)", transition: { ...spring.content, opacity: { duration: dur.swap, ease: ease.out } } }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)", transition: { ...spring.content, delay: Math.min(n, MAX_STAGGER_ITEMS) * stagger.item, opacity: { duration: dur.swap, ease: ease.out, delay: Math.min(n, MAX_STAGGER_ITEMS) * stagger.item } } }}
             exit={{ opacity: 0, transition: { duration: dur.fast, ease: ease.inOut } }}
             whileTap={{ scale: 0.985 }}
             role="button"

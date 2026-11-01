@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { AnimatePresence, motion } from "motion/react";
 import { ClipboardPaste, File as FileIcon, FileText, Folder, Trash2 } from "lucide-react";
-import { dur, ease, spring, tap } from "../../motion";
+import { dur, ease, MAX_STAGGER_ITEMS, spring, stagger, tap } from "../../motion";
 import { i } from "../../i18n";
 import { fmtBytes } from "../../useDownloads";
 import type { ShelfItem } from "../../useShelf";
@@ -27,9 +27,10 @@ export function useShellIcon(path: string, want: boolean): string | null {
 const DRAG_THRESHOLD = 6;
 
 function Tile({
-  item, onOpen, onMenu, onDragOut,
+  item, n = 0, onOpen, onMenu, onDragOut,
 }: {
   item: ShelfItem;
+  n?: number;
   onOpen: (it: ShelfItem) => void;
   onMenu: (e: React.MouseEvent, it: ShelfItem) => void;
   onDragOut: (it: ShelfItem) => void;
@@ -80,7 +81,7 @@ function Tile({
     <motion.div
       layout="position"
       initial={{ opacity: 0, scale: 0.92, filter: "blur(4px)" }}
-      animate={{ opacity: item.missing ? 0.45 : 1, scale: 1, filter: "blur(0px)", transition: { ...spring.content, opacity: { duration: dur.swap, ease: ease.out } } }}
+      animate={{ opacity: item.missing ? 0.45 : 1, scale: 1, filter: "blur(0px)", transition: { ...spring.content, delay: Math.min(n, MAX_STAGGER_ITEMS) * stagger.item, opacity: { duration: dur.swap, ease: ease.out, delay: Math.min(n, MAX_STAGGER_ITEMS) * stagger.item } } }}
       exit={{ opacity: 0, scale: 0.92, transition: { duration: dur.fast, ease: ease.inOut } }}
       whileTap={{ scale: 0.97 }}
       role="button"
@@ -188,9 +189,9 @@ export function ShelfTab({ items, dragging, reload }: { items: ShelfItem[]; drag
           </div>
         ) : (
           <div className="flex flex-wrap content-start gap-2" dir="ltr">
-            <AnimatePresence initial={false} mode="popLayout">
-              {items.map((it) => (
-                <Tile key={it.id} item={it} onOpen={open} onMenu={showMenu} onDragOut={dragOut} />
+            <AnimatePresence mode="popLayout">
+              {items.map((it, n) => (
+                <Tile key={it.id} n={n} item={it} onOpen={open} onMenu={showMenu} onDragOut={dragOut} />
               ))}
             </AnimatePresence>
           </div>

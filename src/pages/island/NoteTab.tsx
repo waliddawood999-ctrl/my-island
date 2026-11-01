@@ -10,11 +10,12 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import { i } from "../../i18n";
-import { tap } from "../../motion";
+import { spring, tap } from "../../motion";
 import { parseReminder, type RepeatKind } from "../../reminderParse";
 import { fmtCountdown, type Folder, type Reminder, type TimerState } from "../../useNote";
+import { StopwatchBody } from "./activity";
 
-type Sub = "note" | "remind" | "timer";
+type Sub = "note" | "remind" | "timer" | "stopwatch";
 const SAVE_DEBOUNCE_MS = 700;
 
 /** ربط حقل نصي بفوكس النافذة: النافذة NOACTIVATE فلا كتابة إلا بـtake_focus (ويُردّ عند المغادرة). */
@@ -37,6 +38,7 @@ export function NoteTab({ timer }: { timer: TimerState | null }) {
     { id: "note", label: i("ملاحظة", "Note"), icon: <FileText size={13} /> },
     { id: "remind", label: i("تذكيرات", "Reminders"), icon: <Bell size={13} /> },
     { id: "timer", label: i("مؤقّت", "Timer"), icon: <TimerIcon size={13} /> },
+    { id: "stopwatch", label: i("ساعة إيقاف", "Stopwatch"), icon: <TimerIcon size={13} /> },
   ];
   return (
     <div className="flex h-full min-h-0 flex-col gap-2">
@@ -56,6 +58,11 @@ export function NoteTab({ timer }: { timer: TimerState | null }) {
         {sub === "note" && <NoteEditor />}
         {sub === "remind" && <RemindersView />}
         {sub === "timer" && <TimerView timer={timer} />}
+        {sub === "stopwatch" && (
+          <div className="flex h-full items-center justify-center">
+            <StopwatchBody />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -533,7 +540,7 @@ function TimerView({ timer }: { timer: TimerState | null }) {
         <div dir="ltr" className="text-[56px] font-bold leading-none tabular-nums">{fmtCountdown(left)}</div>
         {timer.label && <div dir="auto" className="text-[13px] text-white/70">{timer.label}</div>}
         <div className="h-1.5 w-72 overflow-hidden rounded-full bg-white/10">
-          <div className="h-full rounded-full bg-white/70" style={{ width: `${pct}%`, transition: "width 1s linear" }} />
+          <motion.div initial={false} animate={{ scaleX: pct / 100 }} transition={spring.content} style={{ transformOrigin: "left" }} className="h-full w-full rounded-full bg-white/70" />
         </div>
         <div className="flex gap-2">
           <motion.button {...tap} onClick={() => start(Math.max(1, Math.round(left / 1000) + 60))} className="i-btn flex items-center gap-1 bg-white/10 px-3 py-1.5 text-[12px]">

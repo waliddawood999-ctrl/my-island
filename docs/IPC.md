@@ -47,6 +47,7 @@ agents:update, agents:card, agents:ask, agents:ask-done, notify:new,
 island:edge, island:shy, island:keep, island:desktop, island:warn,
 island:note, mascot:look, mascot:sleep, cursor:near, input:layout,
 input:caps, vpn:choose, update:progress, weather:error,
+net:speed, island:dock,
 dictation:error, license:changed, license:needed
 
 ### مضاف في الجلسة 0.1
@@ -214,3 +215,11 @@ lyrics_get(artist: String, title: String, album?: String, duration: f64 ثوان
 - `perf_ram()` — نفس الأمر والشكل + حقل `metric`: `"private"` = **Private Working Set** (`GetProcessMemoryInfo` بـ`PROCESS_MEMORY_COUNTERS_EX2`؛ لا تُحسب الصفحات المشتركة بين عمليات WebView2 مكررة) · `"mixed"` = بعض العمليات رجعت لـWorking Set لتعذّر قراءتها · `"working"` = Working Set كاملًا (ويندوز < 1809/صلاحيات). يُقرأ لعمليات شجرة التطبيق المحتسبة فقط (الرئيسية + WebView2 الأحفاد).
 - `open_settings()` / `editor_open(path?)` (وقدَم `editor::open_path` من الالتقاط): **نفس الأسماء والسلوك المرئي**، لكن النافذتان لا تُنشآن عند الإقلاع — تُنشآن عند أول طلب ثم تُعرضان وتُركَّزان فقط إن وُجدتا، وتُدمَّران فعليًا عند الإغلاق. النوافذ أربع في التطبيق: `main` و`overlay` من `tauri.conf.json`، و`settings` و`editor` عند الطلب (`lazywin.rs`). الأمران async.
 - **تحديث (glassTint):** المعامل الرابع `tint` = إعداد `glassTint` (0–80، يُحصَر؛ غير صالح ⇒ 45) ويُستعمل لصبغة **ويندوز 10** فقط: ألفا الأكريليك = `0.28 + 0.0075·tint` (45 ⇒ 0.62 كالسابق)، والفاتح +0.04 بسقف 0.92؛ تغيّره وحده يحدّث الصبغة دون مسح الخلفية (لا وميض أثناء سحب المنزلق). **ويندوز 11:** يتجاهله — الصبغة في CSS من `--glass-tint`. لا أوامر/أحداث أخرى جديدة.
+
+### مضاف: جلسة الإبهار — سرعتا الشبكة (netspeed) ووضع تبويب المتصفح (dock)
+- `netspeed_active(active: bool)` — الواجهة (`useNetSpeed`، من `Pill`) تفعّل/توقف قياس سرعتي الشبكة. **الخيط مركون (`park`) ما لم يكن مفعّلًا** (إعداد `showNetSpeed` = false افتراضيًا، ويُركَن أيضًا والحبة مخفية) ⇒ صفر قراءة وصفر بثّ عند الإطفاء. القراءة من عدّادات ويندوز المحلية (sysinfo/GetIfTable2) بلا شبكة خارجية؛ تتباطأ إلى 3s في Eco (1s عادةً). وحدة `netspeed.rs`.
+- **حدث `net:speed`** (الخلفية → main، payload `{down, up}` بايت/ث مقرَّبة لخطوة 1KB/ث): يُبثّ عند تغيّر القيمة المقرَّبة فقط. تتجاهل الواجهات loopback/pseudo.
+- `island_dock_get() → {active, browser, strip, inset}` — حالة وضع تبويب المتصفح الحالية (تُسأل عند إقلاع/إعادة تحميل صفحة main لأن الحدث يُبثّ عند التغيّر فقط). `win.rs`.
+- **حدث `island:dock`** (الخلفية → main، payload `{active, browser, strip, inset}`؛ `active=false` ⇒ العودة للوضع العائم الطبيعي): يُحسب في خيط fullscreen-watch **القائم** (لا خيط جديد) فقط حين `browserTabMode` مفعّل وخارج Eco؛ الشروط: النافذة الأمامية ليست لنا، exe ∈ {chrome, msedge, brave, firefox, vivaldi}، النافذة مكبَّرة (`IsZoomed`)، وحدودها تشمل مركز الحبة أفقيًا وتبدأ عند أعلى الشاشة. نافذتنا الأمامية ⇒ لا تغيير. أي غموض ⇒ `active=false`. الواجهة تتحقق من الحمولة (`sanitizeDock`) وتعتبر أي قيمة مشوّهة وضعًا طبيعيًا.
+- إعدادات جديدة (في `src/settings.ts` و`state.rs::defaults`): `browserTabMode` (false)، `showNetSpeed` (false).
+- ثوابت الشريط لكل متصفح (CSS px عند DPI 100%): chrome/edge/brave = 41 (حيّز علوي 6)، firefox/vivaldi = 40 (حيّز 5) — `win.rs::BROWSERS`، تقديرية وتُعاير على ويندوز (قائمة القبول في STATUS.md).

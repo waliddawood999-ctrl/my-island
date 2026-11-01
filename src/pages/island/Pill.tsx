@@ -8,6 +8,12 @@ import { i } from "../../i18n";
 import { clampTint, useSettings } from "../../useSettings";
 import { useMedia } from "../../useMedia";
 import { fmtBytes, useBattery, useDownloads } from "../../useDownloads";
+import { activeKinds, compactWidth, fmtStopwatch, nextKind, shownKind, tabShape, type ActivityKind } from "../../liveActivity";
+import { useStopwatchNow } from "../../useStopwatch";
+import { useNetSpeed } from "../../useNetSpeed";
+import { useDock } from "../../useDock";
+import { useBatteryHistory } from "../../useBatteryHistory";
+import { ActivityStack, CapsuleSplit, NetValue, type LiveData } from "./activity";
 import { fmtElapsed, useRecording } from "../../useRecording";
 import { ClipboardTab } from "./ClipboardTab";
 import { ToolsTab } from "./ToolsTab";
@@ -144,9 +150,19 @@ export function Pill() {
   const btOn = settings.btBatteries ?? true;
   const attentionOn = settings.attentionTracking ?? true;
   const attention = useAttention(attentionOn);
+  // سرعتا الشبكة (اختياري) · وضع تبويب المتصفح (اختياري) · سجلّ البطارية للمنحنى المصغّر · ساعة الإيقاف
+  const netOn = !!settings.showNetSpeed;
+  const net = useNetSpeed(netOn && !hidden);
+  const dock = useDock(!!settings.browserTabMode);
+  const batHist = useBatteryHistory(battery);
+  const { sw, ms: swMs } = useStopwatchNow(false);
+  // تثبيت يدوي منفصل لكل سطح (الكبسولة/اللوحة): تبديل أحدهما لا يغيّر الآخر؛ ويسقط تلقائيًا حين ينتهي النشاط المثبّت.
+  const [pinCap, setPinCap] = useState<ActivityKind | null>(null);
+  const [pinPanel, setPinPanel] = useState<ActivityKind | null>(null);
+  const lastPanAt = useRef(0);
   // downloadsInPill: أكبر تنزيل جارٍ (نسبة إن عُرفت وإلا الحجم) تتقدم على عنوان الميديا.
   const biggest = dlInPill ? [...dl.active].sort((a, b) => b.size - a.size)[0] : undefined;
-  const dlText = biggest ? (biggest.percent != null ? `⬇ ${Math.round(biggest.percent)}%` : `⬇ ${fmtBytes(biggest.size)}`) : null;
+  const dlValue = biggest ? (biggest.percent != null ? `${Math.round(biggest.percent)}%` : fmtBytes(biggest.size)) : null;
   // التسجيل: نقطة حمراء + مؤقّت في الحبة المنكمشة؛ النقر عليها (منكمشة) يوقف التسجيل.
   const rec = useRecording();
   // ملاحظة/تذكيرات/مؤقّت: التنبيه (island:note) والمؤقّت القريب يظهران في الحبة المنكمشة.
@@ -155,6 +171,24 @@ export function Pill() {
   const timerNear = timer !== null && remaining !== null && remaining > 0 && remaining <= TIMER_NEAR_MS;
   const alertRef = useRef(alert);
   alertRef.current = alert;
+  // النشاط الحي: أولوية موحّدة للكبسولة واللوحة (liveActivity.ts). الكبسولة: المؤقّت حين يقترب (≤60s) وساعة الإيقاف أثناء جريانها
+  // والبطارية حين تنخفض فقط (≤20% على البطارية) والشبكة محيطيّة؛ اللوحة: كل نشاط قائم (الشحن أو الانخفاض للبطارية).
+  const lowBat = showBat && !!battery?.has_battery && battery.percent != null && battery.percent <= 20 && !battery.ac;
+  const chargingBat = showBat && !!battery?.has_battery && battery.percent != null && (battery.charging || lowBat);
+  const capKinds = activeKinds({
+    rec: rec.recording, timer: timerNear, stopwatch: sw.running, dl: !!biggest, media: !!pillTitle, battery: lowBat, net: netOn && net !== null,
+  });
+  const shownCap = shownKind(capKinds, pinCap);
+  const panelKinds = activeKinds({
+    rec: rec.recording, timer: timer !== null && remaining !== null && remaining > 0, stopwatch: sw.running || sw.acc > 0,
+    dl: (showDl || dlInPill) && dl.active.length > 0, media: moduleMedia && media.info.session, battery: chargingBat,
+  });
+  const shownPanel = shownKind(panelKinds, pinPanel);
+  const liveData: LiveData = {
+    rec: { recording: rec.recording, elapsed: rec.elapsed }, timer, remaining, dl, media, showLyrics: !!(settings.lyricsInHome || settings.lyricsInPlayer),
+    battery, batteryHist: batHist,
+  };
+  const cycleCap = () => setPinCap(nextKind(capKinds, shownCap));
   // استقرار الحبة: false من لحظة تغيّر الحجم المستهدف حتى انتهاء الحركة (وإعادة قياس النافذة)؛ يتحكّم بطلب الزجاج الحقيقي فقط.
   // مشتق في العرض نفسه: «مستقر» = اكتملت الحركة لمفتاح الحجم الحالي (فلا تمرّ لحظة يُطلب فيها الزجاج بحجم جديد قبل اكتمالها).
   const [doneKey, setDoneKey] = useState<string | null>(null);
@@ -184,21 +218,21 @@ export function Pill() {
     return () => { un.then((f) => f()); };
   }, []);
 
-  const report = (w: number, h: number) =>
-    invoke("report_island_rect", { width: w, height: h }).catch(() => {});
-
-  // المقاس تغيّر من الإعدادات والحبة منكمشة ⇒ تُعاد قياس النافذة (لا أثر أثناء الفتح/الشريط/التنبيه).
-  useEffect(() => {
-    if (open || paletteRef.current || alertRef.current) return;
-    report(pill.w, pill.h);
-  }, [pill.w, pill.h]);
+  // آخر مقاس أُبلغت به النافذة (لتمييز النمو الذي يسبق الحركة عن الانكماش الذي يليها).
+  const reported = useRef({ w: 0, h: 0 });
+  const report = (w: number, h: number) => {
+    reported.current = { w, h };
+    return invoke("report_island_rect", { width: w, height: h }).catch(() => {});
+  };
+  // مقاس النافذة الاستراحي الحالي (يُحدَّث في العرض): الحبة · مدمجة منقسمة · تنبيه · أو ارتفاع شريط التبويبات عند الإرساء.
+  const restWinRef = useRef({ w: 0, h: 0 });
 
   /** تصغير النافذة بعد انتهاء حركة الانكماش (رد onAnimationComplete) مع مؤقّت احتياطي واحد. */
   const flushShrink = (): boolean => {
     if (!shrinkPending.current) return false;
     shrinkPending.current = false;
     window.clearTimeout(shrinkT.current);
-    const rest = alertRef.current ? alertSz : pill;
+    const rest = restWinRef.current;
     // الاستقرار (للزجاج الحقيقي) بعد أن تُقاس النافذة فعلًا: وإلا تُطبَّق المنطقة على حجم قديم.
     report(rest.w, rest.h).finally(settleNow);
     return true;
@@ -303,20 +337,32 @@ export function Pill() {
     collapseT.current = window.setTimeout(collapse, settings.collapseDelayMs ?? 350);
   };
 
-  // وصول تنبيه أثناء الانكماش: تكبير النافذة قبل الحركة؛ زواله: تصغيرها بعد الحركة.
+  // الحالة الاستراحية: تنبيه/نشاط مدمج/ارتفاع الشريط عند الإرساء.
+  const alertShown = !!alert && !open && shownCap !== "rec";
+  const restContent = alertShown ? alertSz : shownCap ? { w: compactWidth(pill.w), h: pill.h } : pill;
+  const tabS = tabShape(dock, restContent.w, restContent.h);
+  const restWin = dock.active ? { w: restContent.w, h: tabS.winH } : restContent;
+  const restBody = dock.active ? { w: restContent.w, h: tabS.bodyH } : restContent;
+  restWinRef.current = restWin;
+  // تغيّر المقاس الاستراحي والحبة منكمشة: النمو ⇒ تكبير النافذة قبل الحركة؛ الانكماش ⇒ تصغيرها بعد انتهاء الحركة.
   useEffect(() => {
-    if (paletteRef.current || open) return;
-    if (alert) { cancelShrink(); report(alertSz.w, alertSz.h); }
+    if (open || paletteRef.current) return;
+    const grow = restWin.w > reported.current.w || restWin.h > reported.current.h;
+    if (grow) { cancelShrink(); report(restWin.w, restWin.h); }
     else scheduleShrink();
-  }, [alert?.id, alert?.at]);
+  }, [restWin.w, restWin.h]);
 
-  const size = palette ? PALETTE : open ? panel : alert ? alertSz : pill;
+  const size = palette ? PALETTE : open ? panel : restBody;
   // الشفافية من الإعدادات؛ autoHide يخفي الحبة في الراحة (النافذة تبقى تستقبل المرور فتظهر عند الهوفر).
   const rest = (settings.opacityRest ?? 100) / 100;
   const opened = (settings.opacityOpen ?? 100) / 100;
   const opacity = hidden ? 0 : palette ? 1 : open ? opened : settings.autoHide && !hover ? 0 : rest;
 
-  const radius = palette ? 24 : open ? 28 : (alert ? alertSz.h : pill.h) / 2; // كبسولة كاملة الاستدارة
+  // كبسولة كاملة الاستدارة؛ مرسيّة في شريط المتصفح: زوايا علوية مدوّرة وقاع مسطّح (هيئة تبويب).
+  const dockedRest = dock.active && !open && !palette;
+  const rTop = palette ? 24 : open ? 28 : dockedRest ? tabS.top : restBody.h / 2;
+  const rBot = palette ? 24 : open ? 28 : dockedRest ? tabS.bottom : restBody.h / 2;
+  const radius = rTop;
   // مفتاح الحجم المستهدف؛ أول عرض = مستقر. مؤقّت احتياطي أحادي إن لم يصل رد الاكتمال (كحارس التصغير).
   const sizeKey = `${size.w}x${size.h}`;
   sizeKeyRef.current = sizeKey;
@@ -350,20 +396,39 @@ export function Pill() {
   }, [curTab, open]);
   const tabLabels = tabs.map((t) => t.label);
   /** ما يُعرض في الحبة المنكمشة: واحد فقط، يتبدّل بتمويه قصير. */
-  const pillKey = rec.recording ? "rec" : alert && !open ? "alert" : timerNear ? "timer" : dlText ? "dl" : pillTitle ? "title" : "clock";
+  const pillKey = alertShown ? "alert" : shownCap ?? "clock";
+  const dots = capKinds.length > 1 ? (
+    <button
+      aria-label={i("تبديل النشاط", "Switch activity")}
+      onClick={(e) => { e.stopPropagation(); cycleCap(); }}
+      className="flex items-center gap-[3px]"
+      data-testid="capsule-switch"
+    >
+      {capKinds.map((c) => <span key={c} className="rounded-full" style={{ width: 4 * k, height: 4 * k, background: `var(--act-${c === "stopwatch" ? "timer" : c})`, opacity: c === shownCap ? 1 : 0.35 }} />)}
+    </button>
+  ) : undefined;
 
   return (
     <div className="flex w-full justify-center">
       <motion.div
         onMouseEnter={onEnter}
         onMouseLeave={onLeave}
-        onClick={() => { if (alert) dismiss(); else if (rec.recording && !open && !palette) invoke("record_stop").catch(() => {}); }}
+        onClick={() => {
+          if (performance.now() - lastPanAt.current < 300) return; // سحب التبديل بين النشاطين لا يُحتسب نقرة
+          if (alert) dismiss();
+          else if (rec.recording && !open && !palette) invoke("record_stop").catch(() => {});
+          else if (!open && !palette) { window.clearTimeout(hoverT.current); expand(); } // الضغط يفتح اللوحة فورًا (في وضع التبويب أيضًا)
+        }}
         onContextMenu={(e) => { e.preventDefault(); invoke("open_settings").catch(() => {}); }}
         initial={false}
-        animate={{ opacity, width: size.w, height: size.h, borderRadius: radius }}
+        animate={{
+          opacity, width: size.w, height: size.h, y: open || palette ? 0 : dock.active ? tabS.y : 0,
+          borderTopLeftRadius: rTop, borderTopRightRadius: rTop, borderBottomLeftRadius: rBot, borderBottomRightRadius: rBot,
+        }}
         transition={{ default: spring.island, opacity: { duration: dur.base, ease: ease.out } }}
         onAnimationComplete={() => { if (!flushShrink()) settleNow(); }}
         style={{ boxShadow: open || palette ? "var(--island-ring-open)" : "var(--island-ring)" }}
+        data-docked={dockedRest ? "true" : "false"}
         className="island-body relative overflow-hidden"
       >
         <Liquid
@@ -381,7 +446,7 @@ export function Pill() {
           initial={false}
           animate={{ opacity: open || palette ? 0 : 1 }}
           transition={{ duration: dur.base, ease: ease.out }}
-          style={{ height: alert && !open ? alertSz.h : pill.h, fontSize: 13 * k }}
+          style={{ height: restBody.h, fontSize: 13 * k }}
           className="absolute inset-x-0 top-0 flex items-center justify-center font-medium tabular-nums"
         >
           <AnimatePresence mode="wait" initial={false}>
@@ -391,14 +456,10 @@ export function Pill() {
               initial="initial"
               animate="animate"
               exit="exit"
+              onPanEnd={(_, info) => { if (capKinds.length > 1 && Math.abs(info.offset.x) > 28) { lastPanAt.current = performance.now(); cycleCap(); } }}
               className="flex w-full items-center justify-center"
             >
-              {rec.recording ? (
-                <span dir="ltr" className="flex items-center gap-2" aria-label={i("جارٍ التسجيل — انقر للإيقاف", "Recording — click to stop")}>
-                  <span className="island-rec-dot rounded-full bg-red-500" style={{ width: ic(10), height: ic(10) }} />
-                  <span className="tabular-nums">{fmtElapsed(rec.elapsed)}</span>
-                </span>
-              ) : alert && !open ? (
+              {pillKey === "alert" && alert ? (
                 <span dir="auto" className="flex max-w-full items-center gap-2 px-3" role="alert">
                   <motion.span animate={alertShake.animate} transition={alertShake.transition}>
                     {alert.kind === "timer" ? <TimerIcon size={ic(15)} /> : alert.kind === "break" ? <Coffee size={ic(15)} /> : <Bell size={ic(15)} />}
@@ -407,15 +468,28 @@ export function Pill() {
                     {alert.text || (alert.kind === "timer" ? i("انتهى المؤقّت", "Timer finished") : i("تذكير", "Reminder"))}
                   </span>
                 </span>
-              ) : timerNear && remaining !== null ? (
-                <span dir="ltr" className="flex items-center gap-1.5" aria-label={i("المؤقّت", "Timer")}>
-                  <TimerIcon size={ic(13)} />
-                  <span className="tabular-nums">{fmtCountdown(remaining)}</span>
-                </span>
-              ) : dlText ? (
-                <span dir="ltr" aria-label={i("أكبر تنزيل جارٍ", "Largest active download")}>{dlText}</span>
-              ) : pillTitle ? (
-                <PillTitle text={pillTitle} inset={Math.ceil(pill.h / 2 + 4 * k)} />
+              ) : pillKey === "rec" ? (
+                <CapsuleSplit
+                  kind="rec" k={k} dots={dots}
+                  left={i("جارٍ التسجيل", "Recording")}
+                  value={<><span className="island-rec-dot rounded-full" style={{ width: ic(8), height: ic(8), background: "var(--act-rec)" }} /><span>{fmtElapsed(rec.elapsed)}</span></>}
+                />
+              ) : pillKey === "timer" && remaining !== null ? (
+                <CapsuleSplit kind="timer" k={k} dots={dots} left={timer?.label || i("المؤقّت", "Timer")} value={fmtCountdown(remaining)} />
+              ) : pillKey === "stopwatch" ? (
+                <CapsuleSplit kind="stopwatch" k={k} dots={dots} left={i("ساعة إيقاف", "Stopwatch")} value={fmtStopwatch(swMs, false)} />
+              ) : pillKey === "dl" && biggest ? (
+                <CapsuleSplit kind="dl" k={k} dots={dots} left={biggest.name} value={dlValue} />
+              ) : pillKey === "media" && pillTitle ? (
+                <CapsuleSplit
+                  kind="media" k={k} dots={dots}
+                  left={<PillTitle text={media.info.title} inset={0} />}
+                  value={media.info.artist ? <span dir="auto" className="max-w-[7.5em] truncate text-white/60">{media.info.artist}</span> : null}
+                />
+              ) : pillKey === "battery" && battery?.percent != null ? (
+                <CapsuleSplit kind="battery" k={k} dots={dots} left={i("بطارية منخفضة", "Low battery")} value={`${battery.percent}%`} />
+              ) : pillKey === "net" && net ? (
+                <CapsuleSplit kind="net" k={k} dots={dots} left={i("الشبكة", "Network")} value={<NetValue down={net.down} up={net.up} />} />
               ) : (
                 (settings.eyesEnabled ?? true) ? (
                   // عيون التميمة بجانب الساعة؛ ينعكس الترتيب بالعربية فقط (التتبّع فيزيائي لا يتأثر).
@@ -430,7 +504,7 @@ export function Pill() {
                   (settings.showClock ?? true) && <span dir="ltr">{time}</span>
                 )
               )}
-              {showBat && !pillTitle && !dlText && battery?.has_battery && (
+              {pillKey === "clock" && showBat && battery?.has_battery && (
                 <span className="ms-3 text-white/70" style={{ fontSize: 11 * k }}><BatteryChip b={battery} size={ic(12)} /></span>
               )}
             </motion.div>
@@ -508,9 +582,14 @@ export function Pill() {
               >
                 {curTab === "home" && (
                   <div className="flex min-h-0 flex-1 flex-row" style={{ gap: "var(--island-section-gap)" }}>
-                    {moduleMedia && (
+                    {(shownPanel || moduleMedia) && (
+                      // بطاقة النشاط الحي الأعلى أولوية تتصدّر الرئيسية؛ بلا نشاط ⇒ حالة الميديا الفارغة كما كانت. الأقسام القائمة تحتها/بجانبها بترتيب ثابت.
                       <motion.div custom={0} variants={sectionVariants} initial="initial" animate="animate" className="min-h-0 min-w-0 flex-1">
-                        <MediaSection media={media} showLyrics={!!(settings.lyricsInHome || settings.lyricsInPlayer)} />
+                        {shownPanel ? (
+                          <ActivityStack kinds={panelKinds} shown={shownPanel} onPin={setPinPanel} data={liveData} />
+                        ) : (
+                          <MediaSection media={media} showLyrics={!!(settings.lyricsInHome || settings.lyricsInPlayer)} />
+                        )}
                       </motion.div>
                     )}
                     {(showDl || (showBat && hasBatteryContent(battery, btOn)) || (attentionOn && attention?.enabled)) && (

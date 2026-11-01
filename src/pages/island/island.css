@@ -74,7 +74,7 @@ html, body, #root {
 .island-note-doc ul, .island-note-doc ol { margin: 0 0 0.35em; padding-inline-start: 1.4em; }
 .island-note-doc ul { list-style: disc; }
 .island-note-doc ol { list-style: decimal; }
-.island-note-doc a { color: #8ea2ff; text-decoration: underline; cursor: text; }
+.island-note-doc a { color: var(--app-accent); text-decoration: underline; cursor: text; }
 .island-note-doc blockquote { border-inline-start: 3px solid rgb(255 255 255 / 0.25); padding-inline-start: 0.7em; margin: 0.3em 0; color: var(--island-text-dim); }
 .island-note-doc code { background: rgb(255 255 255 / 0.1); border-radius: 4px; padding: 0 0.3em; }
 .island-note-doc ul[data-type="taskList"] { list-style: none; padding-inline-start: 0; }
@@ -82,7 +82,7 @@ html, body, #root {
 .island-note-doc ul[data-type="taskList"] li > label { margin-top: 0.38em; flex: none; user-select: none; }
 .island-note-doc ul[data-type="taskList"] li > div { flex: 1; min-width: 0; }
 .island-note-doc ul[data-type="taskList"] li[data-checked="true"] > div { color: var(--island-text-faint); text-decoration: line-through; }
-.island-note-doc ul[data-type="taskList"] input[type="checkbox"] { accent-color: #8ea2ff; width: 14px; height: 14px; cursor: pointer; }
+.island-note-doc ul[data-type="taskList"] input[type="checkbox"] { accent-color: var(--app-accent); width: 14px; height: 14px; cursor: pointer; }
 
 /* ثيم فاتح كالمرجع: حبة رمادية فاتحة بنص داكن؛ الأسطح/الحلقات مشتقة من الحبر الداكن. */
 :root[data-theme="light"] {
@@ -116,3 +116,44 @@ html, body, #root {
 :root[data-material="glass"][data-backdrop="win11"][data-theme="light"] { --island-bg: rgb(236 239 243 / calc(min(var(--glass-tint, 45) + 5, 85) / 100)); }
 :root[data-material="glass"][data-backdrop="win10"] { --island-bg: transparent; }
 :root[data-backdrop="win11"] .island-body, :root[data-backdrop="win10"] .island-body { -webkit-backdrop-filter: none; backdrop-filter: none; }
+
+/* ───────── النشاط الحي (docs/MOTION.md §النشاط الحي) ─────────
+   لمسة واحدة لكل نوع نشاط، تُستعمل بالاتساق في الكبسولة المدمجة والبطاقة معًا. ألوان مصمتة (بلا تدرّجات ولا توهّج)،
+   وبلا بنفسجي؛ في الثيم الفاتح أغمق قليلًا لتبقى مقروءة على سطح فاتح. */
+:root {
+  --act-rec: #ff5a4f;
+  --act-timer: #ffb224;
+  --act-dl: #2ec4b6;
+  --act-media: #5ac8fa;
+  --act-meeting: #4c8dff;
+  --act-battery: #8bd450;
+  --act-net: #94a3b8;
+  --island-icon-sm: 14px;
+  --island-icon-md: 16px;
+  --island-icon-lg: 20px;
+}
+:root[data-theme="light"] {
+  --act-rec: #d92d20;
+  --act-timer: #b45309;
+  --act-dl: #0f766e;
+  --act-media: #0369a1;
+  --act-meeting: #1d4ed8;
+  --act-battery: #3f7d12;
+  --act-net: #475569;
+}
+/* شارة النوع في بطاقة النشاط: مربع مستدير بخلفية من اللمسة (شفافية 16%) وأيقونة بلون اللمسة. */
+.act-badge { display: inline-flex; align-items: center; justify-content: center; border-radius: 9999px; color: var(--act, #fff);
+  background: color-mix(in srgb, var(--act, #fff) 16%, transparent); }
+.act-bar-track { background: color-mix(in srgb, var(--act, #fff) 18%, transparent); }
+.act-bar-fill { background: var(--act, #fff); }
+/* زر كبسولي ثانوي داخل البطاقة (تشغيل/إيقاف/تصفير…). */
+.act-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: 9999px; padding: 6px 14px;
+  font-size: 13px; background: var(--island-surface); color: var(--island-fg); }
+.act-btn:hover:not(:disabled) { background: var(--island-surface-hover); }
+.act-btn:active:not(:disabled) { background: var(--island-surface-active); }
+.act-btn:disabled { opacity: 0.3; }
+.act-btn:focus-visible { outline: 2px solid var(--act, rgb(255 255 255 / 0.6)); outline-offset: 1px; }
+.act-btn-solid { background: var(--act, #fff); color: #000; }
+.act-btn-solid:hover:not(:disabled) { background: color-mix(in srgb, var(--act, #fff) 88%, #fff); }
+/* وضع تبويب المتصفح: الجسم يلتحم بحافة الشريط، فلا حلقة سفلية. */
+.island-body[data-docked="true"] { box-shadow: none !important; }

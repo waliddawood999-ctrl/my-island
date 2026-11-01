@@ -102,7 +102,7 @@ function App() {
         g.clearRect(b.x, b.y, b.w, b.h);
       }
       g.setLineDash([8, 6]); g.lineWidth = Math.max(2, d.width / 600);
-      g.strokeStyle = "#8ea2ff"; g.strokeRect(b.x, b.y, b.w, b.h);
+      g.strokeStyle = "#4fd1c5"; g.strokeRect(b.x, b.y, b.w, b.h);
     }
   };
 
@@ -168,7 +168,7 @@ function App() {
             title={t.label}
             aria-pressed={tool === t.id}
             onClick={() => { setTool(t.id); setTextAt(null); }}
-            className={`${btn} ${tool === t.id ? "bg-[#6f86ff]" : "bg-white/8 hover:bg-white/15"}`}
+            className={`${btn} ${tool === t.id ? "bg-[#3cbfb3]" : "bg-white/8 hover:bg-white/15"}`}
           >
             <t.icon size={16} /><span className="hidden sm:inline">{t.label}</span>
           </button>
@@ -180,20 +180,20 @@ function App() {
             aria-label={c}
             onClick={() => setColor(c)}
             className="h-6 w-6 rounded-full border-2"
-            style={{ background: c, borderColor: color === c ? "#8ea2ff" : "rgba(255,255,255,0.3)" }}
+            style={{ background: c, borderColor: color === c ? "#4fd1c5" : "rgba(255,255,255,0.3)" }}
           />
         ))}
         <input
           type="range" min={2} max={16} value={width}
           aria-label={i("السماكة", "Thickness")}
           onChange={(e) => setWidth(Number(e.target.value))}
-          className="mx-1 w-24 accent-[#6f86ff]"
+          className="mx-1 w-24 accent-[#3cbfb3]"
         />
         <span className="mx-1 h-6 w-px bg-white/15" />
         <button aria-label={i("تراجع", "Undo")} title="Ctrl+Z" disabled={!ops.length} onClick={undo} className={`${btn} bg-white/8 hover:bg-white/15 disabled:opacity-30`}><Undo2 size={16} /></button>
         <button aria-label={i("إعادة", "Redo")} title="Ctrl+Y" disabled={!redo.length} onClick={redoOp} className={`${btn} bg-white/8 hover:bg-white/15 disabled:opacity-30`}><Redo2 size={16} /></button>
         <span className="flex-1" />
-        <button aria-label={i("حفظ نسخة جديدة", "Save as new copy")} title="Ctrl+S" disabled={!out} onClick={() => save("new")} className={`${btn} bg-[#6f86ff] hover:bg-[#8196ff] disabled:opacity-40`}>
+        <button aria-label={i("حفظ نسخة جديدة", "Save as new copy")} title="Ctrl+S" disabled={!out} onClick={() => save("new")} className={`${btn} bg-[#3cbfb3] hover:bg-[#8196ff] disabled:opacity-40`}>
           <Save size={16} /><span>{i("حفظ نسخة", "Save copy")}</span>
         </button>
         <button aria-label={i("حفظ فوق الأصل", "Overwrite original")} disabled={!out} onClick={() => save("overwrite")} className={`${btn} bg-white/8 hover:bg-white/15 disabled:opacity-40`}>
@@ -261,7 +261,7 @@ function App() {
                 else if (e.key === "Escape") { e.stopPropagation(); setTextAt(null); }
               }}
               onBlur={(e) => commitText(e.currentTarget.value)}
-              className="absolute min-w-40 rounded border border-[#8ea2ff] bg-black/70 px-2 py-1 text-sm leading-normal text-white outline-none"
+              className="absolute min-w-40 rounded border border-[#4fd1c5] bg-black/70 px-2 py-1 text-sm leading-normal text-white outline-none"
               style={{ left: textAt.left, top: textAt.top }}
             />
           )}

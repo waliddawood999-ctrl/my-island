@@ -7,6 +7,7 @@ import { i } from "../../i18n";
 import type { MediaView } from "../../useMedia";
 import { useLyrics } from "../../useLyrics";
 import { LyricsView } from "./LyricsView";
+import { ICON, Ring, STROKE } from "./primitives";
 
 /** سطر نصي يتبدّل: دخول بتأخير مستقل وخروج سريع (docs/MOTION.md §تبديل المحتوى). */
 const line = (delay: number) => ({
@@ -45,7 +46,7 @@ export function MediaSection({ media, showLyrics = false }: { media: MediaView; 
   if (!info.session) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 text-white/40">
-        <Music size={28} />
+        <Music size={28} strokeWidth={STROKE} />
         <span className="text-[13px]">{i("لا يوجد تشغيل حالي", "Nothing playing")}</span>
       </div>
     );
@@ -73,12 +74,12 @@ export function MediaSection({ media, showLyrics = false }: { media: MediaView; 
           initial={false}
           animate={{ scale: info.playing ? 1 : 0.94 }}
           transition={spring.content}
-          className={`${showLyrics ? "h-16 w-16" : "h-24 w-24"} shrink-0 overflow-hidden rounded-2xl bg-white/10`}
+          className={`${showLyrics ? "h-16 w-16" : "h-[88px] w-[88px]"} shrink-0 overflow-hidden rounded-2xl bg-white/10`}
         >
           {cover ? (
             <img src={cover} alt={i("غلاف الألبوم", "Album cover")} className="h-full w-full object-cover" />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-white/40"><Music size={32} /></div>
+            <div className="flex h-full w-full items-center justify-center text-white/40"><Music size={32} strokeWidth={STROKE} /></div>
           )}
         </motion.div>
         <div className="min-w-0 flex-1">
@@ -115,7 +116,7 @@ export function MediaSection({ media, showLyrics = false }: { media: MediaView; 
           className={`group relative h-4 flex-1 ${info.can_seek && info.duration > 0 ? "cursor-pointer" : ""}`}
         >
           <div className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-white/20">
-            <div style={{ width: `${pct}%` }} className="h-full rounded-full bg-white" />
+            <div style={{ transform: `scaleX(${Math.min(100, Math.max(0, pct)) / 100})`, transformOrigin: "left" }} className="h-full w-full rounded-full bg-white" />
           </div>
         </div>
         <span className="w-10">{info.duration > 0 ? fmt(info.duration) : "--:--"}</span>
@@ -123,8 +124,10 @@ export function MediaSection({ media, showLyrics = false }: { media: MediaView; 
 
       <div dir="ltr" className="flex items-center justify-center gap-3">
         <motion.button {...tap} className={btn} disabled={!info.can_prev} onClick={() => ctl("prev")} aria-label={i("السابق", "Previous")} title={i("السابق", "Previous")}>
-          <SkipBack size={22} />
+          <SkipBack size={ICON.lg} strokeWidth={STROKE} />
         </motion.button>
+        {/* حلقة تقدّم حول زر التشغيل/الإيقاف (بدل الاكتفاء بالشريط): لون لمسة الميديا */}
+        <Ring p={info.duration > 0 ? pos / info.duration : 0} size={62} stroke={3}>
         <motion.button
           {...tap}
           className="rounded-full bg-white p-3 text-black hover:bg-white/85 active:bg-white/70"
@@ -140,12 +143,13 @@ export function MediaSection({ media, showLyrics = false }: { media: MediaView; 
               exit={{ opacity: 0, scale: 0.7, filter: "blur(3px)", transition: { duration: dur.fast, ease: ease.inOut } }}
               className="flex"
             >
-              {info.playing ? <Pause size={22} /> : <Play size={22} />}
+              {info.playing ? <Pause size={ICON.lg} strokeWidth={STROKE} /> : <Play size={ICON.lg} strokeWidth={STROKE} />}
             </motion.span>
           </AnimatePresence>
         </motion.button>
+        </Ring>
         <motion.button {...tap} className={btn} disabled={!info.can_next} onClick={() => ctl("next")} aria-label={i("التالي", "Next")} title={i("التالي", "Next")}>
-          <SkipForward size={22} />
+          <SkipForward size={ICON.lg} strokeWidth={STROKE} />
         </motion.button>
       </div>
 

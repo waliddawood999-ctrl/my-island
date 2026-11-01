@@ -6,7 +6,7 @@ import { i } from "../../i18n";
 import { saveSettings, useSettings } from "../../useSettings";
 import { EcoIndicator, RamUsage } from "./Perf";
 import { WorkspacesEditor } from "./Workspaces";
-import { LinesField, NumberField, Row, Section, Select, Slider, TextField, Toggle } from "./fields";
+import { Group, LinesField, Nav, NumberField, Row, Section, Select, Slider, SubHead, TextField, Toggle } from "./fields";
 
 interface MonitorInfo { index: number; name: string; width: number; height: number; primary: boolean }
 
@@ -21,10 +21,20 @@ function App() {
   const px = (v: number) => `${v} px`;
 
   return (
-    <div dir="auto" className="mx-auto max-w-3xl p-5 text-white">
-      <h1 className="mb-4 text-xl font-bold">{i("الإعدادات", "Settings")}</h1>
+    <div dir="auto" className="mx-auto max-w-3xl px-5 pb-8 text-white">
+      <h1 className="pt-5 text-xl font-bold">{i("الإعدادات", "Settings")}</h1>
 
-      <Section title={i("عام", "General")}>
+      <Nav
+        items={[
+          { id: "general", label: i("عام", "General") },
+          { id: "look", label: i("المظهر والميديا", "Appearance & media") },
+          { id: "modules", label: i("الوحدات", "Modules") },
+          { id: "perf", label: i("الأداء والتوفير", "Performance") },
+        ]}
+      />
+
+      <Group id="general" title={i("عام", "General")}>
+      <Section title={i("التشغيل والموضع", "Startup & position")}>
         <Row label={i("التشغيل مع ويندوز", "Start with Windows")}>
           <Toggle label={i("التشغيل مع ويندوز", "Start with Windows")} value={s.autostart ?? false} onChange={(v) => saveSettings({ autostart: v })} />
         </Row>
@@ -51,14 +61,7 @@ function App() {
         <Row label={i("تحت شريط المهام", "Under the taskbar")} hint={i("من حافة الشاشة الفعلية بدل منطقة العمل", "From the physical screen edge instead of the work area")}>
           <Toggle label={i("تحت شريط المهام", "Under the taskbar")} value={s.underTaskbar ?? false} onChange={(v) => saveSettings({ underTaskbar: v })} />
         </Row>
-        <Row label={i("الشفافية في الراحة", "Opacity at rest")}>
-          <Slider label={i("الشفافية في الراحة", "Opacity at rest")} value={s.opacityRest ?? 100} min={20} max={100} step={5} format={pct} onCommit={(v) => saveSettings({ opacityRest: v })} />
-        </Row>
-        <Row label={i("الشفافية عند الفتح", "Opacity when open")}>
-          <Slider label={i("الشفافية عند الفتح", "Opacity when open")} value={s.opacityOpen ?? 100} min={20} max={100} step={5} format={pct} onCommit={(v) => saveSettings({ opacityOpen: v })} />
-        </Row>
       </Section>
-
       <Section title={i("السلوك", "Behavior")}>
         <Row label={i("تأخير الفتح بالمرور", "Hover delay")}>
           <Slider label={i("تأخير الفتح بالمرور", "Hover delay")} value={s.hoverDelayMs ?? 250} min={0} max={600} step={25} format={ms} onCommit={(v) => saveSettings({ hoverDelayMs: v })} />
@@ -87,14 +90,18 @@ function App() {
           />
         </Row>
       </Section>
+      </Group>
 
+      <Group id="look" title={i("المظهر والميديا", "Appearance & media")}>
       <Section title={i("الميديا والمظهر", "Media & appearance")}>
+        <SubHead>{i("الحجم", "Size")}</SubHead>
         <Row label={i("عرض الحبة", "Pill width")} hint={i("المحتوى يتدرج مع المقاس تلقائيًا", "Content scales with the size automatically")}>
           <Slider label={i("عرض الحبة", "Pill width")} value={s.pillWidth ?? 220} min={160} max={280} step={5} format={px} onCommit={(v) => saveSettings({ pillWidth: v })} />
         </Row>
         <Row label={i("ارتفاع الحبة", "Pill height")}>
           <Slider label={i("ارتفاع الحبة", "Pill height")} value={s.pillHeight ?? 34} min={28} max={44} step={1} format={px} onCommit={(v) => saveSettings({ pillHeight: v })} />
         </Row>
+        <SubHead>{i("النمط والمادة", "Theme & material")}</SubHead>
         <Row label={i("النمط", "Theme")} hint={i("يُطبَّق على الحبة واللوحة ونوافذ البرنامج", "Applies to the island, the panel and app windows")}>
           <Select
             label={i("النمط", "Theme")} value={s.themeMode ?? "dark"}
@@ -124,9 +131,26 @@ function App() {
             />
           </Row>
         )}
+        <Row label={i("الشفافية في الراحة", "Opacity at rest")}>
+          <Slider label={i("الشفافية في الراحة", "Opacity at rest")} value={s.opacityRest ?? 100} min={20} max={100} step={5} format={pct} onCommit={(v) => saveSettings({ opacityRest: v })} />
+        </Row>
+        <Row label={i("الشفافية عند الفتح", "Opacity when open")}>
+          <Slider label={i("الشفافية عند الفتح", "Opacity when open")} value={s.opacityOpen ?? 100} min={20} max={100} step={5} format={pct} onCommit={(v) => saveSettings({ opacityOpen: v })} />
+        </Row>
+        <SubHead>{i("السلوك البصري", "Visual behavior")}</SubHead>
         <Row label={i("عيون التميمة", "Mascot eyes")} hint={i("عينان بجانب الساعة تتبعان المؤشر؛ تُخفى أثناء الميديا والتوفير", "Eyes beside the clock follow the cursor; hidden during media and eco mode")}>
           <Toggle label={i("عيون التميمة", "Mascot eyes")} value={s.eyesEnabled ?? true} onChange={(v) => saveSettings({ eyesEnabled: v })} />
         </Row>
+        <Row
+          label={i("وضع تبويب المتصفح", "Browser tab mode")}
+          hint={i(
+            "حين يكون المتصفح (Chrome/Edge/Firefox/Brave) هو النافذة الأمامية ومكبَّرًا، تتخذ الحبة هيئة تبويب في أعلى شريطه؛ الضغط عليها يفتح اللوحة. إرساء بصري يحاكي التبويب لا تبويب حقيقي، ويتوقف في وضع التوفير.",
+            "When a browser (Chrome/Edge/Firefox/Brave) is the maximized foreground window, the pill takes a tab shape in its tab strip; click it to open the panel. A visual docking that imitates a tab, not a real one; paused in Eco mode.",
+          )}
+        >
+          <Toggle label={i("وضع تبويب المتصفح", "Browser tab mode")} value={s.browserTabMode ?? false} onChange={(v) => saveSettings({ browserTabMode: v })} />
+        </Row>
+        <SubHead>{i("الميديا", "Media")}</SubHead>
         <Row label={i("طيف الصوت والحبة السائلة", "Audio spectrum & liquid pill")} hint={i("يلتقط صوت الجهاز محليًا أثناء تشغيل الميديا فقط", "Captures system audio locally, only while media plays")}>
           <Toggle label={i("طيف الصوت والحبة السائلة", "Audio spectrum & liquid pill")} value={s.liquidSpectrum ?? false} onChange={(v) => saveSettings({ liquidSpectrum: v })} />
         </Row>
@@ -136,12 +160,19 @@ function App() {
         <Row label={i("كلمات الأغاني في المشغّل", "Lyrics in player")} hint={i("تُجلب من الإنترنت (LRCLIB)", "Fetched online (LRCLIB)")}>
           <Toggle label={i("كلمات الأغاني في المشغّل", "Lyrics in player")} value={s.lyricsInPlayer ?? false} onChange={(v) => saveSettings({ lyricsInPlayer: v })} />
         </Row>
+      </Section>
+      </Group>
+
+      <Group id="modules" title={i("الوحدات", "Modules")}>
+      <Section title={i("التنزيلات والبطارية والشبكة", "Downloads, battery & network")}>
+        <SubHead>{i("التنزيلات", "Downloads")}</SubHead>
         <Row label={i("إظهار التنزيلات", "Show downloads")}>
           <Toggle label={i("إظهار التنزيلات", "Show downloads")} value={s.showDownloads ?? false} onChange={(v) => saveSettings({ showDownloads: v })} />
         </Row>
         <Row label={i("التنزيلات في الحبة", "Downloads in pill")}>
           <Toggle label={i("التنزيلات في الحبة", "Downloads in pill")} value={s.downloadsInPill ?? false} onChange={(v) => saveSettings({ downloadsInPill: v })} />
         </Row>
+        <SubHead>{i("البطارية", "Battery")}</SubHead>
         <Row label={i("إظهار البطارية", "Show battery")}>
           <Toggle label={i("إظهار البطارية", "Show battery")} value={s.showBattery ?? false} onChange={(v) => saveSettings({ showBattery: v })} />
         </Row>
@@ -151,36 +182,40 @@ function App() {
         <Row label={i("بطاريات أجهزة البلوتوث", "Bluetooth device batteries")} hint={i("يقرأ محليًا مستوى الأجهزة المتصلة (BLE) التي تُبلغه، كل 5 دقائق", "Reads, locally, the level of connected (BLE) devices that report it, every 5 min")}>
           <Toggle label={i("بطاريات أجهزة البلوتوث", "Bluetooth device batteries")} value={s.btBatteries ?? true} onChange={(v) => saveSettings({ btBatteries: v })} />
         </Row>
-      </Section>
-
-      <Section title={i("وقتي والاستراحة", "My time & breaks")}>
+        <SubHead>{i("الشبكة", "Network")}</SubHead>
         <Row
-          label={i("تتبّع زمن التركيز (وقتي)", "Focus-time tracking")}
-          hint={i(
-            "يعمل افتراضيًا. يسجّل اسم التطبيق الأمامي فقط (بلا عناوين نوافذ أو محتوى) أثناء نشاطك، ويتوقف عند الخمول أكثر من 60 ثانية. يُحفظ على جهازك فقط 30 يومًا ولا يُرسل لأي مكان.",
-            "On by default. Records only the foreground app name (no window titles or content) while you're active; pauses after 60 s idle. Stored on this device only for 30 days, never sent anywhere.",
-          )}
+          label={i("سرعتا الشبكة في الحبة", "Network speed in the pill")}
+          hint={i("تحميل/رفع حاليان من عدّادات ويندوز المحلية، تعرضهما الحبة المدمجة بدل الساعة. يتوقف القياس تمامًا عند الإطفاء.", "Current down/up speed from local Windows counters, shown in the compact pill instead of the clock. Measuring stops completely when off.")}
         >
-          <Toggle label={i("تتبّع زمن التركيز (وقتي)", "Focus-time tracking")} value={s.attentionTracking ?? true} onChange={(v) => saveSettings({ attentionTracking: v })} />
-        </Row>
-        <Row label={i("تذكير الاستراحة", "Break reminders")} hint={i("إشعار داخل التطبيق بعد استخدام متواصل (استراحة 5 دقائق تصفّر العدّ)", "In-app notice after continuous use (a 5-minute pause resets the count)")}>
-          <Toggle label={i("تذكير الاستراحة", "Break reminders")} value={s.breakReminders ?? false} onChange={(v) => saveSettings({ breakReminders: v })} />
-        </Row>
-        <Row label={i("مدة الاستخدام المتواصل (دقيقة)", "Continuous use before a break (min)")}>
-          <NumberField label={i("مدة الاستخدام المتواصل (دقيقة)", "Continuous use before a break (min)")} value={s.breakMinutes ?? 60} min={5} max={240} onCommit={(v) => saveSettings({ breakMinutes: v })} />
-        </Row>
-        <Row label={i("مسح بيانات وقتي", "Clear My-time data")} hint={i("يحذف كل ما سُجّل محليًا", "Deletes everything recorded locally")}>
-          <button
-            onClick={() => invoke("attention_clear").catch(() => {})}
-            className="rounded-lg bg-white/10 px-3 py-1 text-sm hover:bg-white/20"
-          >{i("مسح", "Clear")}</button>
+          <Toggle label={i("سرعتا الشبكة في الحبة", "Network speed in the pill")} value={s.showNetSpeed ?? false} onChange={(v) => saveSettings({ showNetSpeed: v })} />
         </Row>
       </Section>
-
+      <Section title={i("الحافظة", "Clipboard")}>
+        <Row label={i("الحد الأقصى للعناصر", "Item limit")} hint={i("غير المثبّتة تُحذف الأقدم أولًا", "Oldest unpinned items are dropped first")}>
+          <NumberField label={i("الحد الأقصى للعناصر", "Item limit")} value={s.clipLimit ?? 200} min={10} max={5000} onCommit={(v) => saveSettings({ clipLimit: v })} />
+        </Row>
+        <Row label={i("اللصق عند النقر", "Paste on click")} hint={i("إطفاؤه يضع العنصر في الحافظة فقط", "When off, the item is only copied")}>
+          <Toggle label={i("اللصق عند النقر", "Paste on click")} value={s.pasteOnClick ?? true} onChange={(v) => saveSettings({ pasteOnClick: v })} />
+        </Row>
+        <Row label={i("تطبيقات مستثناة", "Excluded apps")} hint={i("اسم ملف exe في كل سطر", "One exe name per line")}>
+          <LinesField label={i("تطبيقات مستثناة", "Excluded apps")} value={s.clipExcludedApps ?? []} placeholder="keepassxc.exe" onCommit={(v) => saveSettings({ clipExcludedApps: v })} />
+        </Row>
+      </Section>
       <Section title={i("الالتقاط والتسجيل", "Capture & recording")}>
+        <SubHead>{i("اللقطات", "Screenshots")}</SubHead>
         <Row label={i("إظهار الحبة في اللقطات", "Show the island in captures")} hint={i("مطفأ: الحبة تُستثنى من اللقطات والتسجيل", "Off: the island is excluded from screenshots and recordings")}>
           <Toggle label={i("إظهار الحبة في اللقطات", "Show the island in captures")} value={s.captureVisible ?? false} onChange={(v) => saveSettings({ captureVisible: v })} />
         </Row>
+        <Row label={i("مجلد اللقطات", "Screenshots folder")} hint={i("فارغ = Pictures\\MyIsland", "Empty = Pictures\\MyIsland")}>
+          <TextField label={i("مجلد اللقطات", "Screenshots folder")} value={s.screenshotDir ?? ""} onCommit={(v) => saveSettings({ screenshotDir: v })} />
+        </Row>
+        <Row label={i("اختصار لقطة منطقة", "Area screenshot hotkey")} hint={i("فارغ = معطّل · PrintScreen يعترض الزر", "Empty = off · PrintScreen intercepts the key")}>
+          <TextField label={i("اختصار لقطة منطقة", "Area screenshot hotkey")} value={s.hotkeyArea ?? ""} onCommit={(v) => saveSettings({ hotkeyArea: v })} />
+        </Row>
+        <Row label={i("اختصار لقطة الشاشة", "Full-screen screenshot hotkey")}>
+          <TextField label={i("اختصار لقطة الشاشة", "Full-screen screenshot hotkey")} value={s.hotkeyScreen ?? ""} onCommit={(v) => saveSettings({ hotkeyScreen: v })} />
+        </Row>
+        <SubHead>{i("التسجيل", "Recording")}</SubHead>
         <Row label={i("صيغة التسجيل", "Recording format")}>
           <Select
             label={i("صيغة التسجيل", "Recording format")} value={s.recordFormat ?? "mp4"}
@@ -206,26 +241,61 @@ function App() {
             onChange={(v) => saveSettings({ recordingQuality: v })}
           />
         </Row>
-        <Row label={i("مجلد اللقطات", "Screenshots folder")} hint={i("فارغ = Pictures\\MyIsland", "Empty = Pictures\\MyIsland")}>
-          <TextField label={i("مجلد اللقطات", "Screenshots folder")} value={s.screenshotDir ?? ""} onCommit={(v) => saveSettings({ screenshotDir: v })} />
-        </Row>
         <Row label={i("مجلد التسجيلات", "Recordings folder")} hint={i("فارغ = Videos\\MyIsland", "Empty = Videos\\MyIsland")}>
           <TextField label={i("مجلد التسجيلات", "Recordings folder")} value={s.recordingDir ?? ""} onCommit={(v) => saveSettings({ recordingDir: v })} />
-        </Row>
-        <Row label={i("اختصار لقطة منطقة", "Area screenshot hotkey")} hint={i("فارغ = معطّل · PrintScreen يعترض الزر", "Empty = off · PrintScreen intercepts the key")}>
-          <TextField label={i("اختصار لقطة منطقة", "Area screenshot hotkey")} value={s.hotkeyArea ?? ""} onCommit={(v) => saveSettings({ hotkeyArea: v })} />
-        </Row>
-        <Row label={i("اختصار لقطة الشاشة", "Full-screen screenshot hotkey")}>
-          <TextField label={i("اختصار لقطة الشاشة", "Full-screen screenshot hotkey")} value={s.hotkeyScreen ?? ""} onCommit={(v) => saveSettings({ hotkeyScreen: v })} />
         </Row>
         <Row label={i("اختصار التسجيل", "Recording hotkey")} hint={i("يبدّل بدء/إيقاف · فارغ = معطّل", "Toggles start/stop · empty = off")}>
           <TextField label={i("اختصار التسجيل", "Recording hotkey")} value={s.hotkeyRecord ?? ""} onCommit={(v) => saveSettings({ hotkeyRecord: v })} />
         </Row>
+        <SubHead>{i("أدوات", "Tools")}</SubHead>
         <Row label={i("اختصار منتقي الألوان", "Color picker hotkey")}>
           <TextField label={i("اختصار منتقي الألوان", "Color picker hotkey")} value={s.hotkeyColor ?? ""} onCommit={(v) => saveSettings({ hotkeyColor: v })} />
         </Row>
       </Section>
+      <Section title={i("شريط الأوامر", "Command palette")}>
+        <Row
+          label={i("أسعار العملات الحية", "Live currency rates")}
+          hint={i(
+            "عند تحويل عملة في الشريط تُجلب الأسعار من open.er-api.com وتُخزَّن 12 ساعة؛ بلا اتصال أو مطفأ تُستعمل الأسعار المضمّنة التقريبية.",
+            "When you convert a currency in the palette, rates are fetched from open.er-api.com and cached for 12 h; offline or off, the built-in approximate rates are used.",
+          )}
+        >
+          <Toggle label={i("أسعار العملات الحية", "Live currency rates")} value={s.liveRates ?? true} onChange={(v) => saveSettings({ liveRates: v })} />
+        </Row>
+        <div>
+          <div dir="auto" className="text-sm">{i("مساحات العمل", "Workspaces")}</div>
+          <div dir="auto" className="mb-2 text-xs text-white/50">
+            {i("مجموعات تُفتح دفعة واحدة من الشريط: اكتب اسمها أو «ws اسم». كل سطر: مسار تطبيق أو مجلد أو ملف، أو رابط http(s).", "Groups opened at once from the palette: type the name or “ws name”. One item per line: an app, folder or file path, or an http(s) link.")}
+          </div>
+          <WorkspacesEditor value={Array.isArray(s.workspaces) ? s.workspaces : []} />
+        </div>
+      </Section>
+      <Section title={i("وقتي والاستراحة", "My time & breaks")}>
+        <Row
+          label={i("تتبّع زمن التركيز (وقتي)", "Focus-time tracking")}
+          hint={i(
+            "يعمل افتراضيًا. يسجّل اسم التطبيق الأمامي فقط (بلا عناوين نوافذ أو محتوى) أثناء نشاطك، ويتوقف عند الخمول أكثر من 60 ثانية. يُحفظ على جهازك فقط 30 يومًا ولا يُرسل لأي مكان.",
+            "On by default. Records only the foreground app name (no window titles or content) while you're active; pauses after 60 s idle. Stored on this device only for 30 days, never sent anywhere.",
+          )}
+        >
+          <Toggle label={i("تتبّع زمن التركيز (وقتي)", "Focus-time tracking")} value={s.attentionTracking ?? true} onChange={(v) => saveSettings({ attentionTracking: v })} />
+        </Row>
+        <Row label={i("تذكير الاستراحة", "Break reminders")} hint={i("إشعار داخل التطبيق بعد استخدام متواصل (استراحة 5 دقائق تصفّر العدّ)", "In-app notice after continuous use (a 5-minute pause resets the count)")}>
+          <Toggle label={i("تذكير الاستراحة", "Break reminders")} value={s.breakReminders ?? false} onChange={(v) => saveSettings({ breakReminders: v })} />
+        </Row>
+        <Row label={i("مدة الاستخدام المتواصل (دقيقة)", "Continuous use before a break (min)")}>
+          <NumberField label={i("مدة الاستخدام المتواصل (دقيقة)", "Continuous use before a break (min)")} value={s.breakMinutes ?? 60} min={5} max={240} onCommit={(v) => saveSettings({ breakMinutes: v })} />
+        </Row>
+        <Row label={i("مسح بيانات وقتي", "Clear My-time data")} hint={i("يحذف كل ما سُجّل محليًا", "Deletes everything recorded locally")}>
+          <button
+            onClick={() => invoke("attention_clear").catch(() => {})}
+            className="rounded-lg bg-white/10 px-3 py-1 text-sm hover:bg-white/20"
+          >{i("مسح", "Clear")}</button>
+        </Row>
+      </Section>
+      </Group>
 
+      <Group id="perf" title={i("الأداء والتوفير", "Performance & saving")}>
       <Section title={i("الأداء والتوفير", "Performance & saving")}>
         <Row label={i("حالة وضع التوفير", "Eco mode status")}>
           <EcoIndicator />
@@ -258,37 +328,7 @@ function App() {
           <RamUsage />
         </div>
       </Section>
-
-      <Section title={i("شريط الأوامر", "Command palette")}>
-        <Row
-          label={i("أسعار العملات الحية", "Live currency rates")}
-          hint={i(
-            "عند تحويل عملة في الشريط تُجلب الأسعار من open.er-api.com وتُخزَّن 12 ساعة؛ بلا اتصال أو مطفأ تُستعمل الأسعار المضمّنة التقريبية.",
-            "When you convert a currency in the palette, rates are fetched from open.er-api.com and cached for 12 h; offline or off, the built-in approximate rates are used.",
-          )}
-        >
-          <Toggle label={i("أسعار العملات الحية", "Live currency rates")} value={s.liveRates ?? true} onChange={(v) => saveSettings({ liveRates: v })} />
-        </Row>
-        <div>
-          <div dir="auto" className="text-sm">{i("مساحات العمل", "Workspaces")}</div>
-          <div dir="auto" className="mb-2 text-xs text-white/50">
-            {i("مجموعات تُفتح دفعة واحدة من الشريط: اكتب اسمها أو «ws اسم». كل سطر: مسار تطبيق أو مجلد أو ملف، أو رابط http(s).", "Groups opened at once from the palette: type the name or “ws name”. One item per line: an app, folder or file path, or an http(s) link.")}
-          </div>
-          <WorkspacesEditor value={Array.isArray(s.workspaces) ? s.workspaces : []} />
-        </div>
-      </Section>
-
-      <Section title={i("الحافظة", "Clipboard")}>
-        <Row label={i("الحد الأقصى للعناصر", "Item limit")} hint={i("غير المثبّتة تُحذف الأقدم أولًا", "Oldest unpinned items are dropped first")}>
-          <NumberField label={i("الحد الأقصى للعناصر", "Item limit")} value={s.clipLimit ?? 200} min={10} max={5000} onCommit={(v) => saveSettings({ clipLimit: v })} />
-        </Row>
-        <Row label={i("اللصق عند النقر", "Paste on click")} hint={i("إطفاؤه يضع العنصر في الحافظة فقط", "When off, the item is only copied")}>
-          <Toggle label={i("اللصق عند النقر", "Paste on click")} value={s.pasteOnClick ?? true} onChange={(v) => saveSettings({ pasteOnClick: v })} />
-        </Row>
-        <Row label={i("تطبيقات مستثناة", "Excluded apps")} hint={i("اسم ملف exe في كل سطر", "One exe name per line")}>
-          <LinesField label={i("تطبيقات مستثناة", "Excluded apps")} value={s.clipExcludedApps ?? []} placeholder="keepassxc.exe" onCommit={(v) => saveSettings({ clipExcludedApps: v })} />
-        </Row>
-      </Section>
+      </Group>
     </div>
   );
 }

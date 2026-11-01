@@ -5,8 +5,8 @@ import { listen } from "@tauri-apps/api/event";
 
 const N = 32;
 type RGB = [number, number, number];
-/** اللون الافتراضي للهوية (#8ea2ff) عند غياب الغلاف أو تعذّر تحليله. */
-const ACCENT: RGB = [142, 162, 255];
+/** اللون الافتراضي للهوية (#4fd1c5) عند غياب الغلاف أو تعذّر تحليله. */
+const ACCENT: RGB = [79, 209, 197];
 const BLUR = 3;
 /** مستوى الصفر مُنزَل تحت الحافة بقدر يخفي هالة الفلتر عند السكون. */
 const HIDE = BLUR + 1;

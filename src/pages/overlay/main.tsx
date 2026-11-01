@@ -212,7 +212,7 @@ function App() {
           style={{
             left: selected.x, top: selected.y, width: selected.w, height: selected.h,
             boxShadow: "0 0 0 100vmax rgba(0,0,0,0.5)",
-            outline: `1px solid ${mode === "record" ? "#ff5a5a" : "#8ea2ff"}`,
+            outline: `1px solid ${mode === "record" ? "#ff5a5a" : "#4fd1c5"}`,
           }}
         />
       )}

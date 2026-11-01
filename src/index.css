@@ -44,13 +44,13 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 800; }
  * الداكن = الافتراضي. الفاتح يعيد ربط --color-white/--color-black (Tailwind) فتنعكس كل فئات text-white/bg-white/10… تلقائيًا
  * بلا لمس المكوّنات، وتتبعها أسطح النوافذ عبر --app-*.
  */
-:root { --app-bg: #12131a; --app-editor-bg: #14151c; --app-field: #1b1d27; --app-accent: #8ea2ff; }
+:root { --app-bg: #12131a; --app-editor-bg: #14151c; --app-field: #1b1d27; --app-accent: #4fd1c5; }
 :root[data-theme="light"] {
   --color-white: #0d1017;
   --color-black: #f2f4f8;
   --app-bg: #eceff4;
   --app-editor-bg: #e4e8ef;
   --app-field: #ffffff;
-  --app-accent: #4a5fd6;
+  --app-accent: #0f766e;
   color-scheme: light;
 }

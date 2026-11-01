@@ -36,7 +36,7 @@ export function BatterySection({ b, tip, btOn }: { b: Battery | null; tip: boole
       )}
       {bt.map((d) => (
         <div key={d.name} data-testid="bt-battery" className="flex items-center gap-2" dir="auto">
-          <Bluetooth size={13} className="shrink-0 text-[#8ea2ff]" />
+          <Bluetooth size={13} className="shrink-0 text-white/60" />
           <span className="min-w-0 flex-1 truncate">{d.name}</span>
           <span dir="ltr" className={`shrink-0 tabular-nums ${d.percent <= 20 ? "text-red-400" : "text-white/70"}`}>{d.percent}%</span>
         </div>

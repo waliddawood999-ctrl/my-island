@@ -5,7 +5,7 @@ import {
   AppWindow, FolderPlus, File as FileIcon, FilePlus, Folder, Globe, GripVertical, Keyboard, LayoutGrid, Pencil, Plus, Rocket,
   Search, Trash2, X,
 } from "lucide-react";
-import { dur, ease, spring, tap } from "../../motion";
+import { dur, ease, MAX_STAGGER_ITEMS, spring, stagger, tap } from "../../motion";
 import { i } from "../../i18n";
 import { useShellIcon } from "./ShelfTab";
 import type { useLauncher } from "../../useLauncher";
@@ -50,8 +50,9 @@ function Visual({ item, size }: { item: LauncherItem; size: number }) {
 }
 
 function Tile({
-  item, hotkey, dragging, over, onLaunch, onMenu, onDown,
+  item, n = 0, hotkey, dragging, over, onLaunch, onMenu, onDown,
 }: {
+  n?: number;
   item: LauncherItem; hotkey?: string; dragging: boolean; over: boolean;
   onLaunch: (it: LauncherItem) => void;
   onMenu: (e: React.MouseEvent, it: LauncherItem) => void;
@@ -62,7 +63,7 @@ function Tile({
       layout="position"
       data-item-id={item.id}
       initial={{ opacity: 0, scale: 0.92, filter: "blur(4px)" }}
-      animate={{ opacity: dragging ? 0.35 : item.missing ? 0.45 : 1, scale: 1, filter: "blur(0px)", transition: { ...spring.content, opacity: { duration: dur.swap, ease: ease.out } } }}
+      animate={{ opacity: dragging ? 0.35 : item.missing ? 0.45 : 1, scale: 1, filter: "blur(0px)", transition: { ...spring.content, delay: Math.min(n, MAX_STAGGER_ITEMS) * stagger.item, opacity: { duration: dur.swap, ease: ease.out, delay: Math.min(n, MAX_STAGGER_ITEMS) * stagger.item } } }}
       exit={{ opacity: 0, scale: 0.92, transition: { duration: dur.fast, ease: ease.inOut } }}
       whileTap={{ scale: 0.96 }}
       role="button"
@@ -279,10 +280,10 @@ export function LauncherTab({ launcher }: { launcher: Launcher }) {
   const sec = useMemo(() => sections(items, groups), [items, groups]);
 
   const renderTiles = (list: LauncherItem[]) => (
-    <AnimatePresence initial={false} mode="popLayout">
-      {list.map((it) => (
+    <AnimatePresence mode="popLayout">
+      {list.map((it, n) => (
         <Tile
-          key={it.id} item={it} hotkey={hotkeys[String(it.id)]}
+          key={it.id} n={n} item={it} hotkey={hotkeys[String(it.id)]}
           dragging={drag?.kind === "item" && drag.id === it.id}
           over={drag?.over?.kind === "item" && drag.over.id === it.id && drag.id !== it.id}
           onLaunch={launch} onMenu={showMenu} onDown={onItemDown}

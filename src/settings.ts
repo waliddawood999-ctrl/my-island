@@ -90,6 +90,8 @@ export interface Settings {
   themeMode:'dark'|'light',
   themeMaterial:'solid'|'glass',
   glassTint:number,
+  browserTabMode:boolean,
+  showNetSpeed:boolean,
   workspaces:Workspace[],
   weatherCity:string,
   weatherLat:number,
@@ -149,6 +151,8 @@ export const DEFAULTS: Partial<Settings> = {
   themeMode: 'dark',       // dark = أسود كالمرجع · light = فاتح كالمرجع (كل النوافذ)
   themeMaterial: 'solid',  // solid = مصمت · glass = شفافية مع blur
   glassTint: 45,           // قوة تظليل الزجاج 0..80 (٪) — لا أثر إلا مع themeMaterial=glass؛ ويندوز 11: صبغة الصفحة · ويندوز 10: ألفا الأكريليك
+  browserTabMode: false,   // وضع تبويب المتصفح: حين يكون المتصفح (chrome/msedge/firefox/brave) أمامية ومكبَّرًا تتخذ الحبة هيئة تبويب في شريطه (إرساء بصري لا تبويب حقيقي)
+  showNetSpeed: false,     // سرعتا الشبكة (تحميل/رفع) في الكبسولة المدمجة؛ القراءة من عدّادات ويندوز فقط أثناء التفعيل (netspeed_active)
   eyesEnabled: true,       // عيون التميمة بجانب الساعة في الحبة المنكمشة (تُخفى تلقائيًا مع الميديا/التوفير/الحركة المتوقفة)
   motionLevel: 'full',     // full = نابضة · reduced = مخففة · off = متوقفة (انظر src/motion.ts)
   liveRates: true,         // شريط الأوامر: أسعار عملات حية (open.er-api.com) تُجلب كسولًا عند تحويل عملة وتُخزَّن 12 ساعة؛ false = المضمّنة فقط بلا شبكة
