@@ -14,7 +14,8 @@ import { useStopwatchNow } from "../../useStopwatch";
 import { useNetSpeed } from "../../useNetSpeed";
 import { useDock } from "../../useDock";
 import { useBatteryHistory } from "../../useBatteryHistory";
-import { ActivityStack, CapsuleSplit, NetValue, type LiveData } from "./activity";
+import { ActivityStack, CapsuleSplit, NetValue, updateLabel, type LiveData } from "./activity";
+import { useUpdater } from "../../useUpdater";
 import { fmtElapsed, useRecording } from "../../useRecording";
 import { ClipboardTab } from "./ClipboardTab";
 import { ToolsTab } from "./ToolsTab";
@@ -165,9 +166,15 @@ export function Pill() {
   const dock = useDock(!!settings.browserTabMode);
   const batHist = useBatteryHistory(battery);
   const { sw, ms: swMs } = useStopwatchNow(false);
+  const { state: upd, install: installUpdate } = useUpdater(settings.updateAutoCheck ?? true);
+  const updOn = upd.phase !== "idle";
   // تثبيت يدوي منفصل لكل سطح (الكبسولة/اللوحة): تبديل أحدهما لا يغيّر الآخر؛ ويسقط تلقائيًا حين ينتهي النشاط المثبّت.
   const [pinCap, setPinCap] = useState<ActivityKind | null>(null);
   const [pinPanel, setPinPanel] = useState<ActivityKind | null>(null);
+  // أثناء التنزيل/التثبيت/الفشل يُثبَّت نشاط التحديث على السطحين كي يبقى التقدّم ظاهرًا مهما كان غيره قائمًا.
+  useEffect(() => {
+    if (upd.phase === "downloading" || upd.phase === "installing" || upd.phase === "error") { setPinCap("update"); setPinPanel("update"); }
+  }, [upd.phase]);
   const lastPanAt = useRef(0);
   // التسجيل: نقطة حمراء + مؤقّت في الحبة المنكمشة؛ النقر عليها (منكمشة) يوقف التسجيل.
   const rec = useRecording();
@@ -182,17 +189,17 @@ export function Pill() {
   const lowBat = showBat && !!battery?.has_battery && battery.percent != null && battery.percent <= 20 && !battery.ac;
   const chargingBat = showBat && !!battery?.has_battery && battery.percent != null && (battery.charging || lowBat);
   const capKinds = activeKinds({
-    rec: rec.recording, timer: timerNear, stopwatch: sw.running, media: !!pillTitle, meeting: !!upMeeting, battery: lowBat, net: netOn && net !== null,
+    rec: rec.recording, timer: timerNear, stopwatch: sw.running, media: !!pillTitle, meeting: !!upMeeting, battery: lowBat, net: netOn && net !== null, update: updOn,
   });
   const shownCap = shownKind(capKinds, pinCap);
   const panelKinds = activeKinds({
     rec: rec.recording, timer: timer !== null && remaining !== null && remaining > 0, stopwatch: sw.running || sw.acc > 0,
-    media: moduleMedia && media.info.session, meeting: !!upMeeting, battery: chargingBat,
+    media: moduleMedia && media.info.session, meeting: !!upMeeting, battery: chargingBat, update: updOn,
   });
   const shownPanel = shownKind(panelKinds, pinPanel);
   const liveData: LiveData = {
     rec: { recording: rec.recording, elapsed: rec.elapsed }, timer, remaining, media, showLyrics: !!(settings.lyricsInHome || settings.lyricsInPlayer),
-    battery, batteryHist: batHist, meeting: upMeeting,
+    battery, batteryHist: batHist, meeting: upMeeting, update: upd, onInstallUpdate: installUpdate,
   };
   const cycleCap = () => setPinCap(nextKind(capKinds, shownCap));
   // استقرار الحبة: false من لحظة تغيّر الحجم المستهدف حتى انتهاء الحركة (وإعادة قياس النافذة)؛ يتحكّم بطلب الزجاج الحقيقي فقط.
@@ -515,6 +522,18 @@ export function Pill() {
                 />
               ) : pillKey === "battery" && battery?.percent != null ? (
                 <CapsuleSplit kind="battery" k={k} dots={dots} left={i("بطارية منخفضة", "Low battery")} value={`${battery.percent}%`} />
+              ) : pillKey === "update" && updOn ? (
+                <CapsuleSplit
+                  kind="update" k={k} dots={dots}
+                  left={updateLabel(upd)}
+                  value={upd.phase === "available" || upd.phase === "error" ? (
+                    <button
+                      data-testid="capsule-update-install"
+                      onClick={(e) => { e.stopPropagation(); installUpdate(); }}
+                      className="rounded-full bg-[var(--act-update)] px-2 text-[0.85em] font-semibold text-black"
+                    >{upd.phase === "error" ? i("إعادة المحاولة", "Retry") : i("تثبيت", "Install")}</button>
+                  ) : null}
+                />
               ) : pillKey === "net" && net ? (
                 <CapsuleSplit kind="net" k={k} dots={dots} left={i("الشبكة", "Network")} value={<NetValue down={net.down} up={net.up} />} />
               ) : (

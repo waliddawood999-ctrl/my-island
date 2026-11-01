@@ -127,6 +127,7 @@ html, body, #root {
   --act-meeting: #4c8dff;
   --act-battery: #8bd450;
   --act-net: #94a3b8;
+  --act-update: #34d399;
   --island-icon-sm: 14px;
   --island-icon-md: 16px;
   --island-icon-lg: 20px;
@@ -138,6 +139,7 @@ html, body, #root {
   --act-meeting: #1d4ed8;
   --act-battery: #3f7d12;
   --act-net: #475569;
+  --act-update: #047857;
 }
 /* شارة النوع في بطاقة النشاط: مربع مستدير بخلفية من اللمسة (شفافية 16%) وأيقونة بلون اللمسة. */
 .act-badge { display: inline-flex; align-items: center; justify-content: center; border-radius: 9999px; color: var(--act, #fff);

@@ -11,11 +11,12 @@
     ],
     "security": { "csp": null }
   },
-  "bundle": { "active": true, "targets": ["nsis"], "category": "Productivity" },
+  "bundle": { "active": true, "targets": ["nsis"], "category": "Productivity", "createUpdaterArtifacts": true },
   "plugins": {
     "updater": {
-      "endpoints": ["https://github.com/YOU/REPO/releases/latest/download/latest.json"],
-      "pubkey": "PUT_YOUR_MINISIGN_PUBLIC_KEY_HERE"
+      "endpoints": ["https://github.com/waliddawood999-ctrl/my-island-releases/releases/latest/download/latest.json"],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDk4NzdFN0ZGQjJBREZGNkQKUldSdC82MnkvK2QzbUNxL1dsUTQ4SVoxMHBkUEc0a3NITm9RTHdsZy83LzNpNjVZRUJLaTBWQVQK",
+      "windows": { "installMode": "passive" }
     }
   }
 }

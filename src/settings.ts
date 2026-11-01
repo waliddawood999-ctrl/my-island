@@ -112,6 +112,7 @@ export interface Settings {
   sttLanguage:string,
   dictatePaste:boolean,
   checkUpdates:boolean,
+  updateAutoCheck:boolean, // فحص صامت واحد بعد الإقلاع بثوانٍ عن تحديث موقّع (tauri-plugin-updater)؛ لا شيء يظهر عند الغياب/الفشل
   hotkeyToggle:string,
   hotkeyPalette:string,
   hotkeyChat:string,
@@ -146,6 +147,7 @@ export const DEFAULTS: Partial<Settings> = {
   hotkeyColor: "Ctrl+Alt+C",  // منتقي الألوان؛ فارغ = معطّل
   recordingQuality: "medium", // low | medium | high
   checkUpdates: true,
+  updateAutoCheck: true,
   attentionTracking: true, // «وقتي»: يعمل افتراضيًا ومحلي فقط؛ false = إيقاف كامل بلا مراقبة ولا كتابة
   breakReminders: false,   // تذكير استراحة بعد استخدام متواصل (صريح من المستخدم)
   breakMinutes: 60,        // مدة الاستخدام المتواصل قبل التذكير (دقائق)

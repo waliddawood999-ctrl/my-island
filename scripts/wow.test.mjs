@@ -13,7 +13,7 @@ const eq = (name, got, want) => { n++; if (JSON.stringify(got) !== JSON.stringif
 const near = (name, got, want, eps = 1e-6) => { n++; if (Math.abs(got - want) > eps) { fail++; console.log(`✗ ${name}: ${got} ≠ ${want}`); } };
 
 // ── الأولوية المعلنة: تسجيل ← مؤقّت ← ساعة إيقاف ← ميديا ← اجتماع ← بطارية ← شبكة
-eq("priority order", [...m.PRIORITY], ["rec", "timer", "stopwatch", "media", "meeting", "battery", "net"]);
+eq("priority order", [...m.PRIORITY], ["rec", "timer", "stopwatch", "update", "media", "meeting", "battery", "net"]);
 eq("no download kind anywhere (removed by owner)", [m.PRIORITY.includes("dl"), "dl" in m.ACCENT, m.activeKinds({ dl: true })], [false, false, []]);
 eq("all active sorted by priority", m.activeKinds({ net: true, battery: true, media: true, timer: true, rec: true }), ["rec", "timer", "media", "battery", "net"]);
 eq("none active", m.activeKinds({}), []);

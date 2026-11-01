@@ -7,6 +7,8 @@ import { saveSettings, useSettings } from "../../useSettings";
 import { EcoIndicator, RamUsage } from "./Perf";
 import { WorkspacesEditor } from "./Workspaces";
 import { CountdownsEditor, WorldClockEditor } from "./TodayExtras";
+import { manualCheck } from "../../useUpdater";
+import type { ManualStatus } from "../../updater";
 import { Group, LinesField, Nav, NumberField, Row, Section, Select, Slider, SubHead, TextField, Toggle } from "./fields";
 
 interface CityOpt { id: string; ar: string; en: string }
@@ -46,6 +48,35 @@ function MeetingsKey() {
   );
 }
 
+/** زر «التحقق من التحديثات»: الحالة تُعرض في مكانها (يتحقق… / أنت على أحدث إصدار / تعذّر التحقق / يوجد إصدار). */
+function UpdateCheck() {
+  const [st, setSt] = useState<ManualStatus>("idle");
+  const [ver, setVer] = useState("");
+  const run = async () => {
+    setSt("checking");
+    const r = await manualCheck();
+    setVer(r.version ?? "");
+    setSt(r.status);
+  };
+  const msg =
+    st === "checking" ? i("يتحقق…", "Checking…")
+    : st === "latest" ? i("أنت على أحدث إصدار", "You're up to date")
+    : st === "failed" ? i("تعذّر التحقق", "Couldn't check")
+    : st === "available" ? i(`يوجد إصدار ${ver} — يظهر في الجزيرة`, `Version ${ver} is available — shown in the island`)
+    : "";
+  return (
+    <Row label={i("التحقق من التحديثات", "Check for updates")}>
+      <div className="flex items-center gap-2">
+        <button
+          data-testid="update-check" disabled={st === "checking"} onClick={run}
+          className="rounded-md bg-white/10 px-3 py-1 text-xs hover:bg-white/20 disabled:opacity-40"
+        >{i("التحقق من التحديثات", "Check for updates")}</button>
+        {msg && <span role="status" data-testid="update-status" dir="auto" className="text-xs text-white/60">{msg}</span>}
+      </div>
+    </Row>
+  );
+}
+
 function App() {
   const s = useSettings();
   const [monitors, setMonitors] = useState<MonitorInfo[]>([]);
@@ -72,6 +103,12 @@ function App() {
       />
 
       <Group id="general" title={i("عام", "General")}>
+      <Section title={i("التحديثات", "Updates")}>
+        <Row label={i("فحص التحديثات تلقائيًا", "Check for updates automatically")} hint={i("فحص صامت واحد بعد الإقلاع؛ لا يظهر شيء إن لم يوجد تحديث", "One silent check after launch; nothing shows if there is no update")}>
+          <Toggle label={i("فحص التحديثات تلقائيًا", "Check for updates automatically")} value={s.updateAutoCheck ?? true} onChange={(v) => saveSettings({ updateAutoCheck: v })} />
+        </Row>
+        <UpdateCheck />
+      </Section>
       <Section title={i("التشغيل والموضع", "Startup & position")}>
         <Row label={i("التشغيل مع ويندوز", "Start with Windows")}>
           <Toggle label={i("التشغيل مع ويندوز", "Start with Windows")} value={s.autostart ?? false} onChange={(v) => saveSettings({ autostart: v })} />

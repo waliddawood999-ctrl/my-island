@@ -4,13 +4,13 @@
  * (حلقة تقدّم، مراحل، منحنى مصغّر، سحب للتأكيد، هيئة تبويب المتصفح). انظر docs/MOTION.md §النشاط الحي.
  */
 
-export type ActivityKind = "rec" | "timer" | "stopwatch" | "media" | "meeting" | "battery" | "net";
+export type ActivityKind = "rec" | "timer" | "stopwatch" | "media" | "meeting" | "battery" | "net" | "update";
 
 /**
- * ترتيب الأولوية الثابت والمعلن: تسجيل جارٍ ← مؤقّت/ساعة إيقاف ← ميديا مشغّلة ← اجتماع قريب ← بطارية ← سرعتا الشبكة (محيطي).
+ * ترتيب الأولوية الثابت والمعلن: تسجيل جارٍ ← مؤقّت/ساعة إيقاف ← تحديث متاح ← ميديا مشغّلة ← اجتماع قريب ← بطارية ← سرعتا الشبكة (محيطي).
  * «اجتماع قريب» يُنتجه `upcomingMeeting` من وحدة الاجتماعات (L4) ضمن نافذة `meetingLeadMin` (الافتراضي 15 دقيقة).
  */
-export const PRIORITY: readonly ActivityKind[] = ["rec", "timer", "stopwatch", "media", "meeting", "battery", "net"];
+export const PRIORITY: readonly ActivityKind[] = ["rec", "timer", "stopwatch", "update", "media", "meeting", "battery", "net"];
 
 export type ActivityInput = Partial<Record<ActivityKind, boolean>>;
 
@@ -46,6 +46,7 @@ export const ACCENT: Record<ActivityKind, string> = {
   meeting: "var(--act-meeting)",
   battery: "var(--act-battery)",
   net: "var(--act-net)",
+  update: "var(--act-update)",
 };
 
 // ───────────────────────────── تقدّم ─────────────────────────────

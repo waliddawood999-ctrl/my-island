@@ -4,7 +4,7 @@ import {
   animate, AnimatePresence, motion, useMotionValue, useTransform,
 } from "motion/react";
 import {
-  ArrowDown, ArrowUp, BatteryCharging, CalendarClock, Hourglass, Music, Pause, Play, RotateCcw, Timer as StopwatchIcon, Video, X, Zap,
+  ArrowDown, ArrowUp, BatteryCharging, CalendarClock, Download, Hourglass, Music, Pause, Play, RotateCcw, Timer as StopwatchIcon, Video, X, Zap,
   type LucideIcon,
 } from "lucide-react";
 import { itemVariants, spring, swapVariants, tap } from "../../motion";
@@ -16,6 +16,7 @@ import {
 import { PROVIDER_NAME, type Meeting } from "../../useMeetings";
 import { fmtCountdown, type TimerState } from "../../useNote";
 import { fmtElapsed } from "../../useRecording";
+import { updatePercent, type UpdateState } from "../../updater";
 import type { Battery } from "../../useBattery";
 import type { MediaView } from "../../useMedia";
 import { stopwatch, useStopwatchNow } from "../../useStopwatch";
@@ -32,6 +33,7 @@ export const KIND_META: Record<ActivityKind, { icon: LucideIcon; label: () => st
   meeting: { icon: CalendarClock, label: () => i("اجتماع قريب", "Upcoming meeting") },
   battery: { icon: BatteryCharging, label: () => i("البطارية", "Battery") },
   net: { icon: ArrowDown, label: () => i("الشبكة", "Network") },
+  update: { icon: Download, label: () => i("تحديث", "Update") },
 };
 
 const accentStyle = (k: ActivityKind): CSSProperties => ({ ["--act" as string]: ACCENT[k] });
@@ -246,6 +248,48 @@ function MeetingCard({ m }: { m: UpcomingMeeting<Meeting> }) {
   );
 }
 
+/** نص حالة التحديث (البطاقة والكبسولة): متاح · نسبة التحميل · تثبيت · فشل. */
+export function updateLabel(u: UpdateState): string {
+  const pct = updatePercent(u);
+  switch (u.phase) {
+    case "downloading": return pct != null ? `${i("جارٍ التحميل", "Downloading")} ${pct}%` : i("جارٍ التحميل…", "Downloading…");
+    case "installing": return i("جارٍ التثبيت…", "Installing…");
+    case "error": return i("تعذّر التحديث", "Update failed");
+    default: return i("يوجد تحديث جديد", "A new update is available");
+  }
+}
+
+function UpdateCard({ u, onInstall }: { u: UpdateState; onInstall: () => void }) {
+  const pct = updatePercent(u);
+  const working = u.phase === "downloading" || u.phase === "installing";
+  return (
+    <ActivityShell kind="update">
+      <div className="flex flex-1 flex-col justify-center gap-3">
+        <div dir="auto" data-testid="update-label" className="text-[16px] font-semibold">{updateLabel(u)}</div>
+        {u.version && <div dir="ltr" className="text-[13px] tabular-nums text-white/60">v{u.version}</div>}
+        {working ? (
+          <div className="act-bar-track h-3.5 overflow-hidden rounded-full" data-testid="update-progress" role="progressbar" aria-valuenow={pct ?? undefined} aria-valuemin={0} aria-valuemax={100}>
+            <motion.div
+              initial={false} animate={{ scaleX: u.phase === "installing" ? 1 : (pct ?? 0) / 100 }} transition={spring.content}
+              style={{ transformOrigin: "left" }} className="act-bar-fill h-full w-full rounded-full"
+            />
+          </div>
+        ) : (
+          <motion.button
+            data-testid="update-install"
+            onClick={onInstall}
+            whileHover={tap.whileHover} whileTap={tap.whileTap} transition={tap.transition}
+            className="act-btn act-btn-solid self-start"
+          >
+            {u.phase === "error" ? <RotateCcw size={ICON.md} strokeWidth={STROKE} /> : <Download size={ICON.md} strokeWidth={STROKE} />}
+            {u.phase === "error" ? i("إعادة المحاولة", "Retry") : i("تثبيت", "Install")}
+          </motion.button>
+        )}
+      </div>
+    </ActivityShell>
+  );
+}
+
 function MediaCard({ media, showLyrics }: { media: MediaView; showLyrics: boolean }) {
   return (
     <ActivityShell kind="media">
@@ -286,6 +330,8 @@ export interface LiveData {
   battery: Battery | null;
   batteryHist: BatSample[];
   meeting: UpcomingMeeting<Meeting> | null;
+  update: UpdateState;
+  onInstallUpdate: () => void;
 }
 
 function Card({ kind, d }: { kind: ActivityKind; d: LiveData }) {
@@ -296,6 +342,7 @@ function Card({ kind, d }: { kind: ActivityKind; d: LiveData }) {
     case "media": return <MediaCard media={d.media} showLyrics={d.showLyrics} />;
     case "meeting": return d.meeting ? <MeetingCard m={d.meeting} /> : null;
     case "battery": return d.battery ? <BatteryCard b={d.battery} hist={d.batteryHist} /> : null;
+    case "update": return <UpdateCard u={d.update} onInstall={d.onInstallUpdate} />;
     default: return null;
   }
 }
@@ -309,6 +356,7 @@ function secondaryValue(kind: ActivityKind, d: LiveData, swMs: number): string {
     case "media": return d.media.info.playing ? "▶" : "⏸";
     case "meeting": return d.meeting ? (d.meeting.state === "now" ? i("الآن", "Now") : `${d.meeting.minutes} ${i("د", "min")}`) : "";
     case "battery": return d.battery?.percent != null ? `${d.battery.percent}%` : "";
+    case "update": return d.update.version ? `v${d.update.version}` : "";
     default: return "";
   }
 }

@@ -20,10 +20,63 @@ jobs:
 
       - run: npm ci
 
-      - run: npm run tauri build
+      # ختم الإصدار آليًا 1.0.<رقم التشغيل> في tauri.conf.json قبل البناء (يقرؤه المحدّث للمقارنة).
+      - name: Stamp version
+        shell: bash
+        run: |
+          VERSION="1.0.${{ github.run_number }}"
+          echo "APP_VERSION=$VERSION" >> "$GITHUB_ENV"
+          node -e "const fs=require('fs');const p='src-tauri/tauri.conf.json';const c=JSON.parse(fs.readFileSync(p,'utf8'));c.version=process.env.V;fs.writeFileSync(p,JSON.stringify(c,null,2)+'\n')"
+        env:
+          V: 1.0.${{ github.run_number }}
+
+      # سرّ التوقيع اختياري: غيابه لا يُفشل البناء (لكن لن يُنتَج .sig ولا إصدار تحديث).
+      - name: Build
+        shell: bash
+        run: |
+          if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            echo "TAURI_SIGNING_PRIVATE_KEY غير مضبوط: بناء بلا توقيع تحديث."
+            # بلا مفتاح لا يمكن توليد ملفات المحدّث؛ نعطّلها لهذا التشغيل كي لا يفشل البناء.
+            node -e "const fs=require('fs');const p='src-tauri/tauri.conf.json';const c=JSON.parse(fs.readFileSync(p,'utf8'));c.bundle.createUpdaterArtifacts=false;fs.writeFileSync(p,JSON.stringify(c,null,2)+'\n')"
+          fi
+          npm run tauri build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
       - uses: actions/upload-artifact@v4
         with:
           name: my-island-windows-installer
           path: src-tauri/target/release/bundle/**
           if-no-files-found: error
+
+      # نشر التحديث: يعمل فقط حين يوجد السرّان TAURI_SIGNING_PRIVATE_KEY وRELEASES_TOKEN.
+      # الشرط عبر خطوة تفحص الأسرار (لا يمكن استعمال secrets مباشرة في if).
+      - name: Check release secrets
+        id: rel
+        shell: bash
+        run: |
+          if [ -n "$K" ] && [ -n "$T" ]; then echo "go=true" >> "$GITHUB_OUTPUT"; else echo "go=false" >> "$GITHUB_OUTPUT"; echo "نشر التحديث متخطّى: السرّان غير مكتملين."; fi
+        env:
+          K: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          T: ${{ secrets.RELEASES_TOKEN }}
+
+      - name: Publish update release
+        if: steps.rel.outputs.go == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+          V: ${{ env.APP_VERSION }}
+        run: |
+          set -euo pipefail
+          VERSION="$APP_VERSION"
+          DIR="src-tauri/target/release/bundle/nsis"
+          EXE=$(ls "$DIR"/*-setup.exe | head -n1)
+          SIG="$EXE.sig"
+          test -f "$SIG"
+          NAME=$(basename "$EXE")
+          REPO="waliddawood999-ctrl/my-island-releases"
+          URL="https://github.com/$REPO/releases/download/v$VERSION/$NAME"
+          export SIG URL
+          node -e "const fs=require('fs');const j={version:process.env.V,notes:'MyIsland '+process.env.V,pub_date:new Date().toISOString(),platforms:{'windows-x86_64':{signature:fs.readFileSync(process.env.SIG,'utf8').trim(),url:process.env.URL}}};fs.writeFileSync('latest.json',JSON.stringify(j,null,2))"
+          gh release create "v$VERSION" "$EXE" "$SIG" latest.json --repo "$REPO" --title "v$VERSION" --notes "MyIsland $VERSION"

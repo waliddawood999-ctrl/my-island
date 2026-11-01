@@ -73,6 +73,8 @@ pub fn run() {
         .manage(sysinfo::SysState::default())
         .manage(meetings::MeetingsState::default())
         .plugin(tauri_plugin_single_instance::init(|_, _, _| {}))
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(move |app, sc, ev| {
