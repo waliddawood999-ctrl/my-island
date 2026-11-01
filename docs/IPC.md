@@ -15,7 +15,7 @@ launcher_pick_icon, launcher_add_link, launcher_edit_link,
 launcher_link_icon, launcher_groups_get, launcher_groups_set,
 launcher_hotkeys_get, launcher_hotkeys_set
 ميديا: media_control, media_seek, media_pick, media_rename,
-media_sources, lyrics_get
+media_sources
 صوت: volume_set, volume_step, volume_mute_toggle, mic_toggle,
 audio_devices, audio_inputs, audio_set_default
 التقاط: capture_region, capture_start, capture_cancel, record_begin,
@@ -47,7 +47,7 @@ agents:update, agents:card, agents:ask, agents:ask-done, notify:new,
 island:edge, island:shy, island:keep, island:desktop, island:warn,
 island:note, mascot:look, mascot:sleep, cursor:near, input:layout,
 input:caps, vpn:choose, update:progress, weather:error,
-net:speed, island:dock,
+net:speed,
 dictation:error, license:changed, license:needed
 
 ### مضاف في الجلسة 0.1
@@ -87,7 +87,6 @@ settings_set لمفتاح `autostart` يكتب/يحذف قيمة MyIsland في H
 - الخصوصية: لا يُسجَّل ولا يُحفظ أي صوت؛ العيّنات تُحلَّل لحظيًا في الذاكرة.
 
 ### مضاف في الجلسة 2.4
-lyrics_get(artist: String, title: String, album?: String, duration: f64 ثوانٍ) → `Lyrics { found, synced, instrumental, offline, lines: [{t: ثوانٍ, text}], plain }` — LRCLIB (`/api/get` ثم `/api/search` احتياطيًا)، يرفض remix/live/karaoke/sped-up التي لا يحملها العنوان المطلوب ويختار الأقرب مدةً (≤5s)، يفضّل syncedLyrics ثم plainLyrics. لا شبكة ⇒ `offline:true` بلا خطأ. التخزين المؤقت في kv بمفتاح `lyrics:<بصمة فنان+عنوان+مدة>` (يُستثنى من settings_get؛ نتيجة «لا كلمات» تنتهي بعد 7 أيام، والمفقودة شبكيًا لا تُخزَّن). لا أحداث جديدة.
 
 ### مضاف في الجلسة 2.5 (battery.rs — حسب المخطط §7/battery؛ وحدة downloads.rs أُزيلت)
 - `battery_status()` → `{has_battery, percent|null, ac, charging}` — أمر جديد غير مذكور في العقد الأصلي (لقطة فورية عند تركيب الواجهة قبل أول حدث `battery:update`).
@@ -218,14 +217,11 @@ lyrics_get(artist: String, title: String, album?: String, duration: f64 ثوان
 ### مضاف: جلسة الإبهار — سرعتا الشبكة (netspeed) ووضع تبويب المتصفح (dock)
 - `netspeed_active(active: bool)` — الواجهة (`useNetSpeed`، من `Pill`) تفعّل/توقف قياس سرعتي الشبكة. **الخيط مركون (`park`) ما لم يكن مفعّلًا** (إعداد `showNetSpeed` = false افتراضيًا، ويُركَن أيضًا والحبة مخفية) ⇒ صفر قراءة وصفر بثّ عند الإطفاء. القراءة من عدّادات ويندوز المحلية (sysinfo/GetIfTable2) بلا شبكة خارجية؛ تتباطأ إلى 3s في Eco (1s عادةً). وحدة `netspeed.rs`.
 - **حدث `net:speed`** (الخلفية → main، payload `{down, up}` بايت/ث مقرَّبة لخطوة 1KB/ث): يُبثّ عند تغيّر القيمة المقرَّبة فقط. تتجاهل الواجهات loopback/pseudo.
-- `island_dock_get() → {active, browser, strip, inset}` — حالة وضع تبويب المتصفح الحالية (تُسأل عند إقلاع/إعادة تحميل صفحة main لأن الحدث يُبثّ عند التغيّر فقط). `win.rs`.
-- **حدث `island:dock`** (الخلفية → main، payload `{active, browser, strip, inset}`؛ `active=false` ⇒ العودة للوضع العائم الطبيعي): يُحسب في خيط fullscreen-watch **القائم** (لا خيط جديد) فقط حين `browserTabMode` مفعّل وخارج Eco؛ الشروط: النافذة الأمامية ليست لنا، exe ∈ {chrome, msedge, brave, firefox, vivaldi}، النافذة مكبَّرة (`IsZoomed`)، وحدودها تشمل مركز الحبة أفقيًا وتبدأ عند أعلى الشاشة. نافذتنا الأمامية ⇒ لا تغيير. أي غموض ⇒ `active=false`. الواجهة تتحقق من الحمولة (`sanitizeDock`) وتعتبر أي قيمة مشوّهة وضعًا طبيعيًا.
-- إعدادات جديدة (في `src/settings.ts` و`state.rs::defaults`): `browserTabMode` (false)، `showNetSpeed` (false).
-- ثوابت الشريط لكل متصفح (CSS px عند DPI 100%): chrome/edge/brave = 41 (حيّز علوي 6)، firefox/vivaldi = 40 (حيّز 5) — `win.rs::BROWSERS`، تقديرية وتُعاير على ويندوز (قائمة القبول في STATUS.md).
+- إعدادات جديدة (في `src/settings.ts` و`state.rs::defaults`): `showNetSpeed` (false) (`browserTabMode` أُزيل لاحقًا).
 
 ### مضاف في L1 — لوحة «اليوم» (today.rs)
 - `today_cities()` → `[{id, ar, en}]` (20 مدينة سعودية مضمّنة الإحداثيات) · `today_get()` → `{city:{id,ar,en}, prayers:[{id,at(ms epoch)}], next_day_at}`؛ `prayers` = fajr, sunrise, dhuhr, asr, maghrib, isha لليوم المدني ثم **فجر الغد** (سابع عنصر). المدينة من إعداد `prayerCity` (الافتراضي `riyadh`). الحساب محلي بلا شبكة، طريقة أم القرى (الفجر 18.5° · العشاء = المغرب+90د و120د في رمضان — رمضان بتقويم جدولي ±يوم)، واليوم المدني بتوقيت UTC+3 لا بتوقيت الجهاز. التاريخ الهجري يُعرض من الواجهة بـ`Intl` تقويم `islamic-umalqura` (بلا أمر).
-- `weather_get(refresh?: bool)` → `{enabled, offline, temp, feels, humidity, wind, code(WMO), is_day, units:"c"|"f", city, fetched_at}` من Open-Meteo (`api.open-meteo.com/v1/forecast` بلا مفتاح) لمدينة `prayerCity`. **اختياري صريح:** `showWeather` معطّل افتراضيًا ⇒ يرجع `{enabled:false}` بلا أي طلب شبكي؛ غياب الشبكة ⇒ `offline:true` دون خطأ؛ تخزين مؤقت في الذاكرة 15 دقيقة. الاسم مأخوذ من العقد الأصلي، والمصدر هنا Open-Meteo بدل MET Norway (`weather_refresh`/`weather_search` غير منفّذين بعد؛ `refresh=true` يغني عن الأول).
+- `weather_get(refresh?: bool)` → `{enabled, offline, temp, feels, humidity, wind, code(WMO), is_day, units:"c"|"f", city, fetched_at, error}` من Open-Meteo (`api.open-meteo.com/v1/forecast` بلا مفتاح) لمدينة `prayerCity`. **اختياري صريح:** `showWeather` معطّل افتراضيًا ⇒ يرجع `{enabled:false}` بلا أي طلب شبكي؛ غياب الشبكة ⇒ `offline:true` دون خطأ؛ تخزين مؤقت في الذاكرة 15 دقيقة. الاسم مأخوذ من العقد الأصلي، والمصدر هنا Open-Meteo بدل MET Norway (`weather_refresh`/`weather_search` غير منفّذين بعد؛ `refresh=true` يغني عن الأول).
 - **`island:note`** صار يحمل أيضًا `kind:"prayer"` (تنبيه الصلاة: قبل 10 دقائق «العصر بعد 10 دقائق» وعند الدخول «حان وقت صلاة العصر») بصوت `alertSound` نفسه. خيط التنبيه كل 5s، نافذة إطلاق 90s بعد الموعد (الفائت بسبب نوم الجهاز لا يُنبَّه)، والشروق بلا تنبيه.
 - **إعدادات جديدة (src/settings.ts + state.rs):** `showToday` (افتراضي true) · `prayerCity` (`riyadh`) · `prayerAlerts` (true) — إضافةً لاستعمال `showWeather` و`weatherUnits` و`alertSound` الموجودة؛ كلها في قسم «اليوم والصلاة» بنافذة الإعدادات.
 
@@ -279,3 +275,10 @@ lyrics_get(artist: String, title: String, album?: String, duration: f64 ثوان
 - **الإصدار والنشر (CI):** الإصدار يُختم `1.0.<github.run_number>` في `tauri.conf.json` قبل البناء؛ التوقيع بـ`TAURI_SIGNING_PRIVATE_KEY`؛ النشر إلى `waliddawood999-ctrl/my-island-releases` (إصدار `v<version>` فيه المثبّت و`.sig` و`latest.json`) بـ`RELEASES_TOKEN`، وكلاهما اختياري.
 
 - **مفاتيح إعدادات جديدة (التصميم الموحّد — بلا أوامر/أحداث جديدة):** `glassStyle` (crystal|clear) · `accentColor` · `borderStrength` · `shadowStrength` · `cornerStyle` (rounded|extra) · `fontScale` (90–120) · `density` (comfortable|compact) · `pillRadius` (0–22، 0 = كبسولة) · `offsetY` (0–60) · `pillPosition` (center|left|right) · `animSpeed` (50–150) · `springStyle` (snappy|smooth|gentle) · `reduceMotion` · `settingsVersion` · و`themeMode` يقبل `system`. تُحفظ عبر `settings_set` وتُعلن عبر `settings:changed` كالمعتاد؛ `offsetY/pillPosition` تقرؤها `state::sync_placement` وتطبّقها `win::position_main`. `island_backdrop` يعيد `none` الآن أيضًا حين تكون «تأثيرات الشفافية» مطفأة في ويندوز.
+
+### T02 — تصحيحات المالك (v1.0.45)
+- **أُزيلت:** `lyrics_get` (+ `lyrics.rs`، مفتاحا `lyricsInHome/lyricsInPlayer`، كاش `lyrics:*`)، `island_dock_get` والحدث `island:dock` (+ `browserTabMode`)، ومفتاح `underTaskbar` (الموضع دائمًا من منطقة العمل). تُحذف المفاتيح القديمة من kv عند الإقلاع (`state::OBSOLETE_KEYS`) فلا تعود.
+- **`weather_get`:** الحمولة تحمل `error` ("" سليم | `dns`/`connect`/`timeout`/`network`/`http_NNN`/`parse`/`eco`)؛ فشل مع قيمة سابقة لنفس المدينة ⇒ تُعاد القيمة القديمة مع `error`؛ بلا قيمة ⇒ `offline:true` + `error`. إعادة محاولة واحدة لأعطال النقل. المدينة من مفتاح `weatherCity` (الافتراضي `madinah`) المستقل عن `prayerCity`.
+- **إعدادات جديدة:** `weatherCity` (madinah) · `soundChoice` (chime|glass|pop|bubble|bell|none) · `soundVolume` (0–100). الصوت يُعزف في الواجهة (WebAudio، `src/sounds.ts`)؛ `alertSound` (مسار WAV) أُزيل.
+- **`settings_set`:** يعيد تموضع النافذة عند `monitor|offsetX|offsetY|pillPosition` (كان `offsetY/pillPosition` غائبين فلا أثر)، ويعيد تقييم ملء الشاشة عند `hideInFullscreen`.
+- **وحدة `fullscreen.rs` (لا أوامر جديدة):** `hideInFullscreen` حدثي (SetWinEventHook على الأمامية + LOCATIONCHANGE بخيط الأمامية، SHQueryUserNotificationState + مستطيل يغطي الشاشة بلا شريط عنوان) بلا استطلاع في الخمول؛ أثناء ملء الشاشة يُستطلع المؤشر كل 100ms فقط لإظهار الحبة عند لمس الحافة العليا وإخفائها عند المغادرة. ونافذة مخفية تستقبل `WM_DISPLAYCHANGE/WM_DPICHANGED/تغيّر منطقة العمل` لإعادة التموضع.

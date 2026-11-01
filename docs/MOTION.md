@@ -191,3 +191,6 @@
 - المصدر: `src/tokens.css` / `src/tokens.ts`. نوابض مسبقة: `snappy 500/35` (الافتراضي، island/content) · `smooth 300/30` · `gentle 180/24`؛ المدد 120/200/320ms؛ المنحنى `cubic-bezier(0.2,0.8,0.2,1)`.
 - `animSpeed` (50–150٪) يضرب الصلابة في مربعه والتخميد في نفسه ويقسم المدد؛ `springStyle` يختار النابض؛ `reduceMotion` وتفضيل النظام يخفضان `full` إلى `reduced` (`appearance.ts::effectiveMotion`). الضبط عبر `setMotionTuning` في `motion.ts`.
 - **شكل الحبة المنكمشة ثابت**: لا `alertSz` ولا `compactWidth`؛ كل المحتوى داخل `pillWidth×pillHeight` (و`pillRadius`، 0 = كبسولة). الاستثناء الوحيد الموثّق: وضع تبويب المتصفح (مفعّل يدويًا). تحوّل الحبة↔اللوحة هو الحركة الوحيدة التي تغيّر width/height (صريحة بنقرة/مرور)؛ كل ما عداها transform/opacity.
+
+## T02 — نمط النابض وتقليل الحركة
+`springStyle` يضرب **كل** النوابض (island/content/press/tab/eye) بنسبة (صلابة النمط/500) و(تخميد النمط/35) ثم السرعة؛ مقيس بـ`scripts/motion.regression.cjs`. `reduceMotion` أو تفضيل النظام (WebView2 يعكس «إظهار الرسوم المتحركة») ⇒ `reduced` (انتقال ≈120ms بلا ارتداد ولا تكبير).
