@@ -10,6 +10,7 @@
     "test:reminders": "node scripts/reminderParse.test.mjs",
     "test:palette": "node scripts/palette.test.mjs",
     "test:motion": "node scripts/motion.test.mjs",
+    "test:tabs": "node scripts/tabs.regression.cjs",
     "test:eyes": "node scripts/eyes.test.mjs"
   },
   "dependencies": {

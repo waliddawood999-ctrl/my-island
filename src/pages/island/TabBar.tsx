@@ -7,7 +7,7 @@ import { spring, tap } from "../../motion";
  * الحافة القائدة (باتجاه الحركة) نابضها أسرع فيتمدد المؤشر أولًا ثم تلحق التابعة.
  * الحاوية LTR بنيويًا فاليمين/اليسار فيزيائيان.
  */
-export function TabBar({ labels, active, onSelect }: { labels: string[]; active: number; onSelect: (n: number) => void }) {
+export function TabBar({ labels, active, onSelect, onHint }: { labels: string[]; active: number; onSelect: (n: number) => void; onHint?: (n: number) => void }) {
   const box = useRef<HTMLDivElement>(null);
   const btns = useRef<(HTMLButtonElement | null)[]>([]);
   const prev = useRef(active);
@@ -58,6 +58,8 @@ export function TabBar({ labels, active, onSelect }: { labels: string[]; active:
           dir="auto"
           aria-selected={active === n}
           onClick={() => onSelect(n)}
+          onPointerEnter={() => onHint?.(n)}
+          onFocus={() => onHint?.(n)}
           whileTap={tap.whileTap}
           transition={tap.transition}
           className={`relative z-10 rounded-full px-3.5 py-1.5 text-[13px] ${active === n ? "text-white" : "text-white/60 hover:text-white"}`}

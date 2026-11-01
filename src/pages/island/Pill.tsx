@@ -15,13 +15,16 @@ import { ShelfTab } from "./ShelfTab";
 import { LauncherTab } from "./LauncherTab";
 import { useShelf } from "../../useShelf";
 import { useLauncher } from "../../useLauncher";
-// محرّر Tiptap ثقيل: يُحمَّل عند أول فتح لتبويب الملاحظة فقط.
-const NoteTab = lazy(() => import("./NoteTab").then((m) => ({ default: m.NoteTab })));
+// محرّر Tiptap ثقيل: يُحمَّل عند أول فتح لتبويب الملاحظة فقط (أو عند المرور على تبويبها). كل محاولة إعادة تنشئ lazy جديدًا
+// (lazy المرفوض يبقى مرفوضًا للأبد)، وفشل التحميل يُحجَز في TabBoundary فلا يهدم الجزيرة.
+const importNote = () => import("./NoteTab").then((m) => ({ default: m.NoteTab }));
+const makeNoteTab = () => lazy(importNote);
 import { fmtCountdown, TIMER_NEAR_MS, useNoteAlert, useTimer } from "../../useNote";
 import { MediaSection } from "./MediaSection";
 import { Liquid } from "./Liquid";
 import { Eyes } from "./Eyes";
 import { useBackdrop } from "./useBackdrop";
+import { TabBoundary } from "./TabBoundary";
 import { rowReversed } from "../../eyes";
 import { Palette } from "./Palette";
 import { TabBar } from "./TabBar";
@@ -112,6 +115,11 @@ export function Pill() {
   const [hidden, setHidden] = useState(false);
   const [open, setOpen] = useState(false);
   const [tabId, setTabId] = useState("home");
+  const [NoteTab, setNoteTab] = useState(makeNoteTab);
+  const [retryN, setRetryN] = useState(0);
+  // آخر تبويب بدأ دخوله فعلًا + حقبة AnimatePresence: حارس يكسر الاعتماد على اكتمال حركة الخروج (انظر أسفل).
+  const shownTab = useRef("home");
+  const [presenceEpoch, setPresenceEpoch] = useState(0);
   // سحب ملفات من المستكشف فوق النافذة (أحداث tauri://drag-*).
   const [dragging, setDragging] = useState(false);
   // شريط الأوامر: طبقة داخل نافذة main (لا نافذة خامسة) — wasHidden لإعادة الإخفاء عند الإغلاق.
@@ -329,6 +337,16 @@ export function Pill() {
   const tabs = tabDefs(shelfOn, shelf.items.length, launcherOn);
   const tab = Math.max(0, tabs.findIndex((t) => t.id === tabId));
   const curTab = tabs[tab].id;
+  // حارس التبديل: AnimatePresence(mode="wait") لا يركّب التبويب الجديد إلا بعد اكتمال حركة خروج القديم؛ إن لم تكتمل (إطارات متوقفة/نافذة
+  // مخنوقة) بقي العرض القديم رغم تحديد التبويب الجديد. بعد tabSwitchGuard نعيد تركيب AnimatePresence فيُسقَط الخارج ويُركَّب الجديد.
+  // مؤقّت واحد لكل تبديل فقط (لا شيء في الخمول).
+  useEffect(() => {
+    if (!open || shownTab.current === curTab) return;
+    const t = window.setTimeout(() => {
+      if (shownTab.current !== curTab) setPresenceEpoch((e) => e + 1);
+    }, dur.tabSwitchGuard * 1000);
+    return () => window.clearTimeout(t);
+  }, [curTab, open]);
   const tabLabels = tabs.map((t) => t.label);
   /** ما يُعرض في الحبة المنكمشة: واحد فقط، يتبدّل بتمويه قصير. */
   const pillKey = rec.recording ? "rec" : alert && !open ? "alert" : timerNear ? "timer" : dlText ? "dl" : pillTitle ? "title" : "clock";
@@ -440,7 +458,12 @@ export function Pill() {
           className="absolute left-1/2 top-0 flex -translate-x-1/2 flex-col"
         >
           <div className="flex shrink-0 items-center gap-2">
-            <TabBar labels={tabLabels} active={tab} onSelect={(n) => setTabId(tabs[n]?.id ?? "home")} />
+            <TabBar
+              labels={tabLabels}
+              active={tab}
+              onSelect={(n) => setTabId(tabs[n]?.id ?? "home")}
+              onHint={(n) => { if (tabs[n]?.id === "note") void importNote().catch(() => {}); }}
+            />
             <motion.button
               aria-label={i("الإعدادات", "Settings")}
               title={i("الإعدادات", "Settings")}
@@ -471,10 +494,11 @@ export function Pill() {
               </motion.button>
             )}
           </AnimatePresence>
-          <AnimatePresence mode="wait" initial={false}>
+          <AnimatePresence key={presenceEpoch} mode="wait" initial={false}>
             {open && (
               <motion.div
                 key={curTab}
+                onAnimationStart={(def) => { if (def === "animate") shownTab.current = curTab; }}
                 variants={swapVariants}
                 initial="initial"
                 animate="animate"
@@ -503,9 +527,15 @@ export function Pill() {
                 )}
                 {curTab === "note" && (
                   <div className="min-h-0 flex-1">
-                    <Suspense fallback={null}>
-                      <NoteTab timer={timer} />
-                    </Suspense>
+                    <TabBoundary key={retryN} onRetry={(e) => {
+                      // المتصفح يخزّن فشل الاستيراد الديناميكي لنفس العنوان طوال عمر الصفحة: لا تنفع إعادة المحاولة هنا إلا بإعادة تحميل الصفحة.
+                      if (/dynamically imported module|Importing a module script failed|Failed to fetch/i.test(String(e?.message))) window.location.reload();
+                      else { setNoteTab(makeNoteTab()); setRetryN((n) => n + 1); }
+                    }}>
+                      <Suspense fallback={null}>
+                        <NoteTab timer={timer} />
+                      </Suspense>
+                    </TabBoundary>
                   </div>
                 )}
                 {curTab === "tools" && (

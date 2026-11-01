@@ -46,7 +46,7 @@ const flat = (t: Transition): Record<SpringKey, Transition> => ({ island: t, con
 
 export const spring: Record<SpringKey, Transition> = { ...FULL_SPRING };
 
-interface Dur { fast: number; base: number; swap: number; windowShrinkGuard: number; alert: number }
+interface Dur { fast: number; base: number; swap: number; windowShrinkGuard: number; alert: number; tabSwitchGuard: number }
 /** مدد (ثوانٍ). */
 const FULL_DUR: Dur = {
   fast: 0.12,
@@ -56,6 +56,8 @@ const FULL_DUR: Dur = {
   windowShrinkGuard: 0.9,
   /** هزّة جرس تنبيه التذكير/المؤقّت (ثوانٍ لكل دورة؛ تتكرر مرتين). */
   alert: 0.6,
+  /** حارس تبديل التبويب: إن لم يبدأ دخول التبويب الجديد خلال هذه المدة (حركة الخروج لم تكتمل) يُفرَض التبديل. */
+  tabSwitchGuard: 0.6,
 };
 export const dur: Dur = { ...FULL_DUR };
 

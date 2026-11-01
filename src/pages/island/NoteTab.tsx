@@ -133,9 +133,8 @@ function NoteEditor() {
     ready.current = false;
     const html = await invoke<string>("note_get", { folder: id }).catch(() => "");
     if (ed.isDestroyed) return;
+    // لا focus()/blur() هنا: كانا يستدعيان take_focus/release_focus (تبديل تنشيط النافذة) بمجرد فتح التبويب بلا نقر من المستخدم.
     ed.commands.setContent(html || "", { emitUpdate: false });
-    ed.commands.focus(null, { scrollIntoView: false });
-    ed.commands.blur();
     ready.current = true;
     dirty.current = false;
     setState("saved");
