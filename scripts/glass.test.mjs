@@ -43,5 +43,13 @@ eq("css body covered by glass vars", /:root\[data-material="glass"\] \.island-bo
 eq("css no backdrop exemption for body", /data-backdrop="win1[01]"\] \.island-body\s*\{[^}]*backdrop-filter:\s*none/.test(css), false);
 eq("css border", css.includes("1px solid rgb(255 255 255 / 0.25)"), true);
 
+// INSERT M: لا طبقة صبغة صفحة ثانية فوق الأكريليك الأصلي، وأشرطة التمرير مخفية، وحدّ/لمعة جسم الحبة
+eq("no win11 page tint", css.includes('data-backdrop="win11"'), false);
+eq("native tint only", css.includes('[data-backdrop="win10"] { --island-bg: transparent; }'), true);
+eq("body glass border", /data-material="glass"\] \.island-body \{ box-shadow: inset 0 0 0 1px rgb\(255 255 255 \/ 0\.25\)/.test(css), true);
+const base = readFileSync("src/index.css", "utf8");
+eq("scrollbars hidden (firefox/webview)", base.includes("scrollbar-width: none !important"), true);
+eq("scrollbars hidden (webkit)", base.includes("::-webkit-scrollbar { display: none"), true);
+eq("rust single mechanism", !/Win11/.test(readFileSync("src-tauri/src/backdrop.rs", "utf8")), true);
 console.log(fail ? `FAIL (${fail})` : "OK glass");
 process.exit(fail ? 1 : 0);

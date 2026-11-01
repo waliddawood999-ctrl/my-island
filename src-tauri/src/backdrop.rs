@@ -1,7 +1,7 @@
 // backdrop — الزجاج الحقيقي لنافذة main: تمويه ما خلف الجزيرة على سطح المكتب (Acrylic) بتركيب نظام التشغيل (DWM).
-// ويندوز 11 (build ≥ 22621): DWMWA_SYSTEMBACKDROP_TYPE = DWMSBT_TRANSIENTWINDOW (Acrylic) + وضع داكن/فاتح للصبغة.
-// ويندوز 10 (≥ 17134): SetWindowCompositionAttribute(ACCENT_ENABLE_ACRYLICBLURBEHIND) بصبغة ABGR تُشتق من glassTint (0–80): ألفا = 0.28 + 0.0075·t
-// (الافتراضي 45 ⇒ 0.62 كالسابق)، والفاتح +0.04 بسقف 0.92 — البلور من النظام والصبغة منّا. ويندوز 11: الصبغة داخل الصفحة (CSS) لا هنا.
+// آلية واحدة لكل البناءات (≥ 17134، ويندوز 10 وما بعده): SetWindowCompositionAttribute(ACCENT_ENABLE_ACRYLICBLURBEHIND) بصبغة ABGR تُشتق من
+// glassTint (0–80): ألفا = 0.28 + 0.0075·t (الافتراضي 45 ⇒ 0.62)، والفاتح +0.04 بسقف 0.92 — البلور من النظام والصبغة منّا وحدنا.
+// (سابقًا ≥22621 كان يستعمل DWMSBT_TRANSIENTWINDOW: أكريليك النظام يضيف طبقة luminosity/تفتيح خاصة به لا تُضبط، تتراكب مع صبغة CSS فيغسل اللون.)
 // أقدم/فشل أي نداء ⇒ يُبتلع بصمت ويعود "none" (الواجهة تبقى على الزجاج داخل الصفحة). لا خيوط ولا مؤقّتات: نداءات عند التغيّر فقط.
 // المنطقة (SetWindowRgn) كبسولة مستديرة بحجم النافذة كي لا يظهر مستطيل التمويه خارج الحبة؛ لذلك تُسقَط الخلفية قبل أي تغيير حجم
 // (win::resize_to_island) وتعيد الواجهة طلبها بعد استقرار الحركة. نافذتا overlay والإعدادات/المحرّر خارج النطاق عمدًا.
@@ -11,7 +11,6 @@ use tauri::{AppHandle, Manager};
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Mode {
     None,
-    Win11,
     Win10,
 }
 
@@ -19,17 +18,14 @@ impl Mode {
     pub fn as_str(self) -> &'static str {
         match self {
             Mode::None => "none",
-            Mode::Win11 => "win11",
             Mode::Win10 => "win10",
         }
     }
 }
 
-/// الآلية حسب رقم بناء ويندوز: SystemBackdrop الرسمي من 22621 (11 22H2)، وAcrylic عبر SWCA من 17134 (10 1803).
+/// الآلية حسب رقم بناء ويندوز: Acrylic عبر SWCA من 17134 (10 1803) وما بعده (يشمل ويندوز 11) — صبغة واحدة بيد glassTint.
 pub fn mode_for_build(build: u32) -> Mode {
-    if build >= 22621 {
-        Mode::Win11
-    } else if build >= 17134 {
+    if build >= 17134 {
         Mode::Win10
     } else {
         Mode::None
@@ -71,11 +67,9 @@ mod imp {
     use std::sync::{Mutex, OnceLock};
     use windows::core::{s, w, BOOL};
     use windows::Win32::Foundation::{HWND, RECT};
-    use windows::Win32::Graphics::Dwm::{DwmExtendFrameIntoClientArea, DwmSetWindowAttribute, DWMWINDOWATTRIBUTE};
     use windows::Win32::Graphics::Gdi::{CreateRoundRectRgn, SetWindowRgn, HRGN};
     use windows::Win32::System::LibraryLoader::{GetModuleHandleW, GetProcAddress};
     use windows::Win32::System::Registry::{RegGetValueW, HKEY_LOCAL_MACHINE, RRF_RT_REG_SZ};
-    use windows::Win32::UI::Controls::MARGINS;
     use windows::Win32::UI::WindowsAndMessaging::GetWindowRect;
 
     /// المطبَّق حاليًا على main: (المفتاح، الآلية). None = لا خلفية.
@@ -127,17 +121,9 @@ mod imp {
         f(h, &mut d).as_bool()
     }
 
-    unsafe fn dwm_i32(h: HWND, attr: i32, v: i32) -> bool {
-        DwmSetWindowAttribute(h, DWMWINDOWATTRIBUTE(attr), &v as *const _ as *const c_void, 4).is_ok()
-    }
-
     /// يزيل أي خلفية/منطقة. آمن عند النداء المتكرر.
     unsafe fn clear(h: HWND, mode: Mode) {
         match mode {
-            Mode::Win11 => {
-                let _ = dwm_i32(h, 38, 1); // DWMSBT_NONE
-                let _ = DwmExtendFrameIntoClientArea(h, &MARGINS::default());
-            }
             Mode::Win10 => {
                 let _ = set_accent(h, 0, 0); // ACCENT_DISABLED
             }
@@ -193,12 +179,6 @@ mod imp {
                 return Mode::None;
             }
             let ok = match target {
-                Mode::Win11 => {
-                    dwm_i32(h, 20, if light { 0 } else { 1 }) // DWMWA_USE_IMMERSIVE_DARK_MODE: صبغة الأكريليك تتبع الثيم
-                        & dwm_i32(h, 33, 1) // DWMWA_WINDOW_CORNER_PREFERENCE = DONOTROUND (المنطقة تتكفّل بالاستدارة)
-                        & DwmExtendFrameIntoClientArea(h, &MARGINS { cxLeftWidth: -1, cxRightWidth: -1, cyTopHeight: -1, cyBottomHeight: -1 }).is_ok()
-                        & dwm_i32(h, 38, 3) // DWMWA_SYSTEMBACKDROP_TYPE = DWMSBT_TRANSIENTWINDOW (Acrylic)
-                }
                 Mode::Win10 => set_accent(h, 4, tint_abgr(light, tint)), // ACCENT_ENABLE_ACRYLICBLURBEHIND
                 Mode::None => false,
             };
@@ -243,9 +223,9 @@ mod tests {
         assert_eq!(mode_for_build(17133), Mode::None, "أقدم من 1803");
         assert_eq!(mode_for_build(17134), Mode::Win10);
         assert_eq!(mode_for_build(19045), Mode::Win10, "ويندوز 10 22H2");
-        assert_eq!(mode_for_build(22000), Mode::Win10, "ويندوز 11 21H2: SystemBackdrop غير مدعوم رسميًا ⇒ SWCA");
-        assert_eq!(mode_for_build(22621), Mode::Win11);
-        assert_eq!(mode_for_build(26100), Mode::Win11);
+        assert_eq!(mode_for_build(22000), Mode::Win10, "ويندوز 11 21H2");
+        assert_eq!(mode_for_build(22621), Mode::Win10, "ويندوز 11 22H2: نفس الآلية (صبغة واحدة)");
+        assert_eq!(mode_for_build(26100), Mode::Win10);
     }
 
     #[test]

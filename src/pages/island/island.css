@@ -124,12 +124,12 @@ html, body, #root {
 }
 
 /* قوة التظليل glassTint (0..80، افتراضي 45) ⇒ --glass-tint (useSettings). الاحتياط داخل الصفحة: ألفا = 0.28 + 0.0075·t (الافتراضي ≈0.62 كالسابق)، الفاتح +0.04 بسقف 0.92.
-   win11: صبغة الصفحة = t٪ للغامق و(t+5)٪ للفاتح بسقف 85٪ (الطمس من DWM يبقى ظاهرًا). */
-/* الزجاج الحقيقي من النظام (backdrop.rs ⇒ data-backdrop): التمويه من DWM خلف النافذة، فتخفّ صبغة الصفحة (win11: الصبغة داكنة/فاتحة من النظام
-   بحسب الثيم) أو تُزال (win10: الصبغة 0.62/0.66 داخل الأكريليك نفسه)، ولا blur مزدوجًا. none = الاحتياط: الزجاج داخل الصفحة كما هو. */
-:root[data-material="glass"][data-backdrop="win11"] { --island-bg: rgb(0 0 0 / calc(var(--glass-tint, 45) / 100)); }
-:root[data-material="glass"][data-backdrop="win11"][data-theme="light"] { --island-bg: rgb(236 239 243 / calc(min(var(--glass-tint, 45) + 5, 85) / 100)); }
-:root[data-material="glass"][data-backdrop="win10"] { --island-bg: transparent; }
+   مع الأكريليك الأصلي (data-backdrop=win10) الصبغة ألفا الأكريليك نفسه فقط. */
+/* الزجاج الحقيقي من النظام (backdrop.rs ⇒ data-backdrop): التمويه من DWM خلف النافذة، فتخفّ صبغة الصفحة أو تُزال (الصبغة داخل الأكريليك نفسه)، ولا blur مزدوجًا. none = الاحتياط: الزجاج داخل الصفحة كما هو. */
+:root[data-material="glass"][data-backdrop="win10"] { --island-bg: transparent; } /* صبغة واحدة: ألفا الأكريليك الأصلي من glassTint (backdrop.rs)؛ لا طبقة صفحة ثانية فوقه. */
+/* INSERT M: سطح الزجاج الظاهر على جسم الحبة/اللوحة = حدّ 1px أبيض @0.25 + لمعة علوية + ظل داخلي ناعم (inset لأن النافذة مقصوصة)، بلا لون خلفية إضافي
+   (glassTint هو التظليل الوحيد). */
+:root[data-material="glass"] .island-body { box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.25), inset 0 1px 0 rgb(255 255 255 / 0.30), inset 0 -12px 32px rgb(0 0 0 / 0.12); }
 /* INSERT L: جسم الحبة يتلقّى blur/saturate من المنزلقين حتى فوق الأكريليك الأصلي (0 = بلا تمويه CSS إضافي)؛ لا استثناء لـdata-backdrop. */
 
 /* ───────── النشاط الحي (docs/MOTION.md §النشاط الحي) ─────────
