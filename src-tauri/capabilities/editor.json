@@ -5,6 +5,7 @@
   "windows": ["editor"],
   "permissions": [
     "core:default",
+    "core:window:allow-hide",
     "allow-settings-get", "allow-settings-set", "allow-perf-status",
     "allow-editor-image", "allow-editor-save"
   ]
