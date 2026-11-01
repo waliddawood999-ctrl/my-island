@@ -255,3 +255,9 @@
 - أشرطة التمرير: `src/index.css` (يُستورد في النوافذ الأربع) `scrollbar-width:none` + `::-webkit-scrollbar{display:none}` عامًّا؛ التمرير يعمل.
 - الملفات: `src-tauri/src/backdrop.rs` (حذف Mode::Win11)، `island.css`، `index.css`، `useBackdrop.ts`، `scripts/glass.test.mjs`، docs/IPC.md وMOTION.md.
 - لم يُتحقق منه (يحتاج ويندوز 11): الغنى اللوني الفعلي فوق سطح المكتب وسلوك SWCA على 22H2+ (سحب/وميض).
+
+## INSERT N — صفحة الإعدادات بنمط shadcn/ui
+- عرض فقط (لا مفاتيح ولا افتراضيات ولا سلوك): ترويسة المجموعة = عنوان كبير + وصف خافت + فاصل؛ قائمة جانبية شبحية والنشط muted مستدير؛ صفوف FormItem (عنوان font-medium + وصف خافت)؛ صفوف المفاتيح بطاقات `rounded-lg border`؛ Switch/Slider/Select/Button/Input بمقاسات shadcn (نصف قطر 0.5rem، zinc عبر white/N فيبقى الفاتح والزجاج سليمين)؛ RTL عبر `start/end` المنطقية. «التحديثات» و«حول» داخل «العامة» كما هما. لا اعتماديات جديدة.
+- الملفات: `src/pages/settings/{fields,main,TodayExtras,Workspaces}.tsx`، `src/index.css` (`.sh-range`)، `scripts/settings.regression.cjs` (بنية جديدة + تأكيدات شكل shadcn).
+- التحقق: `npm run build` ✓ · `cargo check --target x86_64-pc-windows-gnu` ✓ · `npm run test:settings` ALL PASSED · لقطات Playwright داكن/فاتح/زجاج/RTL.
+- لم يُتحقق منه (يحتاج ويندوز): المظهر داخل WebView2 الفعلي فوق أكريليك النظام.

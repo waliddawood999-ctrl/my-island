@@ -58,3 +58,11 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 800; }
 /* INSERT M: لا أشرطة تمرير مرئية في أي نافذة؛ التمرير بالعجلة/اللمس/الأسهم يعمل كما هو. */
 * { scrollbar-width: none !important; }
 *::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
+
+/* shadcn Slider: مسار رفيع (6px) مملوء حتى --pct وزرّ دائري بحلقة؛ ألوانه من white/black فيتبع الفاتح/الداكن/الزجاج. */
+input[type="range"].sh-range { -webkit-appearance: none; appearance: none; height: 6px; border-radius: 9999px; outline: none; cursor: pointer;
+  background: linear-gradient(to right, var(--color-white, #fff) var(--pct, 0%), color-mix(in srgb, var(--color-white, #fff) 20%, transparent) var(--pct, 0%)); }
+input[type="range"].sh-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 9999px;
+  background: var(--color-black, #000); border: 2px solid var(--color-white, #fff); box-shadow: 0 1px 2px rgb(0 0 0 / .3); }
+input[type="range"].sh-range::-moz-range-thumb { width: 12px; height: 12px; border-radius: 9999px; background: var(--color-black, #000); border: 2px solid var(--color-white, #fff); }
+input[type="range"].sh-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-white, #fff) 25%, transparent); }

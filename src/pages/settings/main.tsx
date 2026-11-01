@@ -12,7 +12,7 @@ import { clampGlassBlur, clampGlassSaturation } from "../../glass";
 import { manualCheck } from "../../useUpdater";
 import type { ManualStatus } from "../../updater";
 import { Blocks, Gauge, Palette, SlidersHorizontal } from "lucide-react";
-import { Group, LinesField, NumberField, Row, Section, Select, SideNav, Slider, SubHead, TextField, Toggle } from "./fields";
+import { btnOutline, btnPrimary, Group, inputCls, LinesField, NumberField, Row, Section, Select, SideNav, Slider, SubHead, TextField, Toggle } from "./fields";
 
 interface CityOpt { id: string; ar: string; en: string }
 interface MonitorInfo { index: number; name: string; width: number; height: number; primary: boolean }
@@ -40,10 +40,10 @@ function MeetingsKey() {
             aria-label={i("رابط iCal الخاص بالتقويم", "Private iCal link")}
             value={val} onChange={(e) => setVal(e.target.value)}
             placeholder={isSet ? "••••••••••••" : "https://…/basic.ics"}
-            className="w-56 rounded-md border border-white/15 bg-white/5 px-2 py-1 text-xs outline-none focus:border-[#6f86ff]"
+            className={`${inputCls} w-56`}
           />
-          <button disabled={!val.trim()} onClick={() => save(val)} className="rounded-md bg-[#6f86ff] px-3 py-1 text-xs font-semibold text-white disabled:opacity-40">{i("حفظ", "Save")}</button>
-          {isSet && <button onClick={() => save("")} className="rounded-md bg-white/10 px-3 py-1 text-xs hover:bg-white/20">{i("حذف", "Remove")}</button>}
+          <button disabled={!val.trim()} onClick={() => save(val)} className={btnPrimary}>{i("حفظ", "Save")}</button>
+          {isSet && <button onClick={() => save("")} className={btnOutline}>{i("حذف", "Remove")}</button>}
         </div>
       </Row>
       {msg && <div role="status" dir="auto" className="text-xs text-white/60">{msg}</div>}
@@ -61,7 +61,7 @@ function AboutSection() {
     getVersion().then(setVer).catch(() => {});
   }, []);
   const open = (url: string) => () => { invoke("open_path", { path: url }).catch(() => {}); };
-  const link = "rounded-lg bg-white/10 px-3 py-1.5 text-xs hover:bg-white/20";
+  const link = btnOutline;
   return (
     <Section title={i("حول", "About")}>
       <Row label={i("الإصدار الحالي", "Current version")}>
@@ -98,7 +98,7 @@ function UpdateCheck() {
       <div className="flex items-center gap-2">
         <button
           data-testid="update-check" disabled={st === "checking"} onClick={run}
-          className="rounded-md bg-white/10 px-3 py-1 text-xs hover:bg-white/20 disabled:opacity-40"
+          className={btnOutline}
         >{i("التحقق من التحديثات", "Check for updates")}</button>
         {msg && <span role="status" data-testid="update-status" dir="auto" className="text-xs text-white/60">{msg}</span>}
       </div>
@@ -119,7 +119,7 @@ function QuitButton() {
       data-testid="quit-btn" data-armed={sure ? "true" : "false"}
       onClick={() => { if (sure) invoke("app_quit").catch(() => {}); else setSure(true); }}
       onBlur={() => setSure(false)}
-      className={`ms-auto rounded-md px-3 py-1 text-xs font-semibold ${sure ? "bg-red-600 text-white" : "bg-white/10 text-white hover:bg-white/20"}`}
+      className={`ms-auto ${sure ? "inline-flex h-9 items-center rounded-md bg-red-600 px-4 text-sm font-medium text-white shadow-xs hover:bg-red-600/90" : btnOutline}`}
     >{sure ? i("متأكد؟ إغلاق", "Sure? Quit") : i("إغلاق الجزيرة", "Quit island")}</button>
   );
 }
@@ -140,7 +140,7 @@ function App() {
   return (
     <div dir="auto" className="mx-auto max-w-4xl px-5 pb-8 text-white">
       <header className="sticky top-0 z-20 -mx-5 flex h-12 items-center gap-3 bg-[var(--app-bg)] px-5" data-testid="settings-bar">
-        <h1 className="text-xl font-bold">{i("الإعدادات", "Settings")}</h1>
+        <h1 className="text-xl font-semibold tracking-tight">{i("الإعدادات", "Settings")}</h1>
         <QuitButton />
       </header>
 
@@ -157,7 +157,7 @@ function App() {
       />
       <main className="min-w-0 flex-1">
       {tab === "general" && (
-      <Group id="general" title={i("عام", "General")}>
+      <Group id="general" title={i("عام", "General")} desc={i("التحديثات والتشغيل وموضع الجزيرة وسلوكها.", "Updates, startup, island position and behavior.")}>
       <Section title={i("التحديثات", "Updates")}>
         <Row label={i("فحص التحديثات تلقائيًا", "Check for updates automatically")} hint={i("فحص صامت واحد بعد الإقلاع؛ لا يظهر شيء إن لم يوجد تحديث", "One silent check after launch; nothing shows if there is no update")}>
           <Toggle label={i("فحص التحديثات تلقائيًا", "Check for updates automatically")} value={s.updateAutoCheck ?? true} onChange={(v) => saveSettings({ updateAutoCheck: v })} />
@@ -225,7 +225,7 @@ function App() {
       )}
 
       {tab === "look" && (
-      <Group id="look" title={i("المظهر والميديا", "Appearance & media")}>
+      <Group id="look" title={i("المظهر والميديا", "Appearance & media")} desc={i("خصّص مظهر الجزيرة وحجمها وعرض الميديا.", "Customize how the island looks, its size and media display.")}>
       <Section title={i("الميديا والمظهر", "Media & appearance")}>
         <SubHead>{i("الحجم", "Size")}</SubHead>
         <Row label={i("عرض الحبة", "Pill width")} hint={i("المحتوى يتدرج مع المقاس تلقائيًا", "Content scales with the size automatically")}>
@@ -316,7 +316,7 @@ function App() {
       )}
 
       {tab === "modules" && (
-      <Group id="modules" title={i("الوحدات", "Modules")}>
+      <Group id="modules" title={i("الوحدات", "Modules")} desc={i("فعّل الوحدات التي تحتاجها وعدّل خياراتها.", "Turn on the modules you need and tune their options.")}>
       <Section title={i("اليوم والصلاة", "Today & prayer")}>
         <Row label={i("إظهار قسم «اليوم»", "Show the Today section")} hint={i("هجري + مواقيت الصلاة في الرئيسية — محلي بلا إنترنت", "Hijri date + prayer times on Home — local, offline")}>
           <Toggle label={i("إظهار قسم «اليوم»", "Show the Today section")} value={s.showToday ?? true} onChange={(v) => saveSettings({ showToday: v })} />
@@ -493,7 +493,7 @@ function App() {
         <Row label={i("مسح بيانات وقتي", "Clear My-time data")} hint={i("يحذف كل ما سُجّل محليًا", "Deletes everything recorded locally")}>
           <button
             onClick={() => invoke("attention_clear").catch(() => {})}
-            className="rounded-lg bg-white/10 px-3 py-1 text-sm hover:bg-white/20"
+            className={btnOutline}
           >{i("مسح", "Clear")}</button>
         </Row>
       </Section>
@@ -501,7 +501,7 @@ function App() {
       )}
 
       {tab === "perf" && (
-      <Group id="perf" title={i("الأداء والتوفير", "Performance & saving")}>
+      <Group id="perf" title={i("الأداء والتوفير", "Performance & saving")} desc={i("وضع التوفير ومستوى الحركة واستهلاك الذاكرة.", "Eco mode, motion level and memory usage.")}>
       <Section title={i("الأداء والتوفير", "Performance & saving")}>
         <Row label={i("حالة وضع التوفير", "Eco mode status")}>
           <EcoIndicator />

@@ -3,7 +3,7 @@ import { i } from "../../i18n";
 import { saveSettings } from "../../useSettings";
 import type { Settings } from "../../settings";
 import { MAX_COUNTDOWNS, MAX_WORLD_CLOCKS, WORLD_CITIES, civilDate, sanitizeCountdowns, sanitizeWorldClocks, validDate, worldCityName } from "../../today";
-import { Row, Select, Toggle } from "./fields";
+import { btnPrimary, inputCls, Row, Select, Toggle } from "./fields";
 
 /** عدّادات أحداث «اليوم»: اسم + تاريخ؛ تُخزَّن في kv ضمن الإعدادات (المفتاح countdowns) وتظهر أقرب اثنين. */
 export function CountdownsEditor({ s }: { s: Partial<Settings> }) {
@@ -25,13 +25,13 @@ export function CountdownsEditor({ s }: { s: Partial<Settings> }) {
         <input
           aria-label={i("اسم الحدث", "Event name")} dir="auto" maxLength={40} value={name} onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && add()} placeholder={i("اسم الحدث", "Event name")}
-          className="w-44 rounded-md border border-white/15 bg-[var(--app-field)] px-2 py-1 text-sm"
+          className={`${inputCls} w-44`}
         />
         <input
           type="date" aria-label={i("تاريخ الحدث", "Event date")} dir="ltr" value={date} min={civilDate(Date.now())} onChange={(e) => setDate(e.target.value)}
-          className="rounded-md border border-white/15 bg-[var(--app-field)] px-2 py-1 text-sm"
+          className={inputCls}
         />
-        <button disabled={!canAdd} onClick={add} className="rounded-md bg-[#6f86ff] px-3 py-1 text-sm font-semibold text-white disabled:opacity-40">{i("إضافة", "Add")}</button>
+        <button disabled={!canAdd} onClick={add} className={btnPrimary}>{i("إضافة", "Add")}</button>
       </div>
       {list.length > 0 && (
         <ul className="flex flex-col gap-1" data-testid="countdown-list">

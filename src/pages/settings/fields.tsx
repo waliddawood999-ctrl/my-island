@@ -1,40 +1,54 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { isValidElement, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { ChevronDown } from "lucide-react";
+
+/*
+ * نمط shadcn/ui (zinc) على رموز ثيمنا: نصف قطر 0.5rem (rounded-lg) وحدود/خفوت بشفافية white/N — فتنعكس تلقائيًا
+ * في الفاتح (--color-white مُعاد ربطه) ولا تكسر الزجاج (لا خلفيات صلبة جديدة). عرض فقط؛ لا مفاتيح ولا سلوك.
+ */
+export const inputCls = "h-9 rounded-md border border-white/15 bg-[var(--app-field)] px-3 text-sm shadow-xs outline-none placeholder:text-white/40 focus-visible:ring-2 focus-visible:ring-white/30";
+/** أزرار shadcn: أساسي (مملوء بلون النص) / outline (حدّ) / destructive. */
+export const btnPrimary = "inline-flex h-9 items-center justify-center rounded-md bg-white px-4 text-sm font-medium text-black shadow-xs hover:bg-white/90 disabled:pointer-events-none disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-white/30 outline-none";
+export const btnOutline = "inline-flex h-9 items-center justify-center rounded-md border border-white/15 bg-transparent px-4 text-sm font-medium shadow-xs hover:bg-white/10 disabled:pointer-events-none disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-white/30 outline-none";
 
 /** مجموعة رئيسية في الإعدادات (عام · المظهر والميديا · الوحدات · الأداء): عنوان واحد متّسق ثم أقسامها بتباعد ثابت. */
-export function Group({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+export function Group({ id, title, desc, children }: { id: string; title: string; desc?: string; children: ReactNode }) {
   return (
-    <div id={`grp-${id}`} data-group={id} className="pt-2">
-      <h2 className="mb-3 text-[15px] font-bold text-white">{title}</h2>
-      <div className="flex flex-col gap-4">{children}</div>
+    <div id={`grp-${id}`} data-group={id} className="space-y-6">
+      <div className="space-y-1">
+        <h2 className="text-2xl font-semibold tracking-tight text-white">{title}</h2>
+        {desc && <p dir="auto" className="text-sm text-white/50">{desc}</p>}
+      </div>
+      <div role="separator" className="h-px w-full bg-white/10" />
+      <div className="flex flex-col gap-8 [&>section+section]:border-t [&>section+section]:border-white/10 [&>section+section]:pt-8">{children}</div>
     </div>
   );
 }
 
 export function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-      <h3 className="mb-3 text-[13px] font-semibold text-white/70">{title}</h3>
-      <div className="flex flex-col gap-3">{children}</div>
+    <section className="space-y-4">
+      <h3 className="text-lg font-medium text-white">{title}</h3>
+      <div className="flex flex-col gap-4">{children}</div>
     </section>
   );
 }
 
 /** عنوان فرعي لتجميع مفاتيح مرتبطة داخل قسم. */
 export function SubHead({ children }: { children: ReactNode }) {
-  return <div dir="auto" className="border-t border-white/10 pt-3 text-[11px] font-semibold text-white/40 first:border-t-0 first:pt-0">{children}</div>;
+  return <div dir="auto" className="border-t border-white/10 pt-4 text-sm font-medium text-white/50 first:border-t-0 first:pt-0">{children}</div>;
 }
 
 /** شريط جانبي لقائمة الأقسام: قسم واحد نشط في كل مرة (تنقّل بالقائمة لا تمرير). */
 export function SideNav({ items, current, onSelect }: { items: { id: string; label: string; icon: ReactNode }[]; current: string; onSelect: (id: string) => void }) {
   return (
-    <nav aria-label="Settings sections" className="sticky top-12 flex w-44 shrink-0 flex-col gap-1 self-start py-2">
+    <nav aria-label="Settings sections" className="sticky top-12 flex w-48 shrink-0 flex-col gap-1 self-start py-2">
       {items.map((x) => (
         <button
           key={x.id}
           data-nav={x.id}
           onClick={() => onSelect(x.id)}
           aria-current={current === x.id ? "true" : undefined}
-          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-start text-[13px] ${current === x.id ? "bg-white/15 text-white" : "text-white/60 hover:bg-white/10 hover:text-white"}`}
+          className={`flex h-9 items-center gap-2 rounded-md px-3 text-start text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${current === x.id ? "bg-white/10 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"}`}
         >
           <span aria-hidden className="shrink-0">{x.icon}</span>
           <span dir="auto" className="min-w-0 truncate">{x.label}</span>
@@ -45,11 +59,13 @@ export function SideNav({ items, current, onSelect }: { items: { id: string; lab
 }
 
 export function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+  // صف المفتاح (Switch) = بطاقة بحدود على نمط صفحة Notifications؛ بقية الصفوف FormItem مسطّح.
+  const card = isValidElement(children) && children.type === Toggle;
   return (
-    <div className="flex items-center justify-between gap-4">
-      <div className="min-w-0">
-        <div dir="auto" className="text-sm">{label}</div>
-        {hint && <div dir="auto" className="text-xs text-white/50">{hint}</div>}
+    <div className={`flex items-center justify-between gap-4 ${card ? "rounded-lg border border-white/10 p-4" : ""}`}>
+      <div className="min-w-0 space-y-0.5">
+        <div dir="auto" className="text-sm font-medium">{label}</div>
+        {hint && <div dir="auto" className="text-[0.8rem] text-white/50">{hint}</div>}
       </div>
       <div className="shrink-0">{children}</div>
     </div>
@@ -63,11 +79,10 @@ export function Toggle({ value, onChange, label }: { value: boolean; onChange: (
       aria-checked={value}
       aria-label={label}
       onClick={() => onChange(!value)}
-      className={`relative h-6 w-11 rounded-full transition-colors ${value ? "bg-[var(--app-accent)]" : "bg-white/20"}`}
+      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border border-transparent shadow-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-white/30 ${value ? "bg-white" : "bg-white/20"}`}
     >
       <span
-        dir="ltr"
-        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${value ? "left-[22px]" : "left-0.5"}`}
+        className={`pointer-events-none absolute top-1/2 h-5 w-5 -translate-y-1/2 rounded-full shadow-sm transition-all ${value ? "start-[22px] bg-black" : "start-0.5 bg-white"}`}
       />
     </button>
   );
@@ -97,9 +112,10 @@ export function Slider(p: {
         min={p.min} max={p.max} step={p.step} value={v}
         onChange={(e) => { const n = Number(e.target.value); setDrag(true); setV(n); live(n); }}
         onPointerUp={commit} onKeyUp={commit} onBlur={commit}
-        className="w-48 accent-[var(--app-accent)]"
+        style={{ "--pct": `${p.max > p.min ? ((v - p.min) / (p.max - p.min)) * 100 : 0}%` } as CSSProperties}
+        className="sh-range w-48"
       />
-      <span className="w-14 text-end text-xs tabular-nums text-white/70">{(p.format ?? String)(v)}</span>
+      <span className="w-14 text-end text-sm tabular-nums text-white/50">{(p.format ?? String)(v)}</span>
     </div>
   );
 }
@@ -108,17 +124,20 @@ export function Select<T extends string | number>(p: {
   value: T; options: { value: T; label: string }[]; onChange: (v: T) => void; label: string;
 }) {
   return (
-    <select
-      aria-label={p.label}
-      value={String(p.value)}
-      onChange={(e) => {
-        const o = p.options.find((x) => String(x.value) === e.target.value);
-        if (o) p.onChange(o.value);
-      }}
-      className="rounded-md border border-white/15 bg-[var(--app-field)] px-2 py-1 text-sm"
-    >
-      {p.options.map((o) => <option key={String(o.value)} value={String(o.value)}>{o.label}</option>)}
-    </select>
+    <div className="relative inline-block">
+      <select
+        aria-label={p.label}
+        value={String(p.value)}
+        onChange={(e) => {
+          const o = p.options.find((x) => String(x.value) === e.target.value);
+          if (o) p.onChange(o.value);
+        }}
+        className={`${inputCls} min-w-36 cursor-pointer appearance-none pe-9`}
+      >
+        {p.options.map((o) => <option key={String(o.value)} value={String(o.value)}>{o.label}</option>)}
+      </select>
+      <ChevronDown size={16} aria-hidden className="pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 opacity-50" />
+    </div>
   );
 }
 
@@ -135,7 +154,7 @@ export function NumberField(p: { value: number; min: number; max: number; onComm
       type="number" aria-label={p.label} dir="ltr" min={p.min} max={p.max} value={t}
       onChange={(e) => setT(e.target.value)} onBlur={commit}
       onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-      className="w-24 rounded-md border border-white/15 bg-[var(--app-field)] px-2 py-1 text-sm"
+      className={`${inputCls} w-24`}
     />
   );
 }
@@ -152,7 +171,7 @@ export function LinesField(p: { value: string[]; onCommit: (v: string[]) => void
         const next = t.split("\n").map((x) => x.trim()).filter(Boolean);
         if (next.join("\n") !== p.value.join("\n")) p.onCommit(next);
       }}
-      className="w-64 rounded-md border border-white/15 bg-[var(--app-field)] px-2 py-1 text-sm"
+      className={`${inputCls} w-64`}
     />
   );
 }
@@ -167,7 +186,7 @@ export function TextField(p: { value: string; onCommit: (v: string) => void; lab
       type="text" aria-label={p.label} dir="ltr" value={t} placeholder={p.placeholder}
       onChange={(e) => setT(e.target.value)} onBlur={commit}
       onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-      className="w-64 rounded-md border border-white/15 bg-[var(--app-field)] px-2 py-1 text-sm"
+      className={`${inputCls} w-64`}
     />
   );
 }
