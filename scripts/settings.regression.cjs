@@ -7,7 +7,7 @@ const BASE = process.env.BASE || "http://localhost:4173";
 let fails = 0;
 const ok = (n, c, extra = "") => { if (!c) fails++; console.log(`${c ? "✓" : "✗"} ${n} ${c ? "" : extra}`); };
 // عناصر التحكم (aria-label) السابقة (63) — يجب أن تبقى كلها قابلة للوصول في مكانها المنطقي الجديد.
-const BASELINE = ["Check for updates automatically", "Start with Windows", "Language", "Monitor", "Horizontal offset", "Hover delay", "Collapse delay", "Auto-hide", "Hide in fullscreen", "Show clock", "Clock format", "Pill width", "Pill height", "Theme", "Material", "Opacity at rest", "Opacity when open", "Mascot eyes", "Audio spectrum & liquid pill", "Show the Today section", "City", "Prayer alerts", "Weather", "Temperature unit", "Event countdowns", "Event name", "Event date", "Mini world clock", "Alert sound", "Show battery", "“Unplug at 80%” tip", "Bluetooth device batteries", "Network speed in the pill", "Item limit", "Paste on click", "Excluded apps", "Mic & camera indicator", "High-load alert", "Volume control in System", "Show upcoming meetings", "“Upcoming meeting” window", "Private iCal link", "Show the island in captures", "Screenshots folder", "Area screenshot hotkey", "Full-screen screenshot hotkey", "Recording format", "Recording FPS", "Recording quality", "Recordings folder", "Recording hotkey", "Color picker hotkey", "Live currency rates", "Focus-time tracking", "Break reminders", "Continuous use before a break (min)", "Eco mode", "Auto-eco on battery", "Motion level"];
+const BASELINE = ["Check for updates automatically", "Start with Windows", "Language", "Monitor", "Horizontal offset", "Open delay", "Auto-hide", "Hide in fullscreen", "Show clock", "Clock format", "Pill width", "Pill height", "Theme", "Background", "Opacity at rest", "Opacity when open", "Mascot eyes", "Audio spectrum & liquid pill", "Show the Today section", "City", "Prayer alerts", "Weather", "Temperature unit", "Event countdowns", "Event name", "Event date", "Mini world clock", "Alert sound", "Show battery", "“Unplug at 80%” tip", "Bluetooth device batteries", "Network speed in the pill", "Item limit", "Paste on click", "Excluded apps", "Mic & camera indicator", "High-load alert", "Volume control in System", "Show upcoming meetings", "“Upcoming meeting” window", "Private iCal link", "Show the island in captures", "Screenshots folder", "Area screenshot hotkey", "Full-screen screenshot hotkey", "Recording format", "Recording FPS", "Recording quality", "Recordings folder", "Recording hotkey", "Color picker hotkey", "Live currency rates", "Focus-time tracking", "Break reminders", "Continuous use before a break (min)", "Eco mode", "Auto-eco on battery", "Motion level"];
 const ORDER = ["general", "island", "appearance", "motion", "modules", "notifications", "shortcuts", "perf", "updates", "about"];
 // خريطة مكان كل إعداد (للتقرير): قسم ← عناصره
 const where = {};
@@ -85,7 +85,7 @@ const where = {};
 
   // المظهر: أسلوب الزجاج + الإعدادات المسبقة
   await nav("appearance").click(); await page.waitForTimeout(300);
-  await page.locator('[data-glass-style="clear"]').click(); await page.waitForTimeout(150);
+  await page.getByRole("radio", { name: "Clear glass" }).click(); await page.waitForTimeout(150);
   const gs = (await calls("settings_set")).filter((c) => c.patch && c.patch.glassStyle === "clear").pop();
   ok("Clear glass style ⇒ glassStyle=clear, blur ≤ 8", gs && gs.patch.glassBlur <= 8, JSON.stringify(gs));
   await page.locator('[data-preset="liquid"]').click(); await page.waitForTimeout(150);
@@ -107,9 +107,9 @@ const where = {};
   await page.waitForTimeout(250);
   ok("import applies known keys only", JSON.stringify(await calls("settings_set")).includes('"density":"compact"') && !JSON.stringify(await calls("settings_set")).includes("evil"));
   const ra = page.getByTestId("reset-all"); await ra.click();
-  ok("Reset all needs a second click", (await calls("settings_set")).filter((c) => c.patch && "hoverDelayMs" in c.patch).length === 0);
+  ok("Reset all needs a second click", (await calls("settings_set")).filter((c) => c.patch && "autostart" in c.patch).length === 0);
   await ra.click(); await page.waitForTimeout(150);
-  ok("Reset all restores every section's keys", (await calls("settings_set")).filter((c) => c.patch && "hoverDelayMs" in c.patch && "pillWidth" in c.patch && "glassStyle" in c.patch).length === 1);
+  ok("Reset all restores every section's keys", (await calls("settings_set")).filter((c) => c.patch && "autostart" in c.patch && "pillWidth" in c.patch && "glassStyle" in c.patch).length === 1);
 
   ok("no page errors (English)", errs.length === 0, errs.join("|"));
 

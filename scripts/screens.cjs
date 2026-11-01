@@ -27,7 +27,7 @@ const fakeAcrylic = (page, theme, tint) => page.evaluate(([theme, tint]) => {
   const mk = async (url, settings, vp, extra = {}) => {
     const ctx = await browser.newContext({ viewport: vp, deviceScaleFactor: 1 });
     const page = await ctx.newPage();
-    await page.addInitScript(bridge({ settings: { themeMaterial: "glass", glassStyle: "crystal", settingsVersion: 2, ...settings }, ...extra }));
+    await page.addInitScript(bridge({ settings: { themeMaterial: "glass", glassStyle: "crystal", settingsVersion: 3, ...settings }, ...extra }));
     await page.emulateMedia({ colorScheme: settings.themeMode === "light" ? "light" : "dark" });
     await page.goto(`${BASE}/${url}`); await page.waitForTimeout(900);
     return { ctx, page };

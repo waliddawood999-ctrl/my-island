@@ -20,12 +20,12 @@ const fresh = async (browser, cfg = {}) => {
   return { ctx, page, errs };
 };
 const emit = (page, ev, p) => page.evaluate(([e, x]) => window.__emit(e, x), [ev, p]);
-const open = async (page) => { await page.mouse.move(380, 10); await page.waitForTimeout(1500); };
+const open = async (page) => { await page.mouse.move(380, 10); await page.waitForTimeout(700); await page.mouse.click(380, 10); await page.waitForTimeout(1500); };
 const close = async (page) => { await page.mouse.move(5, 340); await page.waitForTimeout(1500); };
 const body = (page) => page.evaluate(() => { const b = document.querySelector(".island-body"); const r = b.getBoundingClientRect(); const cs = getComputedStyle(b); return { w: Math.round(r.width), h: Math.round(r.height), top: Math.round(r.top), tl: cs.borderTopLeftRadius, bl: cs.borderBottomLeftRadius, docked: b.dataset.docked }; });
 const calls = (page, name) => page.evaluate((n) => window.__calls.filter((c) => c[0] === n).map((c) => c[1]), name);
 const shot = async (page, name) => { if (SHOTS) await page.screenshot({ path: `${SHOTS}/${name}.png` }); };
-const overflowX = (page) => page.evaluate(() => [...document.querySelectorAll(".island-body *")].filter((e) => e.scrollWidth > e.clientWidth + 1 && getComputedStyle(e).overflowX === "visible" && e.clientWidth > 0 && !e.closest("[data-pill-title]") && !e.className?.toString().includes("truncate")).length);
+const overflowX = (page) => page.evaluate(() => [...document.querySelectorAll(".island-body *")].filter((e) => e.scrollWidth > e.clientWidth + 1 && getComputedStyle(e).overflowX === "visible" && e.clientWidth > 0 && !e.closest("[data-pill-title]") && !e.closest(".overflow-x-auto") && !e.className?.toString().includes("truncate")).length);
 const hasTest = (page, id) => page.evaluate((i) => !!document.querySelector(`[data-testid="${i}"]`), id);
 const pxNum = (v) => parseFloat(v);
 

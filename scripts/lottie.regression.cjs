@@ -21,7 +21,7 @@ const fresh = async (browser, cfg = {}) => {
   return { ctx, page, errs };
 };
 const emit = (page, ev, p) => page.evaluate(([e, x]) => window.__emit(e, x), [ev, p]);
-const open = async (page) => { await page.mouse.move(380, 10); await page.waitForTimeout(1500); };
+const open = async (page) => { await page.mouse.move(380, 10); await page.waitForTimeout(700); await page.mouse.click(380, 10); await page.waitForTimeout(1500); };
 const close = async (page) => { await page.mouse.move(5, 340); await page.waitForTimeout(1500); };
 const modes = (page, name) => page.evaluate((n) => [...document.querySelectorAll(`[data-lottie="${n}"]`)].map((e) => ({ mode: e.dataset.lottieMode, canvas: !!e.querySelector("canvas") })), name);
 const anyLottie = (page) => page.evaluate(() => document.querySelectorAll("[data-lottie]").length);
@@ -31,50 +31,11 @@ const tab = async (page, name) => { await page.getByRole("tab", { name }).click(
 (async () => {
   const browser = await chromium.launch();
 
-  // 1) الميديا تعمل: المؤشر يدور (حلقة) داخل اللوحة المفتوحة، وlottie يرسم فعلًا (rAF يعمل)، ويصير إطارًا ثابتًا عند الإيقاف المؤقت
+  // 1) (T03) مؤشر «يشتغل الآن» Lottie استُبدل بالمؤشر الصوتي bars/wave (انظر player.regression.cjs)؛ هنا فقط: الحبة المنكمشة بلا Lottie.
   { const { ctx, page, errs } = await fresh(browser, { media: PLAY });
     ok("closed pill: no Lottie mounted at all", (await anyLottie(page)) === 0);
-    await open(page);
-    const m = await modes(page, "equalizer");
-    ok("equalizer: panel open + playing ⇒ loop with a canvas", m.length === 1 && m[0].mode === "loop" && m[0].canvas, JSON.stringify(m));
-    const run = await idle(page, 1500);
-    ok("equalizer: actually animating while visible (rAF > 0)", run.r > 5, JSON.stringify(run));
-    await emit(page, "media:changed", { info: { ...PLAY, playing: false }, cover: null }).catch(() => {});
-    await page.evaluate((p) => window.__emit("media:info", p), { ...PLAY, playing: false });
-    await page.waitForTimeout(800);
-    // اختيار حدث الميديا الفعلي من الشيفرة: نتحقق بإخفاء الحبة بدل ذلك (مسار ملزم)
-    await emit(page, "island:hidden", true); await page.waitForTimeout(900);
-    ok("island hidden ⇒ Lottie unmounted immediately (no canvas)", (await modes(page, "equalizer")).every((x) => x.mode === "hidden" && !x.canvas));
-    // (rAF الصفحة هنا ليس من Lottie: حلقة motion لحلقة تقدّم الميديا قائمة في main قبل هذه المهمة؛ صفر rAF للمشغّل يُثبت بالجرس أدناه)
-    await emit(page, "island:hidden", false); await page.waitForTimeout(1200);
-    ok("island shown again ⇒ playing again", (await modes(page, "equalizer")).some((x) => x.mode === "loop" && x.canvas));
-    await close(page);
-    ok("panel closed ⇒ no Lottie elements", (await anyLottie(page)) === 0);
-    const c = await idle(page, 3000);
-    ok("collapsed pill: 0 rAF in 3 s (Lottie gone, idle rule holds)", c.r === 0, JSON.stringify(c));
     ok("no page errors", errs.length === 0, JSON.stringify(errs));
     await ctx.close(); }
-
-  // 2) مستويات الحركة: reduced = مرة واحدة (تنتهي ثم 0 rAF) · off = إطار ثابت بلا تشغيل
-  for (const [lvl, want] of [["reduced", "once"], ["off", "still"]]) {
-    const { ctx, page, errs } = await fresh(browser, { media: PLAY, settings: { motionLevel: lvl } });
-    await open(page);
-    const m = await modes(page, "equalizer");
-    ok(`motion=${lvl}: equalizer mode is "${want}" with a canvas`, m.length === 1 && m[0].mode === want && m[0].canvas, JSON.stringify(m));
-    // (rAF هنا يشمل حلقة حلقة تقدّم الميديا الموثّقة أثناء التشغيل — فحص صفر الخمول للمشغّل نفسه أدناه بميديا متوقفة وبالجرس)
-    ok(`motion=${lvl}: no page errors`, errs.length === 0, JSON.stringify(errs));
-    await ctx.close();
-  }
-
-  // 2b) ميديا متوقفة مؤقتًا: إطار ثابت في كل المستويات و0 rAF/مؤقّتات (صفر خمول)
-  for (const lvl of ["full", "reduced", "off"]) {
-    const { ctx, page } = await fresh(browser, { media: { ...PLAY, playing: false }, settings: { motionLevel: lvl } });
-    await open(page); await page.waitForTimeout(1500);
-    const m = await modes(page, "equalizer");
-    const r = await idle(page, 2500);
-    ok(`paused media (motion=${lvl}): equalizer is a still frame, 0 rAF / 0 timers`, m.length === 1 && m[0].mode === "still" && m[0].canvas && r.r === 0 && r.t === 0, JSON.stringify({ m, r }));
-    await ctx.close();
-  }
 
   // 3) الجرس: تذكير ⇒ جرس يتكرر 3 مرات فقط (loops) في الحبة المنكمشة، ويختفي بالإخفاء
   { const { ctx, page, errs } = await fresh(browser, {});

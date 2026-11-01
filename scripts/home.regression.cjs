@@ -23,7 +23,7 @@ const fresh = async (browser, cfg = {}, vp = { width: 760, height: 420 }) => {
   await page.waitForTimeout(700);
   return { ctx, page, errs };
 };
-const open = async (page) => { await page.mouse.move(380, 10); await page.waitForTimeout(1500); };
+const open = async (page) => { await page.mouse.move(380, 10); await page.waitForTimeout(700); await page.mouse.click(380, 10); await page.waitForTimeout(1500); };
 const close = async (page) => { await page.mouse.move(5, 400); await page.waitForTimeout(1500); };
 const has = (page, id) => page.evaluate((i) => !!document.querySelector(`[data-testid="${i}"]`), id);
 const tiles = (page) => page.evaluate(() => [...document.querySelectorAll('[data-testid="home-tiles"] > div > [data-testid]')].map((e) => e.dataset.testid));

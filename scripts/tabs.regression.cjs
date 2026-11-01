@@ -30,7 +30,7 @@ const bridge = (cfg) => `
       window.__calls.push([cmd, args]);
       if (cmd === 'plugin:event|listen') { (listeners[args.event] ||= []).push(args.handler); return Promise.resolve(args.handler); }
       if (cmd === 'plugin:event|unlisten') return Promise.resolve();
-      if (cmd === 'settings_get') return Promise.resolve(cfg.settings);
+      if (cmd === 'settings_get') return Promise.resolve({ panelTabsStyle: 'labels', ...cfg.settings });
       if (cmd === 'perf_status') return Promise.resolve({ eco: !!cfg.eco, reason: cfg.eco ? 'manual' : null, onBattery: null });
       if (cmd === 'media_now') return Promise.resolve({ info: cfg.media || { session: false, source: '', source_name: '', title: '', artist: '', album: '', duration: 0, position: 0, playing: false, can_prev: false, can_next: false, can_seek: false }, cover: null });
       if (cmd === 'record_status') return Promise.resolve({ recording: false, elapsed: 0 });
@@ -63,7 +63,7 @@ const fresh = async (browser, extra={}) => {
   const errs=[]; page.on('pageerror',e=>errs.push((e.message||'').slice(0,100)));
   if (extra.__route) await page.route(extra.__route.re, extra.__route.fn);
   await page.goto(URL); await page.waitForTimeout(700);
-  await page.mouse.move(380,10); await page.waitForTimeout(1400);
+  await page.mouse.move(380, 10); await page.waitForTimeout(700); await page.mouse.click(380, 10); await page.waitForTimeout(1400);
   return {ctx,page,errs};
 };
 // الصفحة الحالية تُظهر عرض تبويب X فقط: علامته موجودة وعلامات البقية غائبة
@@ -102,7 +102,7 @@ const shows = async (page, name) => { const v=await view(page); const mine=MARK[
    ok('other tabs still work after a failed Note', (await tools.count())>0 && await shows(page,'Tools') && await sel(page)==='Tools');
    await page.getByRole('tab',{name:'Note'}).click(); await page.waitForTimeout(900);
    block=false; const retry=page.getByRole('button',{name:/Retry/i}); if (await retry.count()) await retry.click();
-   await page.waitForTimeout(1500); await page.mouse.move(0,300); await page.waitForTimeout(600); await page.mouse.move(380,10); await page.waitForTimeout(1500);
+   await page.waitForTimeout(1500); await page.mouse.move(0,300); await page.waitForTimeout(600); await page.mouse.move(380, 10); await page.waitForTimeout(700); await page.mouse.click(380, 10); await page.waitForTimeout(1500);
    await page.getByRole('tab',{name:'Note'}).click(); await page.waitForTimeout(1500);
    ok('Retry (page reload, since a failed dynamic import is cached) + network back ⇒ Note loads', (await view(page)).includes('Reminders'), (await view(page)).slice(50,130));
    await ctx.close(); }

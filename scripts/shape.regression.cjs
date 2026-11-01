@@ -27,7 +27,7 @@ const measure = (page) => page.evaluate(() => { const b = document.querySelector
       const ctx = await browser.newContext({ viewport: { width: 760, height: 360 } });
       const page = await ctx.newPage();
       const { emit, settings, ...rest } = st;
-      await page.addInitScript(bridge({ ...rest, settings: { language: "en", eyesEnabled: false, pillWidth: pw, pillHeight: ph, pillRadius: pr, settingsVersion: 2, ...(settings || {}) } }));
+      await page.addInitScript(bridge({ ...rest, settings: { language: "en", eyesEnabled: false, pillWidth: pw, pillHeight: ph, pillRadius: pr, settingsVersion: 3, ...(settings || {}) } }));
       const errs = []; page.on("pageerror", (e) => errs.push(e.message.slice(0, 100)));
       await page.goto(URL); await page.waitForTimeout(900);
       if (emit) { await page.evaluate(([e, x]) => window.__emit(e, x), emit); await page.waitForTimeout(900); }

@@ -47,7 +47,7 @@ const fresh = async (browser, page_, u, settings = {}) => {
   return { ctx, page, errs };
 };
 const upd = (page) => page.evaluate(() => window.__upd);
-const open = async (page) => { await page.mouse.move(380, 10); await page.waitForTimeout(1500); };
+const open = async (page) => { await page.mouse.move(380, 10); await page.waitForTimeout(700); await page.mouse.click(380, 10); await page.waitForTimeout(1500); };
 
 (async () => {
   const browser = await chromium.launch();

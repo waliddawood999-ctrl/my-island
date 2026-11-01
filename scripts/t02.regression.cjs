@@ -17,7 +17,7 @@ const SPY = `(() => { window.__osc = 0; const AC = window.AudioContext; if (AC) 
   { const ctx = await browser.newContext({ viewport: { width: 760, height: 360 } }); const page = await ctx.newPage();
     await page.addInitScript(bridge({ settings: { language: "en", eyesEnabled: false }, extra: { today_get: today } }));
     await page.goto(`${BASE}/index.html`); await page.waitForTimeout(900);
-    await page.mouse.move(380, 10); await page.waitForTimeout(1600);
+    await page.mouse.move(380, 10); await page.waitForTimeout(700); await page.mouse.click(380, 10); await page.waitForTimeout(1600);
     const has = (id) => page.evaluate((i) => !!document.querySelector(`[data-testid="${i}"]`), id);
     ok("Today: Home prayer tile visible when on", await has("tile-prayer"));
     await page.evaluate(() => window.__emit("settings:changed", { showToday: false })); await page.waitForTimeout(400);
@@ -33,7 +33,7 @@ const SPY = `(() => { window.__osc = 0; const AC = window.AudioContext; if (AC) 
     const ctx = await browser.newContext({ viewport: { width: 760, height: 360 } }); const page = await ctx.newPage();
     await page.addInitScript(bridge({ settings: { language: "en", eyesEnabled: false, showWeather: true, showToday: false }, extra: { weather_get: w } }));
     await page.goto(`${BASE}/index.html`); await page.waitForTimeout(900);
-    await page.mouse.move(380, 10); await page.waitForTimeout(1600);
+    await page.mouse.move(380, 10); await page.waitForTimeout(700); await page.mouse.click(380, 10); await page.waitForTimeout(1600);
     ok(`Weather ${label}: shows ${want}`, await page.evaluate((i) => !!document.querySelector(`[data-testid="${i}"]`), want));
     if (want === "tile-weather-error") {
       ok(`Weather ${label}: clear message, not silent`, /Weather unavailable/.test(await page.locator(`[data-testid="${want}"]`).innerText()) && /(internet|eco)/i.test(await page.locator(`[data-testid="${want}"]`).innerText()));
@@ -98,7 +98,7 @@ const SPY = `(() => { window.__osc = 0; const AC = window.AudioContext; if (AC) 
   { const ctx = await browser.newContext({ viewport: { width: 760, height: 360 } }); const page = await ctx.newPage();
     await page.addInitScript(bridge({ settings: { language: "en", eyesEnabled: false } }));
     await page.goto(`${BASE}/index.html`); await page.waitForTimeout(800);
-    await page.mouse.move(380, 10); await page.waitForTimeout(1400);
+    await page.mouse.move(380, 10); await page.waitForTimeout(700); await page.mouse.click(380, 10); await page.waitForTimeout(1400);
     const names = await page.evaluate(() => window.__calls.map((c) => c[0]));
     ok("Island never calls removed commands (lyrics_get, island_dock_get)", !names.includes("lyrics_get") && !names.includes("island_dock_get"));
     await ctx.close(); }

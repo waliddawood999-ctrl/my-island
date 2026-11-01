@@ -21,7 +21,7 @@ const fresh = async (browser, cfg = {}, url = URL) => {
   await page.waitForTimeout(700);
   return { ctx, page, errs };
 };
-const open = async (page) => { await page.mouse.move(380, 10); await page.waitForTimeout(1500); };
+const open = async (page) => { await page.mouse.move(380, 10); await page.waitForTimeout(700); await page.mouse.click(380, 10); await page.waitForTimeout(1500); };
 const calls = (page, name) => page.evaluate((n) => window.__calls.filter((c) => c[0] === n).map((c) => c[1]), name);
 const nCalls = (page, name) => page.evaluate((n) => window.__calls.filter((c) => c[0] === n).length, name);
 const body = (page) => page.evaluate(() => (document.querySelector(".island-body")?.textContent || "").replace(/\s+/g, " "));
