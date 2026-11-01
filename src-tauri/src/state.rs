@@ -171,26 +171,30 @@ fn json_kind(v: &Value) -> &'static str {
     }
 }
 
-/// يتحقق من مقطع إعدادات: مفاتيح معروفة فقط (DEFAULTS + EXTRA_KEYS؛ ما فيه ':' مرفوض لأن kv مشترك مع بيانات أخرى) وبنفس نوع JSON.
-/// يرفض المقطع كله مع قائمة المفاتيح السيئة.
-pub fn validate_patch(patch: &Map<String, Value>) -> Result<(), String> {
+/// يرشّح مقطع إعدادات مفتاحًا مفتاحًا: يُبقي المعروف (DEFAULTS + EXTRA_KEYS) بنفس نوع JSON فقط.
+/// ما فيه ':' (kv مشترك مع بيانات أخرى) أو المجهول أو سيّئ النوع يُسقَط ويُسجَّل بـ eprintln! دون رفض بقية المقطع.
+pub fn filter_patch(patch: Map<String, Value>) -> Map<String, Value> {
     let defs = defaults();
-    let mut bad: Vec<String> = Vec::new();
+    let mut ok = Map::new();
     for (k, v) in patch {
         let want = if k.contains(':') {
-            None
-        } else if let Some(d) = defs.get(k) {
-            Some(json_kind(d))
+            eprintln!("settings: مفتاح مرفوض (يحوي ':'): {k}");
+            continue;
+        } else if let Some(d) = defs.get(&k) {
+            json_kind(d)
+        } else if let Some((_, t)) = EXTRA_KEYS.iter().find(|(n, _)| *n == k) {
+            *t
         } else {
-            EXTRA_KEYS.iter().find(|(n, _)| n == k).map(|(_, t)| *t)
+            eprintln!("settings: مفتاح غير معروف أُسقط: {k}");
+            continue;
         };
-        match want {
-            None => bad.push(format!("{k} (مفتاح غير معروف)")),
-            Some(t) if t != json_kind(v) => bad.push(format!("{k} (النوع {} بدل {t})", json_kind(v))),
-            Some(_) => {}
+        if want != json_kind(&v) {
+            eprintln!("settings: {k} أُسقط (النوع {} بدل {want})", json_kind(&v));
+            continue;
         }
+        ok.insert(k, v);
     }
-    if bad.is_empty() { Ok(()) } else { Err(format!("إعدادات مرفوضة: {}", bad.join("، "))) }
+    ok
 }
 
 pub struct AppState {
@@ -270,7 +274,8 @@ impl AppState {
 
     /// يحفظ كل مفتاح في kv كـ JSON ويدمجه في الذاكرة؛ يعيد المقطع المطبّق.
     pub fn apply_patch(&self, patch: Map<String, Value>) -> Result<Map<String, Value>, String> {
-        validate_patch(&patch)?;
+        let patch = filter_patch(patch);
+        if patch.is_empty() { return Ok(patch); }
         if let Some(conn) = self.db.lock().unwrap().as_mut() {
             let tx = conn.transaction().map_err(|e| e.to_string())?;
             for (k, v) in &patch {
@@ -300,33 +305,41 @@ mod tests {
 
     #[test]
     fn valid_patch_passes() {
-        assert!(validate_patch(&patch(json!({ "language": "en", "hoverDelayMs": 300, "motionSpeed": 1.5, "ecoMode": true, "peekCardOrder": ["player"], "monitor": 1, "workspaces": [] }))).is_ok());
-        assert!(validate_patch(&Map::new()).is_ok());
+        let p = patch(json!({ "language": "en", "hoverDelayMs": 300, "motionSpeed": 1.5, "ecoMode": true, "peekCardOrder": ["player"], "monitor": 1, "workspaces": [] }));
+        assert_eq!(filter_patch(p.clone()), p);
+        assert!(filter_patch(Map::new()).is_empty());
     }
 
     #[test]
-    fn unknown_key_rejected() {
-        let e = validate_patch(&patch(json!({ "language": "ar", "evil": 1 }))).unwrap_err();
-        assert!(e.contains("evil") && !e.contains("language"));
+    fn unknown_key_dropped_others_kept() {
+        let f = filter_patch(patch(json!({ "language": "ar", "evil": 1 })));
+        assert_eq!(f, patch(json!({ "language": "ar" })));
     }
 
     #[test]
-    fn colon_keys_rejected() {
-        assert!(validate_patch(&patch(json!({ "palette:recent": "[]" }))).is_err());
-        assert!(validate_patch(&patch(json!({ "note:body": "x" }))).is_err());
+    fn colon_keys_dropped() {
+        assert!(filter_patch(patch(json!({ "palette:recent": "[]", "note:body": "x" }))).is_empty());
+        let f = filter_patch(patch(json!({ "palette:recent": "[]", "language": "en" })));
+        assert_eq!(f, patch(json!({ "language": "en" })));
     }
 
     #[test]
-    fn wrong_type_rejected() {
-        assert!(validate_patch(&patch(json!({ "hoverDelayMs": "250" }))).is_err());
-        assert!(validate_patch(&patch(json!({ "ecoMode": 1 }))).is_err());
-        assert!(validate_patch(&patch(json!({ "peekCardOrder": "player" }))).is_err());
-        assert!(validate_patch(&patch(json!({ "autostart": "yes" }))).is_err());
-        assert!(validate_patch(&patch(json!({ "language": null }))).is_err());
+    fn wrong_type_dropped() {
+        for p in [
+            json!({ "hoverDelayMs": "250" }),
+            json!({ "ecoMode": 1 }),
+            json!({ "peekCardOrder": "player" }),
+            json!({ "autostart": "yes" }),
+            json!({ "language": null }),
+        ] {
+            assert!(filter_patch(patch(p)).is_empty());
+        }
+        let f = filter_patch(patch(json!({ "ecoMode": 1, "monitor": 2 })));
+        assert_eq!(f, patch(json!({ "monitor": 2 })));
     }
 
     #[test]
     fn secrets_not_settable() {
-        assert!(validate_patch(&patch(json!({ "uploadKey": "k" }))).is_err());
+        assert!(filter_patch(patch(json!({ "uploadKey": "k" }))).is_empty());
     }
 }
