@@ -71,13 +71,23 @@ pub fn start(app: &AppHandle, dir: Option<PathBuf>) {
         std::thread::sleep(TICK);
         let st = app.state::<WatchdogState>();
         let silent = st.last_pong.lock().unwrap().elapsed();
-        if silent <= SILENCE {
-            continue;
-        }
         let n = st.failed_reloads.load(Ordering::SeqCst);
-        if n >= MAX_RELOADS {
-            st.log(&format!("page_pong صامت {}s بعد {n} إعادتي تحميل فاشلتين — إعادة تشغيل العملية", silent.as_secs()));
-            app.restart();
+        let hidden = is_hidden(&app);
+        match decide(silent, hidden, n) {
+            Action::Wait => {
+                // WebView2 يخنق مؤقّتات النافذة المخفية فيتوقف النبض: لا حكم أثناء الإخفاء،
+                // ونجدّد مهلة السماح كل نبضة ليحصل الظهور التالي على نافذة صمت كاملة.
+                // failed_reloads لا يُصفَّر هنا: لم يصل pong فعلي يثبت سلامة الصفحة.
+                if hidden {
+                    st.grace();
+                }
+                continue;
+            }
+            Action::Restart => {
+                st.log(&format!("page_pong صامت {}s بعد {n} إعادتي تحميل فاشلتين — إعادة تشغيل العملية", silent.as_secs()));
+                app.restart();
+            }
+            Action::Reload => {}
         }
         st.failed_reloads.fetch_add(1, Ordering::SeqCst);
         match app.get_webview_window(win::MAIN).map(|w| w.reload()) {
@@ -86,6 +96,58 @@ pub fn start(app: &AppHandle, dir: Option<PathBuf>) {
         }
         st.grace();
     });
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum Action {
+    Wait,
+    Reload,
+    Restart,
+}
+
+/// قرار المراقب: لا إعادة تحميل ولا إعادة تشغيل أثناء الإخفاء/التصغير مهما طال الصمت.
+fn decide(silent: Duration, hidden: bool, failed_reloads: u32) -> Action {
+    if hidden || silent <= SILENCE {
+        Action::Wait
+    } else if failed_reloads >= MAX_RELOADS {
+        Action::Restart
+    } else {
+        Action::Reload
+    }
+}
+
+/// مخفية = AppState.hidden (يُضبط فورًا قبل التلاشي) أو HWND غير مرئي أو مصغّر.
+/// أي خطأ في الاستعلام يُعدّ «غير مخفية» فيبقى السلوك القديم.
+fn is_hidden(app: &AppHandle) -> bool {
+    if *app.state::<crate::state::AppState>().hidden.lock().unwrap() {
+        return true;
+    }
+    match app.get_webview_window(win::MAIN) {
+        Some(w) => !w.is_visible().unwrap_or(true) || w.is_minimized().unwrap_or(false),
+        None => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const LONG: Duration = Duration::from_secs(60);
+
+    #[test]
+    fn visible_behaviour_unchanged() {
+        assert_eq!(decide(SILENCE, false, 0), Action::Wait);
+        assert_eq!(decide(SILENCE + Duration::from_millis(1), false, 0), Action::Reload);
+        assert_eq!(decide(LONG, false, MAX_RELOADS - 1), Action::Reload);
+        assert_eq!(decide(LONG, false, MAX_RELOADS), Action::Restart);
+    }
+
+    #[test]
+    fn hidden_never_acts() {
+        for n in 0..=MAX_RELOADS + 1 {
+            assert_eq!(decide(LONG, true, n), Action::Wait);
+        }
+    }
 }
 
 /// "YYYY-MM-DD HH:MM:SS UTC" بلا اعتماديات إضافية.
