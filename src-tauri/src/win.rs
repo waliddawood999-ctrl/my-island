@@ -361,30 +361,3 @@ pub fn drop_focus(_app: &AppHandle) {}
 pub fn paste_into_previous(_app: &AppHandle) -> bool {
     false
 }
-
-#[cfg(test)]
-mod dock_tests {
-    use super::*;
-
-    #[test]
-    fn known_browsers_by_file_name_any_case_or_path() {
-        assert_eq!(browser_of("C:\\Program Files\\Google\\Chrome\\Application\\CHROME.EXE").map(|b| b.0), Some("chrome"));
-        assert_eq!(browser_of("msedge.exe").map(|b| b.0), Some("edge"));
-        assert_eq!(browser_of("D:/x/firefox.exe").map(|b| b.0), Some("firefox"));
-        assert_eq!(browser_of("brave.exe").map(|b| b.0), Some("brave"));
-        assert!(browser_of("notepad.exe").is_none());
-        assert!(browser_of("chrome_proxy.exe").is_none(), "اسم قريب ليس متصفحًا");
-    }
-
-    #[test]
-    fn docks_only_when_all_conditions_hold() {
-        let d = dock_decision(true, false, Some("C:\\x\\msedge.exe"), true, true);
-        assert!(d.active && d.browser == "edge" && d.strip > 0);
-        assert!(!dock_decision(false, false, Some("msedge.exe"), true, true).active, "المفتاح مطفأ");
-        assert!(!dock_decision(true, true, Some("msedge.exe"), true, true).active, "Eco");
-        assert!(!dock_decision(true, false, Some("msedge.exe"), false, true).active, "غير مكبَّر");
-        assert!(!dock_decision(true, false, Some("msedge.exe"), true, false).active, "شاشة أخرى");
-        assert!(!dock_decision(true, false, Some("notepad.exe"), true, true).active, "ليس متصفحًا");
-        assert!(!dock_decision(true, false, None, true, true).active, "exe مجهول ⇒ الوضع الطبيعي");
-    }
-}

@@ -20,6 +20,17 @@ jobs:
 
       - run: npm ci
 
+      - name: Frontend tests
+        run: npm test
+
+      # tauri::generate_context! يضمّن frontendDist (../dist) وقت الترجمة ويفشل إن غاب؛ لذا نبني الواجهة قبل cargo test.
+      - name: Typecheck & build frontend
+        run: npm run build
+
+      - name: Rust tests
+        working-directory: src-tauri
+        run: cargo test --locked
+
       # ختم الإصدار آليًا 1.0.<رقم التشغيل> في tauri.conf.json قبل البناء (يقرؤه المحدّث للمقارنة).
       - name: Stamp version
         shell: bash
