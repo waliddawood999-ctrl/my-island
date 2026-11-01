@@ -128,11 +128,11 @@ const tab = async (page, name) => { await page.getByRole("tab", { name }).click(
     ok("success: toast gone ⇒ tick unmounted", (await modes(page, "tick")).length === 0);
     await ctx.close(); }
 
-  // 5) تحميل مكتمل ⇒ loader-check مرة واحدة
-  { const { ctx, page } = await fresh(browser, { dl: { active: [], recent: [{ name: "a.zip", size: 1000, at: Date.now() }] }, settings: { showDownloads: true } });
+  // 5) 03-loader-check كان للتنزيلات المكتملة؛ أُزيلت الميزة ⇒ الأصل باقٍ على القرص بلا سطح ولا تسجيل في lottie.tsx (موثّق في docs/STATUS.md)
+  { const { ctx, page } = await fresh(browser, { settings: { showDownloads: true }, extra: { downloads_list: { active: [], recent: [{ name: "a.zip", size: 1000, at: Date.now() }] } } });
     await open(page);
-    const l = await modes(page, "loader");
-    ok("downloads: newest finished item shows loader→check Lottie once", l.length === 1 && l[0].mode === "once" && l[0].canvas, JSON.stringify(l));
+    ok("03-loader-check: asset kept on disk", require("fs").existsSync("src/assets/lottie/03-loader-check.lottie"));
+    ok("03-loader-check: unused (no loader Lottie anywhere on Home)", (await modes(page, "loader")).length === 0);
     await ctx.close(); }
 
   // 6) الطقس: مشمس نهارًا + رذاذ ⇒ Lottie؛ غيرها وليلًا ⇒ Lucide؛ بلا اتصال ⇒ no-internet
@@ -145,8 +145,8 @@ const tab = async (page, name) => { await page.getByRole("tab", { name }).click(
   }
   { const { ctx, page } = await fresh(browser, { settings: { showWeather: true }, extra: { weather_get: WEATHER(0, true, true) } });
     await open(page);
-    const m = await modes(page, "offline");
-    ok("weather offline: no-internet Lottie shown", m.length === 1 && m[0].canvas, JSON.stringify(m));
+    // بلا بيانات (بلا اتصال) ⇒ لا بلاطة طقس أصلًا في الرئيسية الخفيفة؛ ملف 05 يبقى لعرض إخفاق الكلمات (LyricsView).
+    ok("weather offline: no weather tile and no Lottie on Home (data unavailable ⇒ tile hidden)", (await modes(page, "offline")).length === 0 && (await modes(page, "weather")).length === 0 && !(await page.locator('[data-testid="tile-weather"]').count()));
     await ctx.close(); }
   { const { ctx, page } = await fresh(browser, { settings: { showWeather: true, motionLevel: "off" }, extra: { weather_get: WEATHER(0) } });
     await open(page);

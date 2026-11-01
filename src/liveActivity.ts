@@ -4,13 +4,13 @@
  * (حلقة تقدّم، مراحل، منحنى مصغّر، سحب للتأكيد، هيئة تبويب المتصفح). انظر docs/MOTION.md §النشاط الحي.
  */
 
-export type ActivityKind = "rec" | "timer" | "stopwatch" | "dl" | "media" | "meeting" | "battery" | "net";
+export type ActivityKind = "rec" | "timer" | "stopwatch" | "media" | "meeting" | "battery" | "net";
 
 /**
- * ترتيب الأولوية الثابت والمعلن: تسجيل جارٍ ← مؤقّت/ساعة إيقاف ← تنزيل جارٍ ← ميديا مشغّلة ← اجتماع قريب ← بطارية ← سرعتا الشبكة (محيطي).
+ * ترتيب الأولوية الثابت والمعلن: تسجيل جارٍ ← مؤقّت/ساعة إيقاف ← ميديا مشغّلة ← اجتماع قريب ← بطارية ← سرعتا الشبكة (محيطي).
  * «اجتماع قريب» يُنتجه `upcomingMeeting` من وحدة الاجتماعات (L4) ضمن نافذة `meetingLeadMin` (الافتراضي 15 دقيقة).
  */
-export const PRIORITY: readonly ActivityKind[] = ["rec", "timer", "stopwatch", "dl", "media", "meeting", "battery", "net"];
+export const PRIORITY: readonly ActivityKind[] = ["rec", "timer", "stopwatch", "media", "meeting", "battery", "net"];
 
 export type ActivityInput = Partial<Record<ActivityKind, boolean>>;
 
@@ -42,28 +42,13 @@ export const ACCENT: Record<ActivityKind, string> = {
   rec: "var(--act-rec)",
   timer: "var(--act-timer)",
   stopwatch: "var(--act-timer)",
-  dl: "var(--act-dl)",
   media: "var(--act-media)",
   meeting: "var(--act-meeting)",
   battery: "var(--act-battery)",
   net: "var(--act-net)",
 };
 
-// ───────────────────────────── مراحل وتقدّم ─────────────────────────────
-export type StageState = "done" | "now" | "next";
-
-/** حالة كل مرحلة: المنجزة قبل الحالية، الحالية مضيئة، القادمة باهتة. */
-export function stageStates(total: number, current: number): StageState[] {
-  const c = Math.max(0, Math.min(total - 1, Math.floor(current)));
-  return Array.from({ length: Math.max(0, total) }, (_, n): StageState => (n < c ? "done" : n === c ? "now" : "next"));
-}
-
-/** مرحلة التنزيل الحالية من النسبة (مشتقّة: ربع كل مرحلة)؛ نسبة مجهولة ⇒ الأولى. 100% ⇒ تُحتسب الأخيرة منجزة بالمرحلة الحالية. */
-export function downloadStage(percent: number | null | undefined, total = 4): number {
-  if (percent == null || !Number.isFinite(percent)) return 0;
-  return Math.max(0, Math.min(total - 1, Math.floor((percent / 100) * total)));
-}
-
+// ───────────────────────────── تقدّم ─────────────────────────────
 /** حلقة التقدّم: محيط الدائرة وإزاحة الشرطة لنسبة 0..1. */
 export function ringDash(p: number, r: number): { c: number; offset: number } {
   const c = 2 * Math.PI * r;

@@ -37,7 +37,6 @@ const bridge = (cfg) => `
       if (['reminders_get','shelf_list','launcher_list','launcher_groups_get'].includes(cmd)) return Promise.resolve([]);
       if (cmd === 'launcher_hotkeys_get') return Promise.resolve({});
       if (cmd === 'attention_today') return Promise.resolve({ total: 0, apps: [], enabled: true, day: '2026-11-01' });
-      if (cmd === 'downloads_list') return Promise.resolve({ active: [], recent: [] });
       if (cmd === 'island_backdrop') return cfg.backdrop === 'reject' ? Promise.reject('unsupported') : Promise.resolve(cfg.backdrop || 'none');
       if (cmd === 'clip_list' || cmd === 'color_history') return Promise.resolve([]);
       if (cmd === 'note_get') return Promise.resolve({ html: '<p>hello note</p>', folder: '' });
@@ -55,7 +54,7 @@ const bridge = (cfg) => `
 
 
 const URL = process.env.URL || 'http://localhost:4173/index.html';
-const MARK = { Home:'My time today', Clipboard:'Clipboard is empty', Shelf:null, Launcher:null, Note:'Reminders', Tools:'Area shot', Chat:null };
+const MARK = { Home:'Nothing playing', Clipboard:'Clipboard is empty', Shelf:null, Launcher:null, Note:'Reminders', Tools:'Area shot', Chat:null };
 const view = (page) => page.evaluate(() => { const b=document.querySelector('.island-body'); return b ? b.textContent.replace(/\s+/g,' ') : ''; });
 const sel = (page) => page.evaluate(() => [...document.querySelectorAll('[role=tab]')].find(t=>t.getAttribute('aria-selected')==='true')?.textContent);
 const fresh = async (browser, extra={}) => {

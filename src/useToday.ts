@@ -10,20 +10,23 @@ export interface Weather {
 }
 const WEATHER_REFRESH_MS = 15 * 60_000;
 
-/** مواقيت اليوم + ساعة تدق كل ثانية (للعدّاد). تُعاد القراءة عند تغيّر المدينة أو تجاوز نهاية اليوم. */
-export function useToday(city: string | undefined) {
+/** مواقيت اليوم + ساعة تدق كل ثانية (للعدّاد)؛ enabled=false ⇒ لا مؤقّت ولا استدعاء. تُعاد القراءة عند تغيّر المدينة أو تجاوز نهاية اليوم. */
+export function useToday(city: string | undefined, enabled = true) {
   const [info, setInfo] = useState<TodayInfo | null>(null);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
+    if (!enabled) return;
+    setNow(Date.now());
     const t = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(t);
-  }, []);
+  }, [enabled]);
   const stale = info !== null && now >= info.next_day_at;
   useEffect(() => {
+    if (!enabled) { setInfo(null); return; }
     let alive = true;
     invoke<TodayInfo>("today_get").then((v) => alive && setInfo(v)).catch(() => {});
     return () => { alive = false; };
-  }, [city, stale]);
+  }, [city, stale, enabled]);
   return { info, now };
 }
 

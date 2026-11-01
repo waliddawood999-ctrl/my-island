@@ -69,7 +69,7 @@
 - **شريط الأوامر/الملفات:** `palette_apps` `palette_recent` `palette_icon` `files_search` `files_warm` `files_held` `run_shell`
 - **الترخيص/التحديث/أخرى:** `license_activate` `license_status` `license_remove` `update_check` `update_install` `news_get` `news_told` `notifications_access` `notifications_request` `obs_state` `obs_password_set/status` `hotkeys_check` `list_item`
 
-**الأحداث (Rust → واجهة):** `ai:chunk` (بثّ SSE كلمة-كلمة) `ai:done` `ai:error` · `media:update/cover/bands/level` · `audio:state` · `downloads:update/done` · `agents:update/card/ask/ask-done` · `notify:new` · `island:edge/shy/keep/desktop/warn/note` · `mascot:look/sleep` · `cursor:near` · `input:layout/caps` · `vpn:choose` · `update:progress` · `weather:error` · `dictation:error` · `license:changed/needed`
+**الأحداث (Rust → واجهة):** `ai:chunk` (بثّ SSE كلمة-كلمة) `ai:done` `ai:error` · `media:update/cover/bands/level` · `audio:state` · `agents:update/card/ask/ask-done` · `notify:new` · `island:edge/shy/keep/desktop/warn/note` · `mascot:look/sleep` · `cursor:near` · `input:layout/caps` · `vpn:choose` · `update:progress` · `weather:error` · `dictation:error` · `license:changed/needed`
 
 **أنواع بيانات (serde structs) مكشوفة:** `ChatMessage(3)` · `Weather(9): Now(8) Hour(5) Day(7)` · `Lyrics(5)` · `Question(4)` · `Choice(2)` · `IpWho(4)` · `CbrDaily/Rates` · `News(4)` — أي إن الـ API بين الطبقتين typed بالكامل.
 
@@ -83,7 +83,7 @@
           collapseDelayMs (100–1500، خطوة 50), captureVisible
 الحبة:    showClock, clockFormat (auto/24/12), showBattery, mediaPill,
           lyricsInPlayer, lyricsInHome, homePlayer, liquidSpectrum,
-          downloadsInPill, alertSound, mascot, character, characterMusic
+          alertSound, mascot, character, characterMusic
 اختصارات: hotkeyToggle, hotkeyPalette, hotkeyChat, hotkeyDictate, hotkey… (16 اختصارًا:
           Toggle/Area/Screen/Ocr/Clipboard/PlainPaste/Mic/Color/Qr/Palette/
           Record/Chat/Dictate/Through/Vpn + اختصار لكل عنصر لانشر)
@@ -91,8 +91,7 @@
           screenshotDir, recordingDir, uploadService (imgur/imgbb), uploadKey
 حافظة:   clipLimit, clipExcludedApps, pasteOnClick
 وحدات:    moduleMedia, moduleShelf, moduleLauncher, moduleControls, moduleWeather,
-          controlsNet, showVolume, showLayout, showCaps, showDownloads,
-          steamDownloads, downloadsDir, downloadsIgnore,
+          controlsNet, showVolume, showLayout, showCaps,
           obsStatus, obsPort, agentsStatus, agentsAsk,
           showPrivacy, showVpn, vpnLookupIp, showNotifications, notifyMuted
 بحث:     paletteFiles, paletteFolders, searchEngine, searchUrl
@@ -129,7 +128,7 @@ CREATE TABLE kv(       key TEXT PRIMARY KEY, value TEXT NOT NULL);
 | **media** | جلسات SMTC ‏(WinRT `GlobalSystemMediaTransportControls`) + غلاف كصورة | crate `windows` — اشترك في SessionsChanged، والغلاف عبر `IRandomAccessStream` |
 | **spectrum / player_audio** | التقاط WASAPI loopback من جهاز الإخراج الفعلي (لا الافتراضي — لذا يعمل مع المكسّرات) + FFT | `IAudioClient` loopback + FFT بـ rustfft؛ أرسل `media:bands` بمعدّل ~30fps |
 | **lyrics** | LRCLIB ‏(`/api/get` بمطابقة فنان/عنوان/ألبوم/مدة) مع رفض نسخ remix/live/karaoke/sped-up من العنوان واختيار الأقرب مدةً؛ synced LRC أو plain | API مجاني بلا مفتاح؛ User-Agent بصيغة `Island/1.2.8 (…)` |
-| **downloads** | مراقبة مجلد التنزيلات + ملفات مؤقتة للمتصفحات (.part/.crdownload…) + حذف `.tmp` من الحساب + قائمة تجاهل | `ReadDirectoryChangesW`/notify + منطق حالة لكل متصفح؛ Steam: فكّ `libraryfolders.vdf` ومراقبة `steamapps/downloading` |
+| ~~**downloads**~~ **(أُزيلت من منتجنا — INSERT F)** | مراقبة مجلد التنزيلات + ملفات مؤقتة للمتصفحات (.part/.crdownload…) + حذف `.tmp` من الحساب + قائمة تجاهل | `ReadDirectoryChangesW`/notify + منطق حالة لكل متصفح؛ Steam: فكّ `libraryfolders.vdf` ومراقبة `steamapps/downloading` |
 | **agents** | حقن hooks في `~/.claude/settings.json` (مع نسخة احتياطية بجانبه) وتعيين `notify=[…]` في `~/.codex/config.toml` مع تمرير أي notify سابق؛ الأحداث عبر ملفات/خطاف محلي، والإجابة عن أسئلة Claude Code من البطاقة (`agents_answer`: verdict + answers) | حافظ على JSON/TOML سليمين وادمج لا تستبدل؛ اختبر على حساب وهمي أولًا |
 | **dictation** | تسجيل من المايك المختار → multipart إلى `/audio/transcriptions` عند مزوّد STT → لصق اختياري مكان المؤشر (`dictatePaste`) | لا تعرّف محلي؛ التسجيل لا يُحفظ بعد التعرّف |
 | **ai** | POST ‏`/chat/completions` ببث SSE: اقرأ `choices/0/delta/content` وابث `ai:chunk`؛ الصور تُصغّر وتُرسل vision (حتى 3)، والمستندات تُستخرج محليًا: PDF ‏(pdf-extract) وWord/Excel/PowerPoint ‏(zip+XML / cfb للقديم) ثم تُرسل نصًا | أي مزوّد OpenAI-compatible؛ `ai_models` يجلب `/models` لقائمة اختيار |

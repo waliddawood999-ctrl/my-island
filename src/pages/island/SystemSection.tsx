@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Cpu, MemoryStick, Sun, Volume1, Volume2, VolumeX } from "lucide-react";
 import { i } from "../../i18n";
-import { fmtBytes } from "../../useDownloads";
+import { fmtBytes } from "../../format";
 import { useEco } from "../../motion";
 import { useBrightness, useSysDepth, useSysHistory, useSysinfo, useThrottled, useVolume } from "../../useSystem";
 import { Spark } from "./activity";

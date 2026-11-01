@@ -32,11 +32,9 @@ module.exports.bridge = (cfg) => `
       if (cmd === 'island_dock_get') return Promise.resolve(cfg.dock || { active: false, browser: '', strip: 0, inset: 0 });
       if (cmd === 'timer_get') return Promise.resolve(cfg.timer || null);
       if (cmd === 'battery_status') return Promise.resolve(cfg.battery || { has_battery: true, percent: 80, ac: false, charging: false, remaining_min: 120, bt: [] });
-      if (cmd === 'downloads_list') return Promise.resolve(cfg.dl || { active: [], recent: [] });
       if (['reminders_get','shelf_list','launcher_list','launcher_groups_get'].includes(cmd)) return Promise.resolve([]);
       if (cmd === 'launcher_hotkeys_get') return Promise.resolve({});
       if (cmd === 'attention_today') return Promise.resolve({ total: 0, apps: [], enabled: true, day: '2026-11-01' });
-      if (cmd === 'downloads_list') return Promise.resolve({ active: [], recent: [] });
       if (cmd === 'island_backdrop') return cfg.backdrop === 'reject' ? Promise.reject('unsupported') : Promise.resolve(cfg.backdrop || 'none');
       if (cmd === 'clip_list' || cmd === 'color_history') return Promise.resolve([]);
       if (cmd === 'note_get') return Promise.resolve({ html: '<p>hello note</p>', folder: '' });

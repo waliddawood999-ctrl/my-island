@@ -12,14 +12,15 @@ let fail = 0, n = 0;
 const eq = (name, got, want) => { n++; if (JSON.stringify(got) !== JSON.stringify(want)) { fail++; console.log(`✗ ${name}\n  got:  ${JSON.stringify(got)}\n  want: ${JSON.stringify(want)}`); } };
 const near = (name, got, want, eps = 1e-6) => { n++; if (Math.abs(got - want) > eps) { fail++; console.log(`✗ ${name}: ${got} ≠ ${want}`); } };
 
-// ── الأولوية المعلنة: تسجيل ← مؤقّت ← ساعة إيقاف ← تنزيل ← ميديا ← اجتماع ← بطارية ← شبكة
-eq("priority order", [...m.PRIORITY], ["rec", "timer", "stopwatch", "dl", "media", "meeting", "battery", "net"]);
-eq("all active sorted by priority", m.activeKinds({ net: true, battery: true, media: true, dl: true, timer: true, rec: true }), ["rec", "timer", "dl", "media", "battery", "net"]);
+// ── الأولوية المعلنة: تسجيل ← مؤقّت ← ساعة إيقاف ← ميديا ← اجتماع ← بطارية ← شبكة
+eq("priority order", [...m.PRIORITY], ["rec", "timer", "stopwatch", "media", "meeting", "battery", "net"]);
+eq("no download kind anywhere (removed by owner)", [m.PRIORITY.includes("dl"), "dl" in m.ACCENT, m.activeKinds({ dl: true })], [false, false, []]);
+eq("all active sorted by priority", m.activeKinds({ net: true, battery: true, media: true, timer: true, rec: true }), ["rec", "timer", "media", "battery", "net"]);
 eq("none active", m.activeKinds({}), []);
 eq("recording beats everything", m.shownKind(m.activeKinds({ rec: true, media: true, timer: true }), null), "rec");
-eq("timer beats download & media", m.shownKind(m.activeKinds({ timer: true, dl: true, media: true }), null), "timer");
+eq("timer beats media", m.shownKind(m.activeKinds({ timer: true, media: true }), null), "timer");
 eq("timer beats stopwatch", m.shownKind(m.activeKinds({ stopwatch: true, timer: true }), null), "timer");
-eq("download beats media", m.shownKind(m.activeKinds({ dl: true, media: true }), null), "dl");
+eq("media beats meeting & battery", m.shownKind(m.activeKinds({ media: true, meeting: true, battery: true }), null), "media");
 eq("media beats battery", m.shownKind(m.activeKinds({ media: true, battery: true }), null), "media");
 eq("nothing ⇒ null", m.shownKind([], null), null);
 // ── التثبيت اليدوي (مفتاح التبديل) يحترم القائم ويسقط عند انتهاء النشاط
@@ -30,11 +31,7 @@ eq("cycle wraps", [m.nextKind(two, "timer"), m.nextKind(two, "stopwatch"), m.nex
 eq("secondary = next by priority after shown", m.secondaryKind(m.activeKinds({ timer: true, media: true, battery: true }), "timer"), "media");
 eq("secondary none when single", m.secondaryKind(["media"], "media"), null);
 
-// ── المراحل (منجز/جارٍ/قادم) ومرحلة التنزيل
-eq("stages mid", m.stageStates(4, 2), ["done", "done", "now", "next"]);
-eq("stages first", m.stageStates(4, 0), ["now", "next", "next", "next"]);
-eq("stages clamp high/low", [m.stageStates(3, 9), m.stageStates(3, -4)], [["done", "done", "now"], ["now", "next", "next"]]);
-eq("download stage by percent", [0, 24, 25, 60, 99, 100, null].map((p) => m.downloadStage(p)), [0, 0, 1, 2, 3, 3, 0]);
+// ── (مراحل التنزيل أُزيلت مع ميزة التنزيلات)
 
 // ── حلقة التقدّم
 const r = m.ringDash(0.25, 10);

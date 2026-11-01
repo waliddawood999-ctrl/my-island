@@ -42,7 +42,7 @@ obs_password_status, hotkeys_check, list_item
 
 ## أحداث (emit/listen)
 ai:chunk, ai:done, ai:error, media:update, media:cover, media:bands,
-media:level, audio:state, downloads:update, downloads:done,
+media:level, audio:state,
 agents:update, agents:card, agents:ask, agents:ask-done, notify:new,
 island:edge, island:shy, island:keep, island:desktop, island:warn,
 island:note, mascot:look, mascot:sleep, cursor:near, input:layout,
@@ -89,11 +89,10 @@ settings_set لمفتاح `autostart` يكتب/يحذف قيمة MyIsland في H
 ### مضاف في الجلسة 2.4
 lyrics_get(artist: String, title: String, album?: String, duration: f64 ثوانٍ) → `Lyrics { found, synced, instrumental, offline, lines: [{t: ثوانٍ, text}], plain }` — LRCLIB (`/api/get` ثم `/api/search` احتياطيًا)، يرفض remix/live/karaoke/sped-up التي لا يحملها العنوان المطلوب ويختار الأقرب مدةً (≤5s)، يفضّل syncedLyrics ثم plainLyrics. لا شبكة ⇒ `offline:true` بلا خطأ. التخزين المؤقت في kv بمفتاح `lyrics:<بصمة فنان+عنوان+مدة>` (يُستثنى من settings_get؛ نتيجة «لا كلمات» تنتهي بعد 7 أيام، والمفقودة شبكيًا لا تُخزَّن). لا أحداث جديدة.
 
-### مضاف في الجلسة 2.5 (downloads.rs + battery.rs — حسب المخطط §7/downloads)
-- `downloads_list()` → `{active: DownloadItem[], recent: DoneItem[]}` — **أمر جديد غير مذكور في العقد الأصلي** (لقطة فورية عند تركيب الواجهة قبل أول حدث). `battery_status()` → `{has_battery, percent|null, ac, charging}` — أمر جديد أيضًا.
-- `downloads:update` (payload: `{active, recent}`؛ `DownloadItem = {id, name, size(بايت), total|null, percent|null, speed(بايت/ث), source:"browser"|"steam"}`، `DoneItem = {name, path, size, at(ms)}`) — عند أي تغيّر، بحد أقصى ~1/ث. `downloads:done` (payload: `DoneItem`) — عند اكتمال ملف: اختفى مؤقت المتصفح وثبت حجم الملف النهائي ≥1.5s، أو ملف نامٍ ثبت حجمه ≥3s، أو اختفى تنزيل Steam بعد ≥95%. **حدث جديد:** `battery:update` (payload: نفس `battery_status`) — كل 30s أو فور تغيّر التوصيل، وفقط حين `showBattery`.
-- المراقبة: notify (ReadDirectoryChangesW) على `downloadsDir` (الافتراضي `%USERPROFILE%\Downloads`) غير تعاودي؛ المؤقتات `.crdownload/.part/.opdownload/.partial`؛ يُتجاهل `.tmp` وعناصر `downloadsIgnore` (`.ext`/`*.ext` امتداد، وغيرها جزء من الاسم)؛ `steamDownloads` يقرأ `steamapps/downloading` + `appmanifest_*.acf` (نسبة حقيقية من BytesDownloaded/BytesToDownload). **لا مسح ولا مراقبة إلا حين `showDownloads` أو `downloadsInPill`** (الافتراضي معطّلان). المتصفحات لا تكشف الحجم الكلي ⇒ `percent:null` (شريط غير محدّد + الحجم والسرعة)؛ Steam فقط له نسبة.
-- الواجهة: `showDownloads` ⇒ قسم في تبويب «الرئيسية»؛ `downloadsInPill` ⇒ الحبة تعرض أكبر تنزيل جارٍ (`⬇ 45%` إن عُرفت النسبة وإلا الحجم) بدل العنوان/الساعة؛ `showBattery` ⇒ نسبة البطارية في اللوحة وفي الحبة (لا شيء على أجهزة بلا بطارية).
+### مضاف في الجلسة 2.5 (battery.rs — حسب المخطط §7/battery؛ وحدة downloads.rs أُزيلت)
+- `battery_status()` → `{has_battery, percent|null, ac, charging}` — أمر جديد غير مذكور في العقد الأصلي (لقطة فورية عند تركيب الواجهة قبل أول حدث `battery:update`).
+- **أُزيلت ميزة التنزيلات بالكامل (INSERT F، بأمر المالك):** حُذفت وحدة `downloads.rs` والأمر `downloads_list` والحدثان `downloads:update`/`downloads:done` واعتماد `notify` ومفاتيح الإعدادات `showDownloads`/`downloadsInPill`/`steamDownloads`/`downloadsDir`/`downloadsIgnore`. لا بديل ولا تراجع صامت؛ إعادة الميزة تتطلب طلبًا جديدًا. القيم المخزّنة قديمًا لهذه المفاتيح في `kv` تُتجاهل (لا قارئ لها).
+- الواجهة: `showBattery` ⇒ بلاطة «البطارية» في الرئيسية (نسبة + حالة الشحن) وقسم البطارية التفصيلي في تبويب النظام وبطاقة النشاط الحي عند الشحن/الانخفاض؛ لا شيء على أجهزة بلا بطارية.
 
 ### مضاف في الجلسة 3.1 (files.rs + palette.rs — حسب المخطط §7/files-palette)
 - **الطبقة:** شريط الأوامر طبقة داخل نافذة `main` (لا نافذة خامسة — القاعدة 1): الحبة تتمدد إلى 640×440 وتأخذ الفوكس عند الفتح فقط (`take_focus`) وتعيده عند الإغلاق (`release_focus`).
@@ -204,8 +203,8 @@ lyrics_get(artist: String, title: String, album?: String, duration: f64 ثوان
 
 
 ### مضاف: عيون التميمة (mascot)
-- `mascot_active(active: bool)` — الواجهة (`Eyes.tsx`) تفعّل/توقف تتبّع المؤشر. **الخيط مركون (`park`) ما لم يكن مفعّلًا** ⇒ صفر استهلاك في Hidden (ملء الشاشة/الحبة مخفية/Eco/الحركة متوقفة/`eyesEnabled` مطفأ) وحين لا تكون الساعة هي المعروضة (ميديا/تنبيه/مؤقّت/تنزيل/تسجيل/لوحة مفتوحة).
-- **حدث `mascot:look`** (الخلفية → main، payload `{x, y, over, near}`): `x,y` = موضع المؤشر الحقيقي (`GetCursorPos`) في إحداثيات صفحة main بـCSS px (مقرَّبة لخطوتين، قد تكون سالبة/خارج النافذة) · `over` = المؤشر فوق الحبة (انضغاط سعيد) · `near` = ضمن 240px من مركز الحبة (هستيريسيس حتى 272px). يُبثّ عند التغيّر فقط؛ بين عيّنتين بعيدتين (نوم) لا يُبثّ شيء. استطلاع: 50ms قريبًا، 400ms بعيدًا (قراءة نظام واحدة بلا JS).
+- `mascot_active(active: bool)` — الواجهة (`Eyes.tsx`) تفعّل/توقف تتبّع المؤشر. **الخيط مركون (`park`) ما لم يكن مفعّلًا** ⇒ صفر استهلاك في Hidden (ملء الشاشة/الحبة مخفية/Eco/الحركة متوقفة/`eyesEnabled` مطفأ) وحين لا تكون الساعة هي المعروضة (ميديا/تنبيه/مؤقّت/تسجيل/لوحة مفتوحة).
+- **حدث `mascot:look`** (الخلفية → main، payload `{cx, cy, wx, wy, s, over, near}`) — **تغيّر العقد في INSERT F**: `cx,cy` = موضع المؤشر الحقيقي (`GetCursorPos`) بالبكسل **الفيزيائي** على الشاشة · `wx,wy` = أصل **منطقة محتوى** نافذة main (`inner_position`، لا الخارجية) بالفيزيائي · `s` = معامل DPI لشاشة النافذة (فيزيائي ÷ منطقي) · `over` = المؤشر فوق الحبة (انضغاط سعيد) · `near` = ضمن 240px منطقيًا من مركز الحبة (هستيريسيس حتى 272px). لا تحويل ولا تقريب في الخلفية؛ الواجهة تحوّل مرة واحدة: `(cx−wx)/s` ⇒ إحداثيات الصفحة (`src/eyes.ts::toPage`)، ثم النظرة نسبةً إلى مركز العينين الفعلي، ثم تقريب لبكسل فيزيائي كامل (`snapPx`). يُبثّ عند التغيّر فقط؛ بين عيّنتين بعيدتين (نوم) لا يُبثّ شيء. استطلاع: 50ms قريبًا، 400ms بعيدًا (قراءة نظام واحدة بلا JS).
 - الإعداد `eyesEnabled` (افتراضيه `true`) — قسم «الميديا والمظهر» في الإعدادات.
 
 ### مضاف: الزجاج الحقيقي (backdrop)

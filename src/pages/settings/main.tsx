@@ -233,14 +233,7 @@ function App() {
         </Row>
       </Section>
 
-      <Section title={i("التنزيلات والبطارية والشبكة", "Downloads, battery & network")}>
-        <SubHead>{i("التنزيلات", "Downloads")}</SubHead>
-        <Row label={i("إظهار التنزيلات", "Show downloads")}>
-          <Toggle label={i("إظهار التنزيلات", "Show downloads")} value={s.showDownloads ?? false} onChange={(v) => saveSettings({ showDownloads: v })} />
-        </Row>
-        <Row label={i("التنزيلات في الحبة", "Downloads in pill")}>
-          <Toggle label={i("التنزيلات في الحبة", "Downloads in pill")} value={s.downloadsInPill ?? false} onChange={(v) => saveSettings({ downloadsInPill: v })} />
-        </Row>
+      <Section title={i("البطارية والشبكة", "Battery & network")}>
         <SubHead>{i("البطارية", "Battery")}</SubHead>
         <Row label={i("إظهار البطارية", "Show battery")}>
           <Toggle label={i("إظهار البطارية", "Show battery")} value={s.showBattery ?? false} onChange={(v) => saveSettings({ showBattery: v })} />

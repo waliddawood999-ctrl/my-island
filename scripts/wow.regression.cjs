@@ -99,17 +99,17 @@ const pxNum = (v) => parseFloat(v);
     ok("priority: no page errors", errs.length === 0, JSON.stringify(errs));
     await ctx.close(); }
 
-  // 4) تنزيل: بطاقة + شريط مراحل + نسبة؛ لا أزرار وهمية
-  { const dl = { active: [{ id: "1", name: "movie.mkv", size: 600e6, total: 1000e6, percent: 60, speed: 5e6, source: "browser" }], recent: [] };
-    const { ctx, page, errs } = await fresh(browser, { dl, settings: { showDownloads: true, downloadsInPill: true } });
-    await page.waitForTimeout(700);
-    ok("download: compact capsule with accent state", await hasTest(page, "capsule-dl"));
+  // 4) التنزيلات أُزيلت بأمر المالك: لا كبسولة ولا بطاقة ولا قسم ولا أمر IPC ولا حدث — حتى لو بُثّ downloads:update قديم
+  { const { ctx, page, errs } = await fresh(browser, { settings: { showDownloads: true, downloadsInPill: true } });
+    await page.waitForTimeout(500);
+    await emit(page, "downloads:update", { active: [{ id: "1", name: "movie.mkv", size: 600e6, total: 1000e6, percent: 60, speed: 5e6, source: "browser" }], recent: [] });
+    await page.waitForTimeout(500);
+    ok("downloads removed: no capsule-dl in the pill", !(await hasTest(page, "capsule-dl")));
     await open(page);
-    ok("download: card with stage bar", await hasTest(page, "activity-dl") && (await page.getByRole("listitem").count()) === 4);
-    const nowOnes = await page.locator('[role=listitem][aria-label$="now"]').count();
-    ok("stage bar: exactly one lit current stage (60% ⇒ stage 3)", nowOnes === 1 && (await page.locator('[role=listitem][aria-label$="done"]').count()) === 2);
-    await shot(page, "panel-dl");
-    ok("download: no page errors", errs.length === 0, JSON.stringify(errs));
+    const txt = await page.evaluate(() => document.body.innerText + " " + document.body.innerHTML);
+    ok("downloads removed: no download card / section / text on Home or pill", !(await hasTest(page, "activity-dl")) && !/download|تنزيل|movie\.mkv/i.test(txt), txt.match(/.{0,30}(download|تنزيل).{0,30}/i)?.[0]);
+    ok("downloads removed: no downloads_list IPC call", (await calls(page, "downloads_list")).length === 0);
+    ok("downloads removed: no page errors", errs.length === 0, JSON.stringify(errs));
     await ctx.close(); }
 
   // 5) بطارية: قالب النسبة الضخمة + منحنى مصغّر بعد عيّنات كافية
@@ -213,14 +213,12 @@ const pxNum = (v) => parseFloat(v);
     await ctx.close();
   }
 
-  // 10) تحميل ثقيل: ثبات مع تدفّق تحديثات (تنزيل يتحدّث 30 مرة) — لا أخطاء ولا تسرّب مؤقّتات
-  { const dl = { active: [{ id: "1", name: "a.zip", size: 1e6, total: 1e8, percent: 1, speed: 1e6, source: "browser" }], recent: [] };
-    const { ctx, page, errs } = await fresh(browser, { dl, settings: { showDownloads: true, downloadsInPill: true } });
+  // 10) تحميل ثقيل: ثبات مع تدفّق تحديثات (بطارية تتحدّث 30 مرة) — لا أخطاء ولا فيض
+  { const { ctx, page, errs } = await fresh(browser, { battery: { has_battery: true, percent: 40, ac: true, charging: true, remaining_min: 55, bt: [] }, settings: { showBattery: true, eyesEnabled: false } });
     await open(page);
-    await page.evaluate(() => { window.__count = true; window.__timers = 0; });
-    for (let n = 2; n <= 30; n++) await emit(page, "downloads:update", { active: [{ id: "1", name: "a.zip", size: n * 1e6, total: 1e8, percent: n, speed: 1e6, source: "browser" }], recent: [] });
+    for (let n = 41; n <= 70; n++) await emit(page, "battery:update", { has_battery: true, percent: n, ac: true, charging: true, remaining_min: 55, bt: [] });
     await page.waitForTimeout(1500);
-    ok("30 rapid download updates: no errors, panel still laid out", errs.length === 0 && (await overflowX(page)) === 0, JSON.stringify(errs));
+    ok("30 rapid battery updates: no errors, panel still laid out", errs.length === 0 && (await overflowX(page)) === 0, JSON.stringify(errs));
     await ctx.close(); }
 
   // 11) ترتيب الإعدادات: المجموعات بالترتيب المطلوب، كل المفاتيح القديمة قائمة، التنقّل يعمل، بلا فيض أفقي
@@ -232,7 +230,7 @@ const pxNum = (v) => parseFloat(v);
     const groups = await page.locator("h2").allTextContents();
     ok("settings: group order = General → Appearance & media → Modules → Performance", JSON.stringify(groups) === JSON.stringify(["General", "Appearance & media", "Modules", "Performance & saving"]), JSON.stringify(groups));
     const secs = await page.locator("h3").allTextContents();
-    ok("settings: sections in the intended order", JSON.stringify(secs) === JSON.stringify(["Startup & position", "Behavior", "Media & appearance", "Today & prayer", "Downloads, battery & network", "Clipboard", "System & privacy", "Meetings", "Capture & recording", "Command palette", "My time & breaks", "Performance & saving"]), JSON.stringify(secs));
+    ok("settings: sections in the intended order", JSON.stringify(secs) === JSON.stringify(["Startup & position", "Behavior", "Media & appearance", "Today & prayer", "Battery & network", "Clipboard", "System & privacy", "Meetings", "Capture & recording", "Command palette", "My time & breaks", "Performance & saving"]), JSON.stringify(secs));
     ok("settings: all 12 sections reachable (9 original + Today & prayer, System & privacy, Meetings restored from L1/L3/L4)", (await page.locator("section").count()) === 12);
     ok("settings: new toggles exist in their thematic sections", (await page.getByRole("switch", { name: "Browser tab mode" }).count()) === 1 && (await page.getByRole("switch", { name: "Network speed in the pill" }).count()) === 1);
     ok("settings: Browser tab mode sits in «Media & appearance»", await page.evaluate(() => [...document.querySelectorAll("section")].find((x) => x.querySelector("h3")?.textContent === "Media & appearance")?.querySelector('[aria-label="Browser tab mode"]') != null));

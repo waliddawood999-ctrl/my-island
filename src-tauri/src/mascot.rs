@@ -18,16 +18,22 @@ const PILL_H: f64 = 32.0;
 
 #[derive(Serialize, Clone, Debug, PartialEq)]
 pub struct Look {
-    /// موضع المؤشر في إحداثيات صفحة نافذة main (CSS px، قد يكون سالبًا/خارج النافذة).
-    pub x: i32,
-    pub y: i32,
+    /// موضع المؤشر على الشاشة بالبكسل الفيزيائي (GetCursorPos؛ العملية Per-Monitor-DPI فلا تحويل صامت من ويندوز).
+    pub cx: i32,
+    pub cy: i32,
+    /// أصل منطقة محتوى نافذة main (الداخلية لا الخارجية) على الشاشة بالفيزيائي — مرجع كل الإحداثيات.
+    pub wx: i32,
+    pub wy: i32,
+    /// معامل DPI للشاشة التي تقع عليها النافذة (فيزيائي ÷ منطقي). التحويل إلى CSS px يتم مرة واحدة في eyes.ts::toPage.
+    pub s: f64,
     /// المؤشر فوق الحبة نفسها (مستطيل النافذة).
     pub over: bool,
     /// ضمن نطاق الاستيقاظ (مع هستيريسيس).
     pub near: bool,
 }
 
-/// cur: موضع المؤشر على الشاشة (فيزيائي) · win: (x,y,w,h) فيزيائي للنافذة · scale: معامل DPI.
+/// cur: موضع المؤشر على الشاشة (فيزيائي) · win: (x,y,w,h) فيزيائي لمنطقة محتوى النافذة · scale: معامل DPI.
+/// over/near تُحسبان هنا بالإحداثيات المنطقية نفسها التي تستعملها الواجهة (cur − win) ÷ scale بلا تقريب.
 pub fn look(cur: (i32, i32), win: (i32, i32, u32, u32), scale: f64, was_near: bool) -> Look {
     let s = if scale > 0.0 { scale } else { 1.0 };
     let (wx, wy, ww, wh) = win;
@@ -39,9 +45,7 @@ pub fn look(cur: (i32, i32), win: (i32, i32, u32, u32), scale: f64, was_near: bo
     let (dx, dy) = (x - w / 2.0, y - PILL_H / 2.0);
     let dist = (dx * dx + dy * dy).sqrt();
     let near = if was_near { dist <= FAR_PX } else { dist <= NEAR_PX };
-    // تقريب لخطوتين px: يكفي للتتبّع ويقلّل الأحداث المكرّرة.
-    let q = |v: f64| ((v / 2.0).round() * 2.0) as i32;
-    Look { x: q(x), y: q(y), over, near }
+    Look { cx: cur.0, cy: cur.1, wx, wy, s, over, near }
 }
 
 /// فاصل الاستطلاع (ms): قريب ⇒ سلس · بعيد ⇒ استطلاع إيقاظ هادئ.
@@ -78,7 +82,8 @@ fn sample(app: &AppHandle, was_near: bool) -> Option<Look> {
         return None;
     }
     let w = app.get_webview_window(crate::win::MAIN)?;
-    let (p, s) = (w.outer_position().ok()?, w.outer_size().ok()?);
+    // الداخلية (منطقة المحتوى) لا الخارجية: إحداثيات الصفحة تبدأ من محتوى النافذة، وأي إطار/ظلّ خارجي كان يزيح التتبّع.
+    let (p, s) = (w.inner_position().ok()?, w.inner_size().ok()?);
     Some(look(cursor_pos()?, (p.x, p.y, s.width, s.height), w.scale_factor().unwrap_or(1.0), was_near))
 }
 
@@ -126,20 +131,32 @@ mod tests {
     // نافذة 200×32 عند (860,0) بمقياس 1.
     const W: (i32, i32, u32, u32) = (860, 0, 200, 32);
 
+    /// ما تفعله الواجهة (eyes.ts::toPage) — لمطابقة الخلفية: (cur − win) ÷ s.
+    fn page(l: &Look) -> (f64, f64) {
+        ((l.cx - l.wx) as f64 / l.s, (l.cy - l.wy) as f64 / l.s)
+    }
+
     #[test]
-    fn over_and_relative_coords() {
+    fn over_and_raw_physical_payload() {
         let l = look((960, 16), W, 1.0, false);
         assert!(l.over && l.near);
-        assert_eq!((l.x, l.y), (100, 16));
+        assert_eq!((l.cx, l.cy, l.wx, l.wy), (960, 16, 860, 0));
+        assert_eq!(page(&l), (100.0, 16.0));
         assert!(!look((960, 200), W, 1.0, false).over);
     }
 
     #[test]
-    fn dpi_scale_to_css() {
+    fn dpi_scale_to_css_per_monitor() {
         // مقياس 2: نافذة 400×64 فيزيائيًا؛ المؤشر عند منتصفها = (100,16) CSS.
         let l = look((860 + 200, 32), (860, 0, 400, 64), 2.0, false);
-        assert_eq!((l.x, l.y), (100, 16));
+        assert_eq!(page(&l), (100.0, 16.0));
         assert!(l.over);
+        // مقياس 1.25 (شاشة ثانوية): بلا تقريب — 1.25 فيزيائي = 1 CSS بالضبط.
+        let l = look((1000 + 125, 40), (1000, 0, 250, 40), 1.25, false);
+        assert_eq!(page(&l), (100.0, 32.0));
+        // نافذة على شاشة بإحداثيات سالبة (يسار الرئيسية).
+        let l = look((-1500 + 150, 30), (-1500, 0, 300, 60), 1.5, false);
+        assert_eq!(page(&l), (100.0, 20.0));
     }
 
     #[test]

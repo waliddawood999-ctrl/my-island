@@ -5,7 +5,7 @@ import { ClipboardPaste, File as FileIcon, Folder, Trash2 } from "lucide-react";
 import { dur, ease, MAX_STAGGER_ITEMS, spring, stagger, tap } from "../../motion";
 import { LottieIcon } from "../../lottie";
 import { i } from "../../i18n";
-import { fmtBytes } from "../../useDownloads";
+import { fmtBytes } from "../../format";
 import type { ShelfItem } from "../../useShelf";
 
 /** ذاكرة أيقونات الصدفة (palette_icon) لكل مسار — تُجلب مرة واحدة. */

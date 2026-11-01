@@ -4,7 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 import { animate, AnimatePresence, motion, useMotionValue, useTransform } from "motion/react";
 import { dur, ease, eyeBlink, spring, useEco, useMotionLevel } from "../../motion";
 import { i } from "../../i18n";
-import { BLINK_X, blinkDelay, eyeMode, eyeOffset, eyesHidden, GAP, GEOM, POSES, type EyeMode, type Look } from "../../eyes";
+import { BLINK_X, blinkDelay, eyeMode, eyesHidden, gazeOffset, GAP, GEOM, POSES, type EyeMode, type Look } from "../../eyes";
 
 /** هل الصفحة ظاهرة؟ (مخفية ⇒ لا تتبّع ولا مؤقّتات.) */
 function usePageVisible(): boolean {
@@ -69,8 +69,9 @@ function EyePair({ tracking, k }: { tracking: boolean; k: number }) {
       if (m !== modeRef.current) { modeRef.current = m; setMode(m); }
       const r = root.current?.getBoundingClientRect();
       if (!r) return;
-      // نائم/سعيد: تستقر العيون في مكانها؛ المستيقظ ينزلق نحو المؤشر الحقيقي.
-      const off = m === "awake" ? eyeOffset(l.x - (r.left + r.width / 2), l.y - (r.top + r.height / 2), 32 * k) : { x: 0, y: 0 };
+      // مركز العينين الفعلي على الصفحة = مستطيل العنصر مطروحًا منه إزاحة الانزلاق الحالية (ox/oy) كي لا تتغذّى الإزاحة على نفسها.
+      // نائم/سعيد: تستقر العيون في مكانها؛ المستيقظ ينزلق نحو المؤشر الحقيقي (بكسلات فيزيائية كاملة).
+      const off = m === "awake" ? gazeOffset(l, { x: r.left + r.width / 2 - ox.get(), y: r.top + r.height / 2 - oy.get() }, 32 * k) : { x: 0, y: 0 };
       animate(ox, off.x, spring.eye);
       animate(oy, off.y, spring.eye);
     });

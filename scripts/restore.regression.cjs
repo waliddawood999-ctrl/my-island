@@ -42,7 +42,10 @@ const SECRET_URL = "https://calendar.google.com/calendar/ical/secret-token-123/b
     const { ctx, page, errs } = await fresh(browser, { extra: { today_get: TODAY, today_cities: [TODAY.city], weather_get: WEATHER } });
     await open(page);
     const t = await body(page);
-    ok("اليوم: قسم الصلاة القادمة + 6 مواقيت", /Next prayer/.test(t) && /Fajr|Dhuhr|Asr|Maghrib|Isha/.test(t), t.slice(0, 160));
+    ok("اليوم: الرئيسية = بلاطة الصلاة القادمة فقط (لا قائمة المواقيت الكاملة)", (await page.locator('[data-testid="tile-prayer"]').count()) === 1 && !/Fajr.*Sunrise|Maghrib.*Isha/.test(t) && !/Next prayer/.test(t), t.slice(0, 160));
+    await tab(page, "System");
+    const sys = await body(page);
+    ok("اليوم: قائمة المواقيت الكاملة في تبويب النظام (6 مواقيت)", ["Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha"].every((n) => sys.includes(n)), sys.slice(0, 200));
     ok("اليوم: today_get استُدعي", (await nCalls(page, "today_get")) >= 1);
     ok("اليوم: بلا طقس ما دام showWeather مطفأ (لا weather_get)", (await nCalls(page, "weather_get")) === 0);
     await shot(page, "today");
@@ -53,13 +56,13 @@ const SECRET_URL = "https://calendar.google.com/calendar/ical/secret-token-123/b
     const { ctx, page } = await fresh(browser, { settings: { showWeather: true }, extra: { today_get: TODAY, today_cities: [TODAY.city], weather_get: WEATHER } });
     await open(page);
     ok("اليوم: weather_get يُستدعى حين يُفعَّل showWeather", (await nCalls(page, "weather_get")) >= 1);
-    ok("اليوم: درجة الحرارة معروضة", /31/.test(await body(page)));
+    ok("اليوم: درجة الحرارة في بلاطة الطقس بالرئيسية", /31/.test(await page.locator('[data-testid="tile-weather"]').textContent().catch(() => "")));
     await ctx.close();
   }
   {
     const { ctx, page } = await fresh(browser, { settings: { showToday: false }, extra: { today_get: TODAY } });
     await open(page);
-    ok("اليوم: showToday=false ⇒ لا today_get ولا قسم", (await nCalls(page, "today_get")) === 0 && !/Next prayer/.test(await body(page)));
+    ok("اليوم: showToday=false ⇒ لا today_get ولا قسم", (await nCalls(page, "today_get")) === 0 && (await page.locator('[data-testid="tile-prayer"]').count()) === 0);
     await ctx.close();
   }
 
@@ -71,6 +74,7 @@ const SECRET_URL = "https://calendar.google.com/calendar/ical/secret-token-123/b
     const run = async (label, prayersList, settings, check) => {
       const { ctx, page, errs } = await fresh(browser, { settings, extra: { today_get: { ...TODAY, prayers: prayersList, next_day_at: t0 + 3 * 86400e3 }, today_cities: [TODAY.city] } });
       await open(page);
+      await tab(page, "System"); // «يومي» الكامل (ذهبية/عدّادات/ساعة عالمية) انتقل من الرئيسية إلى تبويب النظام
       await check(page);
       ok(`${label}: لا أخطاء صفحة`, errs.length === 0, errs.join("|"));
       await ctx.close();
@@ -256,7 +260,7 @@ const SECRET_URL = "https://calendar.google.com/calendar/ical/secret-token-123/b
     await open(page);
     await page.waitForTimeout(500);
     ok("Eco: الطقس مفعّل في الإعدادات لكن لا weather_get إطلاقًا", (await nCalls(page, "weather_get")) === 0);
-    ok("Eco: «اليوم» المحلي يعمل بلا شبكة (مواقيت الصلاة تُحسب)", (await nCalls(page, "today_get")) >= 1 && /Next prayer/.test(await body(page)));
+    ok("Eco: «اليوم» المحلي يعمل بلا شبكة (مواقيت الصلاة تُحسب)", (await nCalls(page, "today_get")) >= 1 && (await page.locator('[data-testid="tile-prayer"]').count()) === 1);
     await tab(page, "System");
     await page.waitForTimeout(4500);
     ok("Eco: لا sysinfo_get ولا sysdepth_get أثناء فتح تبويب النظام", (await nCalls(page, "sysinfo_get")) === 0 && (await nCalls(page, "sysdepth_get")) === 0);

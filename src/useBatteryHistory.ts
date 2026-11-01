@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { pushSample } from "./liveActivity";
-import type { Battery } from "./useDownloads";
+import type { Battery } from "./useBattery";
 
 export interface BatSample { t: number; v: number }
 const GAP_MS = 60_000;

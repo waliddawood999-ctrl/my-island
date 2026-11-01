@@ -123,7 +123,6 @@ html, body, #root {
 :root {
   --act-rec: #ff5a4f;
   --act-timer: #ffb224;
-  --act-dl: #2ec4b6;
   --act-media: #5ac8fa;
   --act-meeting: #4c8dff;
   --act-battery: #8bd450;
@@ -135,7 +134,6 @@ html, body, #root {
 :root[data-theme="light"] {
   --act-rec: #d92d20;
   --act-timer: #b45309;
-  --act-dl: #0f766e;
   --act-media: #0369a1;
   --act-meeting: #1d4ed8;
   --act-battery: #3f7d12;

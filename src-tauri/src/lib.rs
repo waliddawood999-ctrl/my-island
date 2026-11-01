@@ -12,7 +12,6 @@ pub mod media;      // SMTC: ما يُشغَّل الآن + التحكم
 pub mod spectrum;   // WASAPI loopback + FFT
 // pub mod player_audio;
 pub mod lyrics;     // LRCLIB
-pub mod downloads;  // مجلد التنزيلات + Steam (مدمج في الملف نفسه)
 pub mod battery;    // GetSystemPowerStatus
 pub mod capture;    // لقطات منطقة/شاشة + overlay
 pub mod recorder;   // Media Foundation (H.264) / GIF
@@ -62,7 +61,6 @@ pub fn run() {
         .manage(state::AppState::default())
         .manage(watchdog::WatchdogState::default())
         .manage(media::MediaState::default())
-        .manage(downloads::DownloadsState::default())
         .manage(files::FilesState::default())
         .manage(palette::PaletteState::default())
         .manage(capture::CaptureState::default())
@@ -107,7 +105,6 @@ pub fn run() {
                     clipboard::start(app.handle());
                     media::start(app.handle());
                     spectrum::start(app.handle());
-                    downloads::start(app.handle());
                     battery::start(app.handle());
                     attention::start(app.handle());
                     perf::start(app.handle());
@@ -165,7 +162,6 @@ pub fn run() {
             media::media_sources,
             media::media_now,
             lyrics::lyrics_get,
-            downloads::downloads_list,
             battery::battery_status,
             attention::attention_today,
             attention::attention_clear,

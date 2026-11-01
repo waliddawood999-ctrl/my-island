@@ -8,7 +8,7 @@ import { alertShake, dur, ease, paletteVariants, useMotionLevel, sectionVariants
 import { i } from "../../i18n";
 import { clampTint, useSettings } from "../../useSettings";
 import { useMedia } from "../../useMedia";
-import { fmtBytes, useBattery, useDownloads } from "../../useDownloads";
+import { useBattery } from "../../useBattery";
 import { activeKinds, clampLeadMin, compactWidth, fmtStopwatch, nextKind, shownKind, tabShape, type ActivityKind } from "../../liveActivity";
 import { useStopwatchNow } from "../../useStopwatch";
 import { useNetSpeed } from "../../useNetSpeed";
@@ -29,6 +29,7 @@ const makeNoteTab = () => lazy(importNote);
 import { fmtCountdown, TIMER_NEAR_MS, useNoteAlert, useTimer } from "../../useNote";
 import { MediaSection } from "./MediaSection";
 import { TodaySection } from "./TodaySection";
+import { HomeTiles } from "./HomeTiles";
 import { Liquid } from "./Liquid";
 import { Eyes } from "./Eyes";
 import { useBackdrop } from "./useBackdrop";
@@ -36,9 +37,8 @@ import { TabBoundary } from "./TabBoundary";
 import { rowReversed } from "../../eyes";
 import { Palette } from "./Palette";
 import { TabBar } from "./TabBar";
-import { BatteryChip, DownloadsSection } from "./DownloadsSection";
 import { AttentionSection } from "./AttentionSection";
-import { BatterySection, hasBatteryContent } from "./BatterySection";
+import { BatteryChip, BatterySection, hasBatteryContent } from "./BatterySection";
 import { useAttention } from "../../useAttention";
 import { SystemSection } from "./SystemSection";
 import { MeetingsTab } from "./MeetingsTab";
@@ -150,14 +150,11 @@ export function Pill() {
   const shelf = useShelf(shelfOn);
   const launcherOn = settings.moduleLauncher ?? true;
   const launcher = useLauncher(launcherOn);
-  const showDl = !!settings.showDownloads;
-  const dlInPill = !!settings.downloadsInPill;
   const showBat = !!settings.showBattery;
   const privacy = usePrivacy(!!settings.privacyIndicator);
   const meetingsOn = !!settings.showMeetings;
   const meetings = useMeetings(meetingsOn);
   const upMeeting = useUpcomingMeeting(meetingsOn, meetings.snap.items, clampLeadMin(settings.meetingLeadMin));
-  const dl = useDownloads(showDl || dlInPill);
   const battery = useBattery(showBat);
   const btOn = settings.btBatteries ?? true;
   const attentionOn = settings.attentionTracking ?? true;
@@ -172,9 +169,6 @@ export function Pill() {
   const [pinCap, setPinCap] = useState<ActivityKind | null>(null);
   const [pinPanel, setPinPanel] = useState<ActivityKind | null>(null);
   const lastPanAt = useRef(0);
-  // downloadsInPill: أكبر تنزيل جارٍ (نسبة إن عُرفت وإلا الحجم) تتقدم على عنوان الميديا.
-  const biggest = dlInPill ? [...dl.active].sort((a, b) => b.size - a.size)[0] : undefined;
-  const dlValue = biggest ? (biggest.percent != null ? `${Math.round(biggest.percent)}%` : fmtBytes(biggest.size)) : null;
   // التسجيل: نقطة حمراء + مؤقّت في الحبة المنكمشة؛ النقر عليها (منكمشة) يوقف التسجيل.
   const rec = useRecording();
   // ملاحظة/تذكيرات/مؤقّت: التنبيه (island:note) والمؤقّت القريب يظهران في الحبة المنكمشة.
@@ -188,16 +182,16 @@ export function Pill() {
   const lowBat = showBat && !!battery?.has_battery && battery.percent != null && battery.percent <= 20 && !battery.ac;
   const chargingBat = showBat && !!battery?.has_battery && battery.percent != null && (battery.charging || lowBat);
   const capKinds = activeKinds({
-    rec: rec.recording, timer: timerNear, stopwatch: sw.running, dl: !!biggest, media: !!pillTitle, meeting: !!upMeeting, battery: lowBat, net: netOn && net !== null,
+    rec: rec.recording, timer: timerNear, stopwatch: sw.running, media: !!pillTitle, meeting: !!upMeeting, battery: lowBat, net: netOn && net !== null,
   });
   const shownCap = shownKind(capKinds, pinCap);
   const panelKinds = activeKinds({
     rec: rec.recording, timer: timer !== null && remaining !== null && remaining > 0, stopwatch: sw.running || sw.acc > 0,
-    dl: (showDl || dlInPill) && dl.active.length > 0, media: moduleMedia && media.info.session, meeting: !!upMeeting, battery: chargingBat,
+    media: moduleMedia && media.info.session, meeting: !!upMeeting, battery: chargingBat,
   });
   const shownPanel = shownKind(panelKinds, pinPanel);
   const liveData: LiveData = {
-    rec: { recording: rec.recording, elapsed: rec.elapsed }, timer, remaining, dl, media, showLyrics: !!(settings.lyricsInHome || settings.lyricsInPlayer),
+    rec: { recording: rec.recording, elapsed: rec.elapsed }, timer, remaining, media, showLyrics: !!(settings.lyricsInHome || settings.lyricsInPlayer),
     battery, batteryHist: batHist, meeting: upMeeting,
   };
   const cycleCap = () => setPinCap(nextKind(capKinds, shownCap));
@@ -507,8 +501,6 @@ export function Pill() {
                 <CapsuleSplit kind="timer" k={k} dots={dots} left={timer?.label || i("المؤقّت", "Timer")} value={fmtCountdown(remaining)} />
               ) : pillKey === "stopwatch" ? (
                 <CapsuleSplit kind="stopwatch" k={k} dots={dots} left={i("ساعة إيقاف", "Stopwatch")} value={fmtStopwatch(swMs, false)} />
-              ) : pillKey === "dl" && biggest ? (
-                <CapsuleSplit kind="dl" k={k} dots={dots} left={biggest.name} value={dlValue} />
               ) : pillKey === "media" && pillTitle ? (
                 <CapsuleSplit
                   kind="media" k={k} dots={dots}
@@ -616,9 +608,9 @@ export function Pill() {
                 className="flex min-h-0 flex-1 flex-col pt-3"
               >
                 {curTab === "home" && (
-                  <div className="flex min-h-0 flex-1 flex-row" style={{ gap: "var(--island-section-gap)" }}>
+                  // بطاقة النشاط الحي الأعلى أولوية تتصدّر الرئيسية (أو حالة الميديا الفارغة)؛ تحتها صف بلاطات «لمحة» الشرطية. لا شيء آخر.
+                  <div className="flex min-h-0 flex-1 flex-col" style={{ gap: "var(--island-section-gap)" }}>
                     {(shownPanel || moduleMedia) && (
-                      // بطاقة النشاط الحي الأعلى أولوية تتصدّر الرئيسية؛ بلا نشاط ⇒ حالة الميديا الفارغة كما كانت. الأقسام القائمة تحتها/بجانبها بترتيب ثابت.
                       <motion.div custom={0} variants={sectionVariants} initial="initial" animate="animate" className="min-h-0 min-w-0 flex-1">
                         {shownPanel ? (
                           <ActivityStack kinds={panelKinds} shown={shownPanel} onPin={setPinPanel} data={liveData} />
@@ -627,22 +619,7 @@ export function Pill() {
                         )}
                       </motion.div>
                     )}
-                    {(settings.showToday ?? true) && (
-                      <motion.div custom={1} variants={sectionVariants} initial="initial" animate="animate" className="min-h-0 w-56 shrink-0 overflow-y-auto border-s border-white/10 ps-3">
-                        <TodaySection settings={settings} />
-                      </motion.div>
-                    )}
-                    {(showDl || (showBat && hasBatteryContent(battery, btOn)) || (attentionOn && attention?.enabled)) && (
-                      <motion.div custom={1} variants={sectionVariants} initial="initial" animate="animate" className="flex min-h-0 w-60 shrink-0 flex-col gap-3 overflow-y-auto border-s border-white/10 ps-3">
-                        {showDl && (
-                          <div className="min-h-[56px] flex-1">
-                            <DownloadsSection snap={dl} battery={null} showDownloads />
-                          </div>
-                        )}
-                        {showBat && <BatterySection b={battery} tip={settings.batteryTip ?? true} btOn={btOn} />}
-                        {attentionOn && <AttentionSection snap={attention} />}
-                      </motion.div>
-                    )}
+                    <HomeTiles settings={settings} meetings={meetings.snap.items} battery={battery} liveShown={shownPanel} />
                   </div>
                 )}
                 {curTab === "note" && (
@@ -669,8 +646,12 @@ export function Pill() {
                   </div>
                 )}
                 {curTab === "system" && (
-                  <div className="min-h-0 flex-1 overflow-y-auto">
+                  <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
                     <SystemSection showVolume={settings.showVolume ?? true} />
+                    {/* ما خرج من الرئيسية يعيش هنا: يومي الكامل (قائمة الصلوات…)، البطارية التفصيلية، «وقتي اليوم». */}
+                    {(settings.showToday ?? true) && <TodaySection settings={settings} />}
+                    {showBat && <BatterySection b={battery} tip={settings.batteryTip ?? true} btOn={btOn} />}
+                    {attentionOn && <AttentionSection snap={attention} />}
                   </div>
                 )}
                 {curTab === "clip" && (

@@ -4,19 +4,19 @@ import {
   animate, AnimatePresence, motion, useMotionValue, useTransform,
 } from "motion/react";
 import {
-  ArrowDown, ArrowUp, BatteryCharging, CalendarClock, Check, Download, Hourglass, Music, Pause, Play, RotateCcw, Timer as StopwatchIcon, Video, X, Zap,
+  ArrowDown, ArrowUp, BatteryCharging, CalendarClock, Hourglass, Music, Pause, Play, RotateCcw, Timer as StopwatchIcon, Video, X, Zap,
   type LucideIcon,
 } from "lucide-react";
 import { itemVariants, spring, swapVariants, tap } from "../../motion";
 import { i } from "../../i18n";
 import {
-  ACCENT, downloadStage, fmtSpeed, fmtStopwatch, secondaryKind, sparkPoints, stageStates, swipeDone, swipeProgress,
+  ACCENT, fmtSpeed, fmtStopwatch, secondaryKind, sparkPoints, swipeDone, swipeProgress,
   type ActivityKind, type UpcomingMeeting,
 } from "../../liveActivity";
 import { PROVIDER_NAME, type Meeting } from "../../useMeetings";
 import { fmtCountdown, type TimerState } from "../../useNote";
 import { fmtElapsed } from "../../useRecording";
-import { fmtBytes, type Battery, type DownloadItem, type DownloadsSnap } from "../../useDownloads";
+import type { Battery } from "../../useBattery";
 import type { MediaView } from "../../useMedia";
 import { stopwatch, useStopwatchNow } from "../../useStopwatch";
 import type { BatSample } from "../../useBatteryHistory";
@@ -28,7 +28,6 @@ export const KIND_META: Record<ActivityKind, { icon: LucideIcon; label: () => st
   rec: { icon: Video, label: () => i("تسجيل جارٍ", "Recording") },
   timer: { icon: Hourglass, label: () => i("مؤقّت", "Timer") },
   stopwatch: { icon: StopwatchIcon, label: () => i("ساعة إيقاف", "Stopwatch") },
-  dl: { icon: Download, label: () => i("تنزيل", "Download") },
   media: { icon: Music, label: () => i("الآن يعمل", "Now playing") },
   meeting: { icon: CalendarClock, label: () => i("اجتماع قريب", "Upcoming meeting") },
   battery: { icon: BatteryCharging, label: () => i("البطارية", "Battery") },
@@ -38,28 +37,6 @@ export const KIND_META: Record<ActivityKind, { icon: LucideIcon; label: () => st
 const accentStyle = (k: ActivityKind): CSSProperties => ({ ["--act" as string]: ACCENT[k] });
 
 // ───────────────────────────── مكوّنات الرسم الصغيرة ─────────────────────────────
-
-/** شريط مراحل أيقوني عام: منجز بلون التمييز · جارٍ مضيء (حلقة) · قادم باهت. */
-export function StageBar({ labels, current }: { labels: string[]; current: number }) {
-  const st = stageStates(labels.length, current);
-  return (
-    <div dir="ltr" role="list" className="flex items-center gap-1.5">
-      {labels.map((l, n) => (
-        <div key={n} role="listitem" aria-label={`${l} — ${st[n]}`} className="flex flex-1 flex-col items-center gap-1">
-          <motion.span
-            initial={false}
-            animate={{ opacity: st[n] === "next" ? 0.3 : 1, scale: st[n] === "now" ? 1.08 : 1 }}
-            transition={spring.content}
-            className={`act-badge h-5 w-5 ${st[n] === "now" ? "ring-2 ring-[var(--act)]" : ""} ${st[n] === "done" ? "!bg-[var(--act)] !text-black" : ""}`}
-          >
-            {st[n] === "done" ? <Check size={12} strokeWidth={2.5} /> : <span className="h-1.5 w-1.5 rounded-full bg-current" />}
-          </motion.span>
-          <span className="text-[10px] tabular-nums text-white/50">{l}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 /** سحب للتأكيد (بالماوس) لإجراء حساس: المقبض ينزلق على المسار ويُنفَّذ عند ≥90%، وإلا يعود بنابض. Enter على المقبض بديل لوحة المفاتيح. */
 export function SwipeConfirm({ label, onConfirm, icon: Icon = X }: { label: string; onConfirm: () => void; icon?: LucideIcon }) {
@@ -211,38 +188,6 @@ function StopwatchCard() {
   );
 }
 
-const dlLabels = ["25", "50", "75", "100"];
-
-function DownloadCard({ dl }: { dl: DownloadsSnap }) {
-  const list = [...dl.active].sort((a, b) => b.size - a.size);
-  const d: DownloadItem | undefined = list[0];
-  if (!d) return null;
-  const stage = downloadStage(d.percent);
-  return (
-    <ActivityShell
-      kind="dl"
-      right={list.length > 1 ? <span className="act-badge h-5 px-2 text-[11px] tabular-nums">+{list.length - 1}</span> : undefined}
-      footer={<StageBar labels={dlLabels} current={stage} />}
-    >
-      <div className="flex flex-1 flex-col justify-center gap-2">
-        <div dir="auto" className="truncate text-[14px] font-semibold">{d.name}</div>
-        <div className="flex items-baseline gap-3">
-          <span dir="ltr" className={big}>{d.percent != null ? `${Math.round(d.percent)}%` : fmtBytes(d.size)}</span>
-          <span dir="ltr" className="text-[13px] tabular-nums text-white/60">
-            {d.total ? `${fmtBytes(d.size)} / ${fmtBytes(d.total)}` : ""}{d.speed > 0 ? ` · ${fmtBytes(d.speed)}/s` : ""}
-          </span>
-        </div>
-        <div className="act-bar-track h-2 overflow-hidden rounded-full">
-          <motion.div
-            initial={false} animate={{ scaleX: d.percent != null ? d.percent / 100 : 1, opacity: d.percent != null ? 1 : 0.5 }} transition={spring.content}
-            style={{ transformOrigin: "left" }} className="act-bar-fill h-full w-full rounded-full"
-          />
-        </div>
-      </div>
-    </ActivityShell>
-  );
-}
-
 /** قالب «نسبة ضخمة + وقت متبقٍّ + شريط سميك» للبطارية، مع منحنى مصغّر لسجلّ النسبة. */
 function BatteryCard({ b, hist }: { b: Battery; hist: BatSample[] }) {
   const pct = b.percent ?? 0;
@@ -336,7 +281,6 @@ export interface LiveData {
   rec: { recording: boolean; elapsed: number };
   timer: TimerState | null;
   remaining: number | null;
-  dl: DownloadsSnap;
   media: MediaView;
   showLyrics: boolean;
   battery: Battery | null;
@@ -349,7 +293,6 @@ function Card({ kind, d }: { kind: ActivityKind; d: LiveData }) {
     case "rec": return <RecCard elapsed={d.rec.elapsed} />;
     case "timer": return d.timer && d.remaining != null ? <TimerCard timer={d.timer} remaining={d.remaining} /> : null;
     case "stopwatch": return <StopwatchCard />;
-    case "dl": return <DownloadCard dl={d.dl} />;
     case "media": return <MediaCard media={d.media} showLyrics={d.showLyrics} />;
     case "meeting": return d.meeting ? <MeetingCard m={d.meeting} /> : null;
     case "battery": return d.battery ? <BatteryCard b={d.battery} hist={d.batteryHist} /> : null;
@@ -363,7 +306,6 @@ function secondaryValue(kind: ActivityKind, d: LiveData, swMs: number): string {
     case "rec": return fmtElapsed(d.rec.elapsed);
     case "timer": return d.remaining != null ? fmtCountdown(d.remaining) : "";
     case "stopwatch": return fmtStopwatch(swMs, false);
-    case "dl": { const x = d.dl.active[0]; return x?.percent != null ? `${Math.round(x.percent)}%` : String(d.dl.active.length); }
     case "media": return d.media.info.playing ? "▶" : "⏸";
     case "meeting": return d.meeting ? (d.meeting.state === "now" ? i("الآن", "Now") : `${d.meeting.minutes} ${i("د", "min")}`) : "";
     case "battery": return d.battery?.percent != null ? `${d.battery.percent}%` : "";

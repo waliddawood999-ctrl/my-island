@@ -1,8 +1,22 @@
-import { Battery as BatteryIcon, Bluetooth, Plug } from "lucide-react";
+import { Battery as BatteryIcon, BatteryCharging, Bluetooth, Plug } from "lucide-react";
 import { i } from "../../i18n";
 import { fmtDuration } from "../../useAttention";
-import type { Battery } from "../../useDownloads";
-import { BatteryChip } from "./DownloadsSection";
+import type { Battery } from "../../useBattery";
+
+/** نسبة البطارية (للوحة والحبة): أيقونة + % ، شحن/توصيل بأيقونة مختلفة. */
+export function BatteryChip({ b, size = 14 }: { b: Battery | null; size?: number }) {
+  if (!b || !b.has_battery || b.percent == null) return null;
+  const Icon = b.charging || b.ac ? BatteryCharging : BatteryIcon;
+  return (
+    <span
+      dir="ltr"
+      title={b.charging ? i("يشحن", "Charging") : b.ac ? i("موصول بالتيار", "Plugged in") : i("البطارية", "Battery")}
+      className={`inline-flex items-center gap-1 tabular-nums ${b.percent <= 20 && !b.ac ? "text-red-400" : ""}`}
+    >
+      <Icon size={size} />{b.percent}%
+    </span>
+  );
+}
 
 /** هل للقسم ما يُعرض؟ (جهاز مكتبي بلا بطارية لكن بأجهزة بلوتوث يعرض القائمة فقط). */
 export const hasBatteryContent = (b: Battery | null, btOn: boolean) =>
