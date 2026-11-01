@@ -239,6 +239,8 @@ const SECRET_URL = "https://calendar.google.com/calendar/ical/secret-token-123/b
     ok("اجتماع قريب: showMeetings=false ⇒ لا كبسولة ولا meetings_list", (await b.page.locator('[data-testid="capsule-meeting"]').count()) === 0 && (await nCalls(b.page, "meetings_list")) === 0);
     await b.ctx.close();
     const c = await fresh(browser, { settings: { showMeetings: true }, extra: { meetings_list: snap([]) } });
+    // ساعة الحبة تعيد جدولة نفسها عند حدّ كل دقيقة (استثناء موثّق): نقيس بعيدًا عن الحدّ كي لا يُحتسب مؤقّتها.
+    while ((s => s > 52 || s < 4)(new Date().getSeconds())) await c.page.waitForTimeout(500);
     await c.page.evaluate(() => { window.__count = true; window.__timers = 0; });
     await c.page.waitForTimeout(3000);
     ok("اجتماع قريب: لا اجتماعات قادمة ⇒ لا مؤقّتات جديدة (صفر كلفة خمول)", (await c.page.evaluate(() => window.__timers)) === 0);

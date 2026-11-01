@@ -38,6 +38,8 @@ const pxNum = (v) => parseFloat(v);
     const { ctx, page, errs } = await fresh(browser, { settings: { eyesEnabled: false } });
     await act(page);
     await page.waitForTimeout(800);
+    // ساعة الحبة تعيد جدولة نفسها عند حدّ كل دقيقة (استثناء موثّق): نقيس بعيدًا عن الحدّ كي لا يُحتسب مؤقّتها.
+    while ((s => s > 50 || s < 4)(new Date().getSeconds())) await page.waitForTimeout(500);
     await page.evaluate(() => { window.__count = true; window.__timers = 0; window.__raf = 0; });
     await page.waitForTimeout(4000);
     const c = await page.evaluate(() => ({ t: window.__timers, r: window.__raf }));
