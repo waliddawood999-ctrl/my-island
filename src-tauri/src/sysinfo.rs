@@ -25,6 +25,9 @@ pub fn cpu_percent(prev: Times, cur: Times) -> f32 {
     ((1.0 - idle as f64 / total as f64) * 100.0).clamp(0.0, 100.0) as f32
 }
 
+/// هل تُمنع عيّنة النظام الآن؟ (Eco فقط.)
+pub fn sample_blocked(eco: bool) -> bool { eco }
+
 pub fn mem_percent(used: u64, total: u64) -> f32 {
     if total == 0 { 0.0 } else { (used as f64 / total as f64 * 100.0).clamp(0.0, 100.0) as f32 }
 }
@@ -58,6 +61,8 @@ fn memory() -> (u64, u64) { (0, 0) }
 
 #[tauri::command]
 pub async fn sysinfo_get(state: tauri::State<'_, SysState>) -> Result<SysInfo, String> {
+    // وضع التوفير يوقف أخذ العيّنات فعليًا (لا قراءة GetSystemTimes ولا GlobalMemoryStatusEx ولا نوم 200ms).
+    if sample_blocked(crate::perf::eco()) { return Err("eco".into()); }
     let cur = times();
     let prev = *state.last.lock().unwrap();
     let cpu = match (cur, prev) {
@@ -85,6 +90,11 @@ mod tests {
         assert_eq!(cpu_percent((0, 0, 0), (0, 100, 100)), 100.0);
         assert_eq!(cpu_percent((10, 10, 10), (10, 10, 10)), 0.0);
         assert!(cpu_percent((100, 100, 100), (0, 0, 0)) == 0.0);
+    }
+    #[test]
+    fn eco_blocks_sampling() {
+        assert!(sample_blocked(true));
+        assert!(!sample_blocked(false));
     }
     #[test]
     fn mem() {

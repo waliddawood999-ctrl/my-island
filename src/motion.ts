@@ -196,12 +196,16 @@ export interface EcoStatus { eco: boolean; reason: "manual" | "battery" | null; 
 const ECO_OFF: EcoStatus = { eco: false, reason: null, onBattery: null };
 
 /** حالة وضع التوفير من الخلفية (perf_status + حدث perf:eco). */
+// آخر حالة معروفة على مستوى الوحدة: المكوّنات التي تُركَّب لاحقًا (تبويب النظام/«اليوم») تبدأ بالحالة الصحيحة
+// فلا تُطلق استدعاءً واحدًا قبل وصول perf_status (وأي استدعاء مبكر يردّه الحارس في الخلفية أيضًا).
+let LAST_ECO: EcoStatus = ECO_OFF;
 export function useEco(): EcoStatus {
-  const [st, setSt] = useState<EcoStatus>(ECO_OFF);
+  const [st, setSt] = useState<EcoStatus>(LAST_ECO);
   useEffect(() => {
     let alive = true;
-    invoke<EcoStatus>("perf_status").then((v) => { if (alive && v) setSt(v); }).catch(() => {});
-    const un = listen<EcoStatus>("perf:eco", (e) => setSt(e.payload));
+    const apply = (v: EcoStatus) => { LAST_ECO = v; if (alive) setSt(v); };
+    invoke<EcoStatus>("perf_status").then((v) => { if (v) apply(v); }).catch(() => {});
+    const un = listen<EcoStatus>("perf:eco", (e) => apply(e.payload));
     return () => { alive = false; un.then((f) => f()); };
   }, []);
   return st;

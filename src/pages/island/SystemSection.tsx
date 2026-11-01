@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { Cpu, MemoryStick, Sun, Volume1, Volume2, VolumeX } from "lucide-react";
 import { i } from "../../i18n";
 import { fmtBytes } from "../../useDownloads";
+import { useEco } from "../../motion";
 import { useBrightness, useSysinfo, useThrottled, useVolume } from "../../useSystem";
 
 function Meter({ icon, label, pct, detail, warn }: { icon: React.ReactNode; label: string; pct: number; detail: string; warn?: boolean }) {
@@ -22,7 +23,9 @@ function Meter({ icon, label, pct, detail, warn }: { icon: React.ReactNode; labe
 
 /** قسم «النظام»: المعالج والذاكرة (يُقاسان فقط ما دام هذا القسم مفتوحًا) + الصوت + سطوع الابتوب. */
 export function SystemSection({ showVolume }: { showVolume: boolean }) {
-  const sys = useSysinfo(true);
+  const { eco } = useEco();
+  // وضع التوفير يوقف قياس المعالج/الذاكرة (لا sysinfo_get)؛ عند إطفائه يعود القياس.
+  const sys = useSysinfo(!eco);
   const vol = useVolume(showVolume);
   const bri = useBrightness(true);
   const [volLocal, setVolLocal] = useState<number | null>(null);
@@ -40,7 +43,7 @@ export function SystemSection({ showVolume }: { showVolume: boolean }) {
       <div className="flex gap-3">
         <Meter
           icon={<Cpu size={16} />} label={i("المعالج", "CPU")} pct={sys?.cpu ?? 0} warn={(sys?.cpu ?? 0) >= 90}
-          detail={sys ? i("استخدام كلّي", "Total usage") : i("جارٍ القياس…", "Measuring…")}
+          detail={eco ? i("متوقف — وضع التوفير", "Paused — saving mode") : sys ? i("استخدام كلّي", "Total usage") : i("جارٍ القياس…", "Measuring…")}
         />
         <Meter
           icon={<MemoryStick size={16} />} label={i("الذاكرة", "Memory")} pct={sys?.mem_percent ?? 0} warn={(sys?.mem_percent ?? 0) >= 90}

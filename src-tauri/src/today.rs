@@ -293,6 +293,9 @@ pub struct Weather {
 
 static CACHE: Mutex<Option<(String, Weather)>> = Mutex::new(None);
 
+/// وضع التوفير يوقف الجلب الدوري للطقس: الشبكة مسموحة خارج Eco، أو داخله فقط بطلب صريح (`refresh=true`).
+pub fn weather_net_allowed(eco: bool, force: bool) -> bool { !eco || force }
+
 fn parse_weather(v: &Value, units: &str, city: &str, now: i64) -> Option<Weather> {
     let c = v.get("current")?;
     Some(Weather {
@@ -343,7 +346,15 @@ pub async fn weather_get(app: AppHandle, refresh: Option<bool>) -> Result<Weathe
     };
     let key = format!("{}:{units}", city.id);
     let force = refresh.unwrap_or(false);
+    let net = weather_net_allowed(crate::perf::eco(), force);
     tauri::async_runtime::spawn_blocking(move || {
+        if !net {
+            // Eco: لا شبكة — آخر قيمة مخزّنة لنفس المدينة/الوحدات إن وُجدت (أيًّا كان عمرها) وإلا «لا بيانات».
+            return match CACHE.lock().unwrap().as_ref() {
+                Some((k, w)) if *k == key => w.clone(),
+                _ => Weather::default(),
+            };
+        }
         if !force {
             if let Some((k, w)) = CACHE.lock().unwrap().as_ref() {
                 if *k == key && now_ms() - w.fetched_at < WEATHER_TTL_MS { return w.clone(); }
@@ -456,6 +467,14 @@ mod tests {
         let w = parse_weather(&v, "c", "riyadh", 5).unwrap();
         assert_eq!((w.temp, w.code, w.is_day, w.enabled), (31.4, 1, true, true));
         assert!(parse_weather(&json!({}), "c", "x", 0).is_none());
+    }
+
+    #[test]
+    fn eco_blocks_periodic_weather_only() {
+        assert!(weather_net_allowed(false, false));
+        assert!(weather_net_allowed(false, true));
+        assert!(!weather_net_allowed(true, false));
+        assert!(weather_net_allowed(true, true)); // طلب صريح من المستخدم يمرّ
     }
 
     #[test]

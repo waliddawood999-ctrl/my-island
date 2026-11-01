@@ -16,6 +16,9 @@ pub struct PrivacyState {
 /// قيد الاستخدام: بدأ ولم ينتهِ.
 pub fn in_use(start: u64, stop: u64) -> bool { start > 0 && stop == 0 }
 
+/// مؤشر الخصوصية ميزة أمان: في Eco يُخفَّف الفحص (15s) ولا يُوقَف.
+pub fn scan_interval_secs(eco: bool) -> u64 { if eco { 15 } else { 3 } }
+
 pub fn enabled(app: &AppHandle) -> bool {
     use tauri::Manager;
     app.state::<crate::state::AppState>().settings.lock().unwrap()
@@ -114,7 +117,7 @@ pub fn start(app: &AppHandle) {
     std::thread::spawn(move || {
         let mut last = PrivacyState::default();
         loop {
-            std::thread::sleep(std::time::Duration::from_secs(3));
+            std::thread::sleep(std::time::Duration::from_secs(scan_interval_secs(crate::perf::eco())));
             let hidden = *app.state::<crate::state::AppState>().hidden.lock().unwrap();
             let now = if enabled(&app) && !hidden { scan() } else if enabled(&app) { last.clone() } else { PrivacyState::default() };
             if now != last {
@@ -128,6 +131,11 @@ pub fn start(app: &AppHandle) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn eco_relaxes_scan() {
+        assert_eq!(scan_interval_secs(false), 3);
+        assert_eq!(scan_interval_secs(true), 15);
+    }
     #[test]
     fn usage() {
         assert!(in_use(133_000_000_000, 0));

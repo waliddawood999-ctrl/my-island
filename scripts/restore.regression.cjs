@@ -139,6 +139,37 @@ const SECRET_URL = "https://calendar.google.com/calendar/ical/secret-token-123/b
     await ctx.close();
   }
 
+  // ---- Eco: يوقف الطقس (L1) وقياس النظام (L3) فعليًا ثم تعود الدورات عند الإطفاء ----
+  {
+    const extra = { today_get: TODAY, today_cities: [TODAY.city], weather_get: WEATHER,
+      sysinfo_get: { cpu: 37, mem_used: 8e9, mem_total: 16e9, mem_percent: 50 }, volume_get: { available: true, volume: 0.4, muted: false }, brightness_get: { available: true, level: 60 } };
+    const { ctx, page, errs } = await fresh(browser, { eco: true, settings: { showWeather: true }, extra });
+    await open(page);
+    await page.waitForTimeout(500);
+    ok("Eco: الطقس مفعّل في الإعدادات لكن لا weather_get إطلاقًا", (await nCalls(page, "weather_get")) === 0);
+    ok("Eco: «اليوم» المحلي يعمل بلا شبكة (مواقيت الصلاة تُحسب)", (await nCalls(page, "today_get")) >= 1 && /Next prayer/.test(await body(page)));
+    await tab(page, "System");
+    await page.waitForTimeout(4500);
+    ok("Eco: لا sysinfo_get أثناء فتح تبويب النظام", (await nCalls(page, "sysinfo_get")) === 0);
+    ok("Eco: التبويب يعلن التوقف", /Paused/.test(await body(page)), (await body(page)).slice(0, 120));
+    await page.evaluate(() => window.__emit("perf:eco", { eco: false, reason: null, onBattery: null }));
+    await page.waitForTimeout(3500);
+    ok("Eco مطفأ: تعود دورة sysinfo_get (≥2 في 3.5s)", (await nCalls(page, "sysinfo_get")) >= 2, String(await nCalls(page, "sysinfo_get")));
+    await tab(page, "Home");
+    await page.waitForTimeout(600);
+    ok("Eco مطفأ: يعود الطقس (weather_get)", (await nCalls(page, "weather_get")) >= 1);
+    // ثم تشغيله ثانية: يتوقف التكرار الدوري فورًا
+    await page.evaluate(() => window.__emit("perf:eco", { eco: true, reason: "manual", onBattery: null }));
+    await page.waitForTimeout(300);
+    const w1 = await nCalls(page, "weather_get");
+    await tab(page, "System");
+    const s1 = await nCalls(page, "sysinfo_get");
+    await page.waitForTimeout(4500);
+    ok("Eco ثانية: لا استدعاءات جديدة للنظام ولا للطقس", (await nCalls(page, "sysinfo_get")) === s1 && (await nCalls(page, "weather_get")) === w1, `${s1}→${await nCalls(page, "sysinfo_get")} / ${w1}→${await nCalls(page, "weather_get")}`);
+    ok("Eco: لا أخطاء صفحة", errs.length === 0, errs.join("|"));
+    await ctx.close();
+  }
+
   // ---- الإعدادات: قسم الاجتماعات والنظام واليوم؛ الرابط لا يتسرب ----
   {
     const { ctx, page, errs } = await fresh(browser, { extra: { meetings_key_status: { set: false }, meetings_key_set: { set: true }, today_cities: [TODAY.city] } }, SURL);

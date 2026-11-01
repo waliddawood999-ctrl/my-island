@@ -2,6 +2,7 @@ import { Cloud, CloudDrizzle, CloudFog, CloudLightning, CloudRain, CloudSnow, Cl
 import { i } from "../../i18n";
 import { countdown, currentSlot, dateLines, fmtClock, nextPrayer, prayerLabel, weatherKind, weatherLabel, type Lang, type WeatherKind } from "../../today";
 import { useToday, useWeather } from "../../useToday";
+import { useEco } from "../../motion";
 import type { Settings } from "../../settings";
 
 const ICONS: Record<WeatherKind, typeof Sun> = {
@@ -13,7 +14,9 @@ export function TodaySection({ settings }: { settings: Partial<Settings> }) {
   const lang: Lang = settings.language === "en" ? "en" : "ar";
   const clock = settings.clockFormat ?? "auto";
   const { info, now } = useToday(settings.prayerCity);
-  const weather = useWeather(!!settings.showWeather, settings.prayerCity, settings.weatherUnits);
+  const { eco } = useEco();
+  // وضع التوفير يوقف جلب الطقس الدوري (لا weather_get أصلًا)؛ عند إطفائه تعود الدورة تلقائيًا.
+  const weather = useWeather(!!settings.showWeather && !eco, settings.prayerCity, settings.weatherUnits);
   const d = dateLines(now, lang);
   const next = info ? nextPrayer(info.prayers, now) : null;
   const slot = info ? currentSlot(info.prayers, now) : null;

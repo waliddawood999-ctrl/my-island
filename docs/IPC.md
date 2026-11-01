@@ -251,3 +251,10 @@ lyrics_get(artist: String, title: String, album?: String, duration: f64 ثوان
 - **التنبيه:** قبل 5 دقائق وعند البدء (≤90s) مرة واحدة لكل اجتماع عبر القناة نفسها **`island:note`** (`kind:"reminder"`، `id:"meeting:<id>"`) فتظهر في الحبة وبصوت `alertSound`؛ النص حسب `language`. (تغيير ظهور فقط: `note::alert` صارت `pub(crate)`.)
 - **ICS:** VEVENT؛ UTC وTZID (IANA وأسماء ويندوز الشائعة وإزاحة VTIMEZONE) والعائم؛ RRULE: DAILY/WEEKLY/MONTHLY/YEARLY مع INTERVAL/COUNT/UNTIL/BYDAY(+2TU/-1FR)/BYMONTHDAY/BYMONTH؛ EXDATE؛ RECURRENCE-ID؛ يُهمل CANCELLED وأحداث طوال اليوم. الرابط يُستخرج من LOCATION/DESCRIPTION/URL/X-ALT-DESC/CONFERENCE/X-GOOGLE-CONFERENCE/…
 - **الواجهة:** تبويب «الاجتماعات» (`MeetingsTab.tsx`، يظهر فقط مع `showMeetings`): مجموعات اليوم/غدًا/تاريخ، «الآن» للجاري، زر «انضمام» لكل اجتماع بلا ارتباط ⇒ لا زر؛ وقسم «الاجتماعات» في الإعدادات (حقل كلمة مرور لا يعرض القيمة المحفوظة + حفظ/حذف).
+
+### مضاف: ربط وضع التوفير (Eco) بـL1/L3/L4 — بلا أوامر جديدة
+- `weather_get(refresh?)` — في Eco: **لا جلب شبكة** ما لم يكن `refresh=true` (طلب صريح)؛ يعيد آخر قيمة مخزّنة لنفس المدينة/الوحدات (أيًّا كان عمرها) وإلا `{enabled:false}`. الواجهة (`TodaySection`) لا تستدعيه أصلًا أثناء Eco وتستأنف دورة 15 دقيقة عند إطفائه. (`today::weather_net_allowed`)
+- `sysinfo_get()` — في Eco: يرجع `Err("eco")` **بلا أي قراءة** (لا GetSystemTimes ولا GlobalMemoryStatusEx)؛ الواجهة (`SystemSection`) لا تُجري الدورة وتعرض «متوقف — وضع التوفير». (`sysinfo::sample_blocked`)
+- `meetings`: الجلب الدوري كل 15 دقيقة يتوقف في Eco؛ الجلب اليدوي (`meetings_refresh`) وإعادة الحساب المحلي وتنبيهات «بعد 5 دقائق/يبدأ الآن» من القائمة المخزّنة تبقى. (`meetings::periodic_fetch_allowed`)
+- `privacy.rs`: مؤشر المايك/الكاميرا ميزة أمان فلا يُوقَف في Eco بل يُخفَّف فحصه من 3s إلى 15s. (`privacy::scan_interval_secs`)
+- `useEco()` يحتفظ بآخر حالة معروفة على مستوى الوحدة كي لا يُطلق المكوّن المتأخّر استدعاءً قبل وصول `perf_status`.

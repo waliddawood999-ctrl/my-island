@@ -54,6 +54,9 @@ pub fn now_ms() -> i64 {
 }
 
 /// يقبل https:// أو webcal:// فقط؛ يعيد رابط https نظيفًا.
+/// هل يُجلب التقويم دوريًا الآن؟ Eco يوقف الجلب الدوري (الجلب اليدوي بزر التحديث يبقى).
+pub fn periodic_fetch_allowed(eco: bool) -> bool { !eco }
+
 pub fn normalize_url(input: &str) -> Result<String, String> {
     let t = input.trim();
     let t = match t.get(..9) {
@@ -185,7 +188,7 @@ fn tick(app: &AppHandle) {
         let wait = if g.error.is_some() { RETRY_MS } else { REFRESH_MS };
         (g.tried_at.map_or(true, |t| now - t >= wait), g.cal.is_some() && now - g.computed_at >= RECOMPUTE_MS)
     };
-    if need_fetch {
+    if need_fetch && periodic_fetch_allowed(crate::perf::eco()) {
         let _ = refresh(app);
     } else if need_recompute {
         recompute(&mut ms.inner.lock().unwrap(), now);
@@ -284,6 +287,12 @@ mod tests {
         assert_eq!(d3[0].kind, "0");
         // اقترب جدًا: دقيقة واحدة
         assert_eq!(due_alerts(&[m("x", now + 30_000)], &HashSet::new(), now)[0].minutes, 1);
+    }
+
+    #[test]
+    fn eco_stops_periodic_fetch() {
+        assert!(periodic_fetch_allowed(false));
+        assert!(!periodic_fetch_allowed(true));
     }
 
     #[test]
