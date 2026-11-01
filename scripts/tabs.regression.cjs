@@ -54,7 +54,7 @@ const bridge = (cfg) => `
 
 
 const URL = process.env.URL || 'http://localhost:4173/index.html';
-const MARK = { Home:'Nothing playing', Clipboard:'Clipboard is empty', Shelf:null, Launcher:null, Note:'Reminders', Tools:'Area shot', Chat:null };
+const MARK = { Home:'Nothing playing', Clipboard:'Clipboard is empty', Shelf:null, Launcher:null, Note:'Reminders', Tools:'Area shot' };
 const view = (page) => page.evaluate(() => { const b=document.querySelector('.island-body'); return b ? b.textContent.replace(/\s+/g,' ') : ''; });
 const sel = (page) => page.evaluate(() => [...document.querySelectorAll('[role=tab]')].find(t=>t.getAttribute('aria-selected')==='true')?.textContent);
 const fresh = async (browser, extra={}) => {
@@ -70,7 +70,8 @@ const fresh = async (browser, extra={}) => {
 const shows = async (page, name) => { const v=await view(page); const mine=MARK[name]; const others=Object.entries(MARK).filter(([k,m])=>k!==name&&m).map(([,m])=>m); return (mine?v.includes(mine):true) && others.every(m=>!v.includes(m)); };
 (async()=>{
  const browser=await chromium.launch();
- const names=['Home','Clipboard','Shelf','Launcher','Note','Tools','Chat'];
+ const names=['Home','Clipboard','Shelf','Launcher','Note','Tools'];
+ // Chat tab is hidden (CHAT_TAB_ENABLED=false in Pill.tsx); add 'Chat' back here + to MARK when re-enabled.
  // 1) كل تبويب بالتتابع يُظهر عرضه
  { const {ctx,page,errs}=await fresh(browser);
    const got=[]; for (const n of names) { await page.getByRole('tab',{name:n}).click(); await page.waitForTimeout(900); got.push([n, await sel(page)===n, await shows(page,n)]); }
