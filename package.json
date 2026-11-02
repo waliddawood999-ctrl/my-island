@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "tauri": "tauri",
+    "test": "npm run test:reminders && npm run test:palette && npm run test:motion && npm run test:eyes && npm run test:wow && npm run test:updater && npm run test:home && npm run test:today && npm run test:clip && npm run test:glass && npm run test:appearance && npm run test:island",
+    "test:ui": "npm run test:tabs && npm run test:updater-ui && npm run test:quit && npm run test:settings && npm run test:lottie && npm run test:shape && npm run test:t02 && npm run test:motion-ui && npm run test:t03 && npm run test:layout && npm run test:t06",
     "test:reminders": "node scripts/reminderParse.test.mjs",
     "test:palette": "node scripts/palette.test.mjs",
     "test:motion": "node scripts/motion.test.mjs",
@@ -27,7 +29,6 @@
     "test:t02": "node scripts/t02.regression.cjs",
     "test:motion-ui": "node scripts/motion.regression.cjs",
     "test:island": "node scripts/island.test.mjs",
-    "test:eyes-ui": "node scripts/eyes.regression.cjs",
     "test:t03": "node scripts/t03.regression.cjs",
     "test:layout": "node scripts/layout.regression.cjs",
     "test:t06": "node scripts/t06.regression.cjs"
