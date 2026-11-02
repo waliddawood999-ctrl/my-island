@@ -16,13 +16,17 @@ const open = async (browser, settings, media) => {
 };
 (async () => {
   const browser = await chromium.launch();
-  let { ctx, page, errs } = await open(browser, { panelTabsStyle: "dock" });
+  let { ctx, page, errs } = await open(browser, { panelTabsStyle: "dock", hotkeyArea: "Ctrl+Alt+A", hotkeyRecord: "Ctrl+Alt+R" });
   const ids = () => page.evaluate(() => [...document.querySelectorAll('[data-testid^="dock-"]')].map((e) => e.dataset.testid.slice(5)));
   const activeLabel = () => page.evaluate(() => { const a = document.querySelector('[data-testid^="dock-"][aria-selected="true"]'); return a ? a.getAttribute("aria-label") : null; });
   ok("dock shows five pages in order", JSON.stringify(await ids()) === JSON.stringify(["home", "capture", "clip", "apps", "work"]), JSON.stringify(await ids()));
   ok("home is active and the old top tab bar is gone", (await activeLabel()) === "Home" && (await page.locator('[role="tablist"]:not([data-testid])').count()) === 0);
   await page.click('[data-testid="dock-capture"]'); await page.waitForTimeout(700);
   ok("Capture page = the tools page (area shot button)", (await page.getByText("Area shot").count()) >= 1 && (await activeLabel()) === "Capture");
+  ok("Capture page shows each action's global hotkey under its button", (await page.getByText("Ctrl+Alt+A").count()) >= 1 && (await page.getByText("Ctrl+Alt+R").count()) >= 1);
+  await page.getByTestId("capture-note").click(); await page.waitForTimeout(700);
+  ok("'Quick note' opens the Note sub-tab inside Tools", (await activeLabel()) === "Tools" && (await page.locator('[data-testid="sub-tabs"] [aria-selected="true"]').innerText()) === "Note");
+  await page.click('[data-testid="dock-capture"]'); await page.waitForTimeout(500);
   await page.click('[data-testid="dock-work"]'); await page.waitForTimeout(700);
   ok("Tools page has sub-tabs (shelf · note · meetings · system)", (await page.locator('[data-testid="sub-tabs"] [role="tab"]').count()) >= 3);
   await page.locator('[data-testid="sub-tabs"] [role="tab"]').last().click(); await page.waitForTimeout(600);
