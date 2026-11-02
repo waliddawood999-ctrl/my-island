@@ -321,6 +321,10 @@ function App() {
           <Row icon={ic(Clock)} label={i("إظهار الساعة", "Show clock")} hint={i("يعرض الوقت داخل الحبة", "Shows the time inside the pill")}>
             <Toggle label={i("إظهار الساعة", "Show clock")} value={s.showClock ?? true} onChange={(v) => set({ showClock: v })} />
           </Row>
+          <Row icon={ic(Clock)} label={i("مكان الساعة في الحبة", "Clock position in the pill")} hint={i("تلقائي = الترتيب الحالي · يسار/يمين بجانب العيون · فوق/تحت (يحتاج ارتفاع حبة ≥ 34)", "Auto = current order · left/right beside the eyes · top/bottom (needs pill height ≥ 34)")}>
+            <Segmented label={i("مكان الساعة في الحبة", "Clock position in the pill")} value={s.clockPosition ?? "auto"} onChange={(v) => set({ clockPosition: v })}
+              options={[{ value: "auto", label: i("تلقائي", "Auto") }, { value: "left", label: i("يسار", "Left") }, { value: "right", label: i("يمين", "Right") }, { value: "top", label: i("فوق", "Top") }, { value: "bottom", label: i("تحت", "Bottom") }]} />
+          </Row>
           <Row icon={ic(Clock)} label={i("نظام الساعة", "Clock format")} hint={i("طريقة عرض الوقت في الحبة", "How the time is shown in the pill")}>
             <Segmented label={i("نظام الساعة", "Clock format")} value={s.clockFormat ?? "auto"} onChange={(v) => set({ clockFormat: v })}
               options={[{ value: "auto", label: i("تلقائي", "Auto") }, { value: "24", label: i("24 ساعة", "24-hour") }, { value: "12", label: i("12 ساعة", "12-hour") }]} />

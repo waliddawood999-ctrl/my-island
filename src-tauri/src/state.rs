@@ -28,6 +28,7 @@ pub fn defaults() -> Map<String, Value> {
         "language": "ar",
         "hoverDelayMs": 250,
         "clockFormat": "auto",
+        "clockPosition": "auto",
         "recordingFps": 30,
         "recordFormat": "mp4",
         "hotkeyPalette": "Alt+Space",

@@ -20,6 +20,7 @@ export interface Settings {
   captureVisible:boolean,
   showClock:boolean,
   clockFormat:'auto'|'24'|'12',
+  clockPosition:'auto'|'left'|'right'|'top'|'bottom', // موضع الساعة داخل الحبة المنكمشة (auto = الترتيب الحالي)
   showBattery:boolean,
   btBatteries:boolean,
   batteryTip:boolean,
@@ -125,6 +126,7 @@ export const DEFAULTS: Partial<Settings> = {
   language: "ar",
   hoverDelayMs: 250,        // مهلة فتح اللمحة (0..800 خطوة 50)
   clockFormat: "auto",
+  clockPosition: "auto",
   recordingFps: 30,
   recordFormat: "mp4",
   hotkeyPalette: "Alt+Space", // فارغ = شريط الأوامر معطّل
