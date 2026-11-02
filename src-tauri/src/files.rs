@@ -397,7 +397,7 @@ pub async fn palette_icon(app: AppHandle, path: String) -> Result<Option<String>
     Ok(res)
 }
 
-fn icon_cached(path: &str, dir: Option<&Path>) -> Option<String> {
+pub(crate) fn icon_cached(path: &str, dir: Option<&Path>) -> Option<String> {
     use base64::Engine;
     use sha2::{Digest, Sha256};
     let b64 = |b: &[u8]| base64::engine::general_purpose::STANDARD.encode(b);

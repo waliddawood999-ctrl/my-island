@@ -23,7 +23,14 @@ pub struct MediaInfo {
     pub can_prev: bool,
     pub can_next: bool,
     pub can_seek: bool,
+    /// نوع المصدر: "gsmtc" (جلسة ميديا حقيقية) أو "audio" (نشاط صوتي بديل بلا جلسة — لا بيانات وصفية ولا تحكم)؛ فارغ = لا جلسة.
+    pub kind: String,
+    /// تعذّر جلب خصائص الجلسة أو معلومات تشغيلها أو خطها الزمني: تُعرض باسم تطبيقها وغلاف عام ولا تُسقَط أبدًا.
+    pub degraded: bool,
 }
+
+pub const KIND_GSMTC: &str = "gsmtc";
+pub const KIND_AUDIO: &str = "audio";
 
 #[derive(Serialize, Clone)]
 pub struct MediaSource {
@@ -31,8 +38,22 @@ pub struct MediaSource {
     pub name: String,
 }
 
+/// نشاط صوتي حقيقي من تطبيق بلا جلسة GSMTC (تكتبه audiosess.rs، وتقرؤه حلقة الميديا لتقرّر العرض).
+#[derive(Clone, Debug, PartialEq, Default)]
+pub struct AltActivity {
+    pub pid: u32,
+    /// اسم ملف التنفيذ بلا امتداد (مفتاح الهوية)
+    pub exe: String,
+    /// الاسم الظاهر للمستخدم
+    pub name: String,
+    /// أيقونة التطبيق كـ data-URL أو None
+    pub icon: Option<String>,
+}
+
 #[derive(Default)]
 pub struct MediaState {
+    /// نشاط بديل حاليّ (None = لا شيء؛ القياس متوقف حينها)
+    pub alt: Mutex<Option<AltActivity>>,
     /// المصدر المختار يدويًا (None = جلسة النظام الحالية)
     pub picked: Mutex<Option<String>>,
     pub info: Mutex<MediaInfo>,
@@ -50,8 +71,22 @@ pub fn friendly_name(id: &str) -> String {
     if base.is_empty() { id.to_string() } else { base.to_string() }
 }
 
+/// معلومات الحبة لنشاط صوتي بديل: صدق كامل — لا عنوان/فنان/مدة مختلقة ولا تحكم (can_* خاطئة)؛ الواجهة تركّب «صوت من <الاسم>».
+pub fn audio_info(a: &AltActivity) -> MediaInfo {
+    MediaInfo {
+        session: true,
+        source: format!("audio:{}", a.exe),
+        source_name: a.name.clone(),
+        playing: true,
+        kind: KIND_AUDIO.into(),
+        ..Default::default()
+    }
+}
+
 /// الثواني ← ثواني آمنة (NaN/سالب → 0)
 fn secs(v: f64) -> f64 { if v.is_finite() && v > 0.0 { v } else { 0.0 } }
+
+pub use crate::mediasel::{resolve, select_session, Candidate, Playback, Resolution};
 
 pub fn start(app: &AppHandle) {
     #[cfg(windows)]
@@ -94,7 +129,8 @@ pub async fn media_control(state: State<'_, MediaState>, action: String) -> Resu
     #[cfg(windows)]
     {
         let picked = state.picked.lock().unwrap().clone();
-        let r = tauri::async_runtime::spawn_blocking(move || win_impl::control(picked, &action))
+        let alt = state.alt.lock().unwrap().is_some();
+        let r = tauri::async_runtime::spawn_blocking(move || win_impl::control(picked, alt, &action))
             .await
             .map_err(|e| e.to_string())??;
         if let Some(tx) = state.wake.lock().unwrap().as_ref() {
@@ -115,8 +151,9 @@ pub async fn media_seek(state: State<'_, MediaState>, seconds: f64) -> Result<bo
     #[cfg(windows)]
     {
         let picked = state.picked.lock().unwrap().clone();
+        let alt = state.alt.lock().unwrap().is_some();
         let secs = secs(seconds);
-        let r = tauri::async_runtime::spawn_blocking(move || win_impl::seek(picked, secs))
+        let r = tauri::async_runtime::spawn_blocking(move || win_impl::seek(picked, alt, secs))
             .await
             .map_err(|e| e.to_string())??;
         if let Some(tx) = state.wake.lock().unwrap().as_ref() {
@@ -166,17 +203,41 @@ mod win_impl {
         s.SourceAppUserModelId().map(|h| h.to_string()).unwrap_or_default()
     }
 
-    fn pick_session(mgr: &GsmtcManager, picked: &Option<String>) -> Option<Session> {
-        if let Some(id) = picked {
-            if let Ok(list) = mgr.GetSessions() {
-                for s in &list {
-                    if &aumid(&s) == id {
-                        return Some(s);
-                    }
-                }
-            }
+    fn list_sessions(mgr: &GsmtcManager) -> Vec<Session> {
+        mgr.GetSessions().map(|l| l.into_iter().collect()).unwrap_or_default()
+    }
+
+    /// يبني مرشّحي الاختيار من كل الجلسات (قراءة PlaybackInfo/Timeline رخيصة؛ الفشل = مرتبة أدنى لا إسقاط).
+    fn candidates(mgr: &GsmtcManager, sessions: &[Session]) -> Vec<Candidate> {
+        let current = mgr.GetCurrentSession().ok().map(|s| aumid(&s));
+        sessions
+            .iter()
+            .map(|s| {
+                let id = aumid(s);
+                let playback = match s.GetPlaybackInfo().and_then(|pb| pb.PlaybackStatus()) {
+                    Ok(PStatus::Playing) => Playback::Playing,
+                    Ok(PStatus::Paused) => Playback::Paused,
+                    _ => Playback::Other,
+                };
+                let timeline_at = s
+                    .GetTimelineProperties()
+                    .and_then(|t| t.LastUpdatedTime())
+                    .ok()
+                    .map(|t| t.UniversalTime)
+                    .filter(|t| *t > 0);
+                let is_system_current = current.as_deref() == Some(id.as_str());
+                Candidate { id, playback, timeline_at, is_system_current }
+            })
+            .collect()
+    }
+
+    /// الجلسة الفعّالة الآن لأوامر التحكم: نفس منطق الحلقة. `None` = لا جلسة GSMTC (أو القرار للبديل الصوتي الذي لا يُتحكَّم به).
+    fn pick_session(mgr: &GsmtcManager, picked: &Option<String>, alt_present: bool) -> Option<Session> {
+        let sessions = list_sessions(mgr);
+        match resolve(&candidates(mgr, &sessions), picked, alt_present) {
+            Resolution::Session(i) => sessions.into_iter().nth(i),
+            _ => None,
         }
-        mgr.GetCurrentSession().ok()
     }
 
     fn manager() -> Result<GsmtcManager, String> {
@@ -184,8 +245,8 @@ mod win_impl {
         GsmtcManager::RequestAsync().and_then(|o| o.get()).map_err(|e| e.to_string())
     }
 
-    pub fn control(picked: Option<String>, action: &str) -> Result<bool, String> {
-        let s = pick_session(&manager()?, &picked).ok_or("no media session")?;
+    pub fn control(picked: Option<String>, alt: bool, action: &str) -> Result<bool, String> {
+        let s = pick_session(&manager()?, &picked, alt).ok_or("no media session")?;
         let op = match action {
             "play" => s.TryPlayAsync(),
             "pause" => s.TryPauseAsync(),
@@ -197,8 +258,8 @@ mod win_impl {
         op.and_then(|o| o.get()).map_err(|e| e.to_string())
     }
 
-    pub fn seek(picked: Option<String>, seconds: f64) -> Result<bool, String> {
-        let s = pick_session(&manager()?, &picked).ok_or("no media session")?;
+    pub fn seek(picked: Option<String>, alt: bool, seconds: f64) -> Result<bool, String> {
+        let s = pick_session(&manager()?, &picked, alt).ok_or("no media session")?;
         s.TryChangePlaybackPositionAsync((seconds * TICKS) as i64)
             .and_then(|o| o.get())
             .map_err(|e| e.to_string())
@@ -212,14 +273,17 @@ mod win_impl {
 
     fn read_info(s: &Session, props: &Option<Props>) -> MediaInfo {
         let source = aumid(s);
-        let mut m = MediaInfo { session: true, source_name: friendly_name(&source), source, ..Default::default() };
+        let mut m = MediaInfo { session: true, kind: KIND_GSMTC.into(), source_name: friendly_name(&source), source, ..Default::default() };
+        m.degraded = props.is_none();
         if let Some(p) = props {
             m.title = p.Title().map(|h| h.to_string()).unwrap_or_default();
             m.artist = p.Artist().map(|h| h.to_string()).unwrap_or_default();
             m.album = p.AlbumTitle().map(|h| h.to_string()).unwrap_or_default();
         }
         let mut rate = 1.0;
-        if let Ok(pb) = s.GetPlaybackInfo() {
+        let pb = s.GetPlaybackInfo();
+        m.degraded |= pb.is_err();
+        if let Ok(pb) = pb {
             m.playing = pb.PlaybackStatus().map(|st| st == PStatus::Playing).unwrap_or(false);
             if let Ok(r) = pb.PlaybackRate().and_then(|r| r.Value()) {
                 if r > 0.0 { rate = r; }
@@ -230,7 +294,9 @@ mod win_impl {
                 m.can_seek = c.IsPlaybackPositionEnabled().unwrap_or(false);
             }
         }
-        if let Ok(tl) = s.GetTimelineProperties() {
+        let tl = s.GetTimelineProperties();
+        m.degraded |= tl.is_err();
+        if let Ok(tl) = tl {
             let start = tl.StartTime().map(|t| t.Duration).unwrap_or(0);
             let end = tl.EndTime().map(|t| t.Duration).unwrap_or(0);
             let pos = tl.Position().map(|t| t.Duration).unwrap_or(0);
@@ -279,9 +345,8 @@ mod win_impl {
         Some((hash, Some(format!("data:{mime};base64,{}", base64::engine::general_purpose::STANDARD.encode(buf)))))
     }
 
-    /// اشتراكات أحداث الجلسة المختارة (تُستبدل عند تغيّر الجلسة).
+    /// اشتراكات أحداث **كل** جلسة (لا المختارة فقط): تحوّل جلسة غير مختارة من متوقفة إلى تعمل يُوقظ إعادة الاختيار فورًا.
     struct Sub {
-        id: String,
         session: Session,
         tokens: (i64, i64, i64),
     }
@@ -298,6 +363,34 @@ mod win_impl {
         let _ = sub.session.RemoveMediaPropertiesChanged(sub.tokens.0);
         let _ = sub.session.RemovePlaybackInfoChanged(sub.tokens.1);
         let _ = sub.session.RemoveTimelinePropertiesChanged(sub.tokens.2);
+    }
+
+    /// مفتاح الجلسة في خريطة الاشتراكات: AUMID، ومع التكرار (نفس التطبيق بجلستين) يُلحَق ترتيب الظهور.
+    fn sub_keys(ids: &[String]) -> Vec<String> {
+        let mut seen: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
+        ids.iter()
+            .map(|id| {
+                let n = seen.entry(id.as_str()).or_insert(0);
+                *n += 1;
+                if *n == 1 { id.clone() } else { format!("{id}#{n}") }
+            })
+            .collect()
+    }
+
+    /// يوافق الاشتراكات مع الجلسات الحالية: يشترك بالجديدة ويلغي المنتهية (SessionsChanged يوقظ هذه الدالة).
+    fn reconcile(subs: &mut std::collections::HashMap<String, Sub>, sessions: &[Session], ids: &[String], tx: &Sender<()>) {
+        let keys = sub_keys(ids);
+        let stale: Vec<String> = subs.keys().filter(|k| !keys.contains(k)).cloned().collect();
+        for k in stale {
+            if let Some(old) = subs.remove(&k) { unsubscribe(old); }
+        }
+        for (k, s) in keys.into_iter().zip(sessions) {
+            if !subs.contains_key(&k) {
+                if let Some(tokens) = subscribe(s, tx) {
+                    subs.insert(k, Sub { session: s.clone(), tokens });
+                }
+            }
+        }
     }
 
     pub fn start(app: AppHandle) {
@@ -338,35 +431,37 @@ mod win_impl {
         let mut last_key = String::new();
         let mut cover_hash = 0u64; // بصمة آخر مصغّرة أُرسلت
         let mut since = 0u32; // دورات منذ آخر تغيّر مسار
-        let mut sub: Option<Sub> = None;
+        let mut subs: std::collections::HashMap<String, Sub> = std::collections::HashMap::new();
 
         loop {
             let mut info = MediaInfo::default();
             let mut props: Option<Props> = None;
-            if enabled(&app) {
-                // قائمة المصادر
-                let mut list = Vec::new();
-                if let Ok(all) = mgr.GetSessions() {
-                    for s in &all {
-                        let id = aumid(&s);
-                        list.push(MediaSource { name: friendly_name(&id), id });
-                    }
-                }
-                *st.sources.lock().unwrap() = list;
+            let mut alt_icon: Option<String> = None;
+            let on = enabled(&app);
+            if on {
+                // تعداد كل الجلسات + اشتراك أحداث لكل جلسة؛ لا استطلاع: الحلقة تنام حتى يوقظها حدث (انظر نهاية الحلقة).
+                let sessions = list_sessions(&mgr);
+                let ids: Vec<String> = sessions.iter().map(aumid).collect();
+                reconcile(&mut subs, &sessions, &ids, &tx);
+                *st.sources.lock().unwrap() = ids.iter().map(|id| MediaSource { name: friendly_name(id), id: id.clone() }).collect();
                 let picked = st.picked.lock().unwrap().clone();
-                if let Some(s) = pick_session(&mgr, &picked) {
-                    let id = aumid(&s);
-                    if sub.as_ref().map(|x| x.id != id).unwrap_or(true) {
-                        if let Some(old) = sub.take() { unsubscribe(old); }
-                        sub = subscribe(&s, &tx).map(|tokens| Sub { id: id.clone(), session: s.clone(), tokens });
+                let alt = st.alt.lock().unwrap().clone();
+                match resolve(&candidates(&mgr, &sessions), &picked, alt.is_some()) {
+                    Resolution::Session(i) => {
+                        let s = &sessions[i];
+                        props = s.TryGetMediaPropertiesAsync().and_then(|o| o.get()).ok();
+                        info = read_info(s, &props);
                     }
-                    props = s.TryGetMediaPropertiesAsync().and_then(|o| o.get()).ok();
-                    info = read_info(&s, &props);
-                } else if let Some(old) = sub.take() {
-                    unsubscribe(old);
+                    Resolution::Audio => {
+                        if let Some(a) = alt.as_ref() {
+                            info = audio_info(a);
+                            alt_icon = a.icon.clone();
+                        }
+                    }
+                    Resolution::Nothing => {}
                 }
             } else {
-                if let Some(old) = sub.take() { unsubscribe(old); }
+                for (_, old) in subs.drain() { unsubscribe(old); }
                 st.sources.lock().unwrap().clear();
             }
 
@@ -383,7 +478,15 @@ mod win_impl {
             } else {
                 since = since.saturating_add(1);
             }
-            if info.session && (since < 20 || since % 5 == 0) {
+            if info.kind == KIND_AUDIO {
+                // نشاط صوتي بديل: الغلاف = أيقونة التطبيق (تُبثّ مرة واحدة بعد تصفير تغيّر الهوية)
+                if st.cover.lock().unwrap().is_none() {
+                    if let Some(ic) = alt_icon {
+                        *st.cover.lock().unwrap() = Some(ic.clone());
+                        let _ = app.emit("media:cover", Some(ic));
+                    }
+                }
+            } else if info.session && (since < 20 || since % 5 == 0) {
                 if let Some((hash, uri)) = props.as_ref().and_then(|p| read_cover(p, cover_hash)) {
                     cover_hash = hash;
                     if let Some(c) = uri {
@@ -393,14 +496,23 @@ mod win_impl {
                 }
             }
 
+            let ticking = on && info.kind == KIND_GSMTC && (info.playing || since < 20);
             if info != last {
                 *st.info.lock().unwrap() = info.clone();
                 let _ = app.emit("media:update", &info);
                 last = info;
             }
 
-            // ننتظر حدث SMTC أو ثانية (لموضع التشغيل الحي)
-            let _ = rx.recv_timeout(Duration::from_millis(1000));
+            // لا خمول مكلف: ثانية واحدة فقط أثناء تشغيل جلسة (موضع حي) أو في نافذة الغلاف بعد تغيّر المسار؛
+            // وإلا ننام على القناة بلا مهلة حتى يوقظنا حدث (SessionsChanged/خصائص/تشغيل/اختيار/بديل صوتي).
+            // وحدة الميديا المعطّلة تتحقق من مفتاحها كل 5ث فقط (لا نشر ولا اشتراكات حينها).
+            if ticking {
+                let _ = rx.recv_timeout(Duration::from_millis(1000));
+            } else if on {
+                if rx.recv().is_err() { return; }
+            } else {
+                let _ = rx.recv_timeout(Duration::from_secs(5));
+            }
             while rx.try_recv().is_ok() {}
         }
     }

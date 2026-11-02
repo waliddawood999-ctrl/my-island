@@ -10,8 +10,10 @@ pub mod win;        // موضع/إخفاء/فوكس النافذة الرئيس�
 pub mod watchdog;   // نبض page_pong وإعادة تحميل الصفحة الصامتة
 pub mod clipboard;  // مستمع الحافظة + جدول clips
 pub mod autostart;  // مفتاح Run في ريجيستري ويندوز
+pub mod mediasel;   // اختيار جلسة الميديا (منطق نقي قابل للاختبار)
 pub mod media;      // SMTC: ما يُشغَّل الآن + التحكم
 pub mod spectrum;   // WASAPI loopback + FFT
+pub mod audiosess;  // بديل الميديا: نشاط صوتي لتطبيقات بلا جلسة GSMTC (WASAPI per-process)
 // pub mod player_audio;
 pub mod battery;    // GetSystemPowerStatus
 pub mod capture;    // لقطات منطقة/شاشة + overlay
@@ -107,6 +109,8 @@ pub fn run() {
                 } else {
                     clipboard::start(app.handle());
                     media::start(app.handle());
+                    #[cfg(windows)]
+                    audiosess::start(app.handle());
                     spectrum::start(app.handle());
                     battery::start(app.handle());
                     attention::start(app.handle());
