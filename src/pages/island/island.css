@@ -109,7 +109,10 @@ html, body, #root {
 .island-body { background-color: var(--island-bg); background-image: var(--t-wash-img, none); transition: background-color 160ms var(--ease); color: var(--island-fg); box-shadow: var(--island-ring), var(--t-glow, 0 0 0 0 transparent); }
 .island-body[data-open="true"] { box-shadow: var(--island-ring-open), var(--t-glow, 0 0 0 0 transparent); }
 /* طبقة ::after: الزخرفة المقصوصة 4–8٪ (معدن/ورق/كربون/كتّان) أو الغسلة المتحرّكة. تحت المحتوى فوق خلفية الجسم (isolation + z-index:-1) ومقصوصة بشكل الجزيرة. */
-.island-body { isolation: isolate; }
+.island-body { isolation: isolate; --veil-k: var(--sf-pill-veil, 1); --edge-k: var(--sf-pill-edge, 1); --c-edge: color-mix(in srgb, var(--c-border) clamp(0%, calc(var(--edge-k) * 100%), 100%), transparent); }
+/* تجاوزات لكل سطح (themeTune): لوحة/لمحة تأخذ قيم «اللوحة»، الحبة المنكمشة قيم «الحبة». */
+.island-body:is([data-open="true"], [data-mode="peek"]) { --veil-k: var(--sf-panel-veil, 1); --edge-k: var(--sf-panel-edge, 1); }
+:root[data-material="glass"] .island-body { --island-bg: color-mix(in srgb, var(--glass-solid) clamp(0%, calc(var(--glass-a, 0.78) * var(--veil-k) * 100%), 100%), transparent); }
 .island-body::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1; background-image: var(--t-after-img, none); opacity: var(--t-after-a, 0); }
 :root[data-decor="paper"] .island-body::after { background-size: 200px 200px; }
 :root[data-decor="metal"] .island-body::after { background-size: 3px 100%, 100% 100%; }
@@ -130,15 +133,15 @@ html, body, #root {
 
 /* الحدّ 1px (6–10٪ من لون المقدمة) + اللمعة العلوية + التوهّج + الظل الناعم (داخل هامش المنطقة حول الحبة فلا يُقصّ — backdrop.rs::EDGE_PAD_CSS) */
 :root[data-material="glass"] .island-body, :root[data-fallback="solid"] .island-body {
-  box-shadow: inset 0 0 0 1px var(--c-border), inset 0 1px 0 var(--glass-spec), var(--t-glow, 0 0 0 0 transparent), 0 5px 12px rgb(0 0 0 / calc(0.34 * var(--shadow-k)));
+  box-shadow: inset 0 0 0 1px var(--c-edge, var(--c-border)), inset 0 1px 0 var(--glass-spec), var(--t-glow, 0 0 0 0 transparent), 0 5px 12px rgb(0 0 0 / calc(0.34 * var(--shadow-k)));
   text-shadow: 0 1px 2px rgb(0 0 0 / 0.30);
 }
-:root[data-fallback="solid"] .island-body { box-shadow: inset 0 0 0 1px var(--c-border), inset 0 1px 0 var(--glass-spec), var(--t-glow, 0 0 0 0 transparent); }
+:root[data-fallback="solid"] .island-body { box-shadow: inset 0 0 0 1px var(--c-edge, var(--c-border)), inset 0 1px 0 var(--glass-spec), var(--t-glow, 0 0 0 0 transparent); }
 :root:is([data-material="glass"], [data-fallback="solid"])[data-theme="light"] .island-body {
-  box-shadow: inset 0 0 0 1px var(--c-border), inset 0 1px 0 var(--glass-spec), var(--t-glow, 0 0 0 0 transparent), 0 5px 12px rgb(13 16 23 / calc(0.22 * var(--shadow-k)));
+  box-shadow: inset 0 0 0 1px var(--c-edge, var(--c-border)), inset 0 1px 0 var(--glass-spec), var(--t-glow, 0 0 0 0 transparent), 0 5px 12px rgb(13 16 23 / calc(0.22 * var(--shadow-k)));
   text-shadow: 0 1px 0 rgb(255 255 255 / 0.40);
 }
-:root[data-fallback="solid"][data-theme="light"] .island-body { box-shadow: inset 0 0 0 1px var(--c-border), inset 0 1px 0 var(--glass-spec), var(--t-glow, 0 0 0 0 transparent); }
+:root[data-fallback="solid"][data-theme="light"] .island-body { box-shadow: inset 0 0 0 1px var(--c-edge, var(--c-border)), inset 0 1px 0 var(--glass-spec), var(--t-glow, 0 0 0 0 transparent); }
 :root[data-material="glass"][data-glass="clear"] .island-body { text-shadow: 0 1px 3px rgb(0 0 0 / 0.45); }
 :root[data-material="glass"][data-glass="clear"][data-theme="light"] .island-body { text-shadow: 0 1px 0 rgb(255 255 255 / 0.55); }
 
@@ -153,7 +156,20 @@ html, body, #root {
 }
 
 /* بطاقات اللوحة والقوائم المنبثقة: سطح مسطّح خفيف + حلقة (بلا تدرّج ولا backdrop-filter) */
-:root[data-material="glass"] .i-card, :root[data-material="glass"] .i-glass { background: var(--island-surface); box-shadow: inset 0 0 0 1px var(--c-border); }
+/* البطاقات والمنبثقات: درجة إضاءة من لون المقدمة (--t-card-a) × تجاوز السطح، وحدّ مخفَّض بتجاوز السطح. */
+:root[data-material="glass"] .i-card { background: rgb(from var(--t-fg, #fff) r g b / calc(var(--t-card-a, .05) * var(--sf-cards-veil, 1))); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c-border) clamp(0%, calc(var(--sf-cards-edge, 1) * 100%), 100%), transparent); }
+:root[data-material="glass"] .i-glass { background: rgb(from var(--t-fg, #fff) r g b / calc(var(--t-card-a, .05) * var(--sf-pop-veil, 1))); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c-border) clamp(0%, calc(var(--sf-pop-edge, 1) * 100%), 100%), transparent); }
+/* hover: تأكيد التمرير × hoverK (themeTune). */
+.i-btn:hover:not(:disabled), .i-card-hover:hover { background: rgb(from var(--t-fg, #fff) r g b / calc((var(--t-card-a, .05) + var(--t-hover-a, .08)) * var(--hover-k, 1))); }
+.act-btn:hover:not(:disabled) { background: rgb(from var(--t-fg, #fff) r g b / calc((var(--t-card-a, .05) + var(--t-hover-a, .08)) * var(--hover-k, 1))); }
+
+/* أيقونات: مقياس وصبغة أكسنت اختيارية (themeTune.iconScale/iconTint) — الأكسنت للأيقونات لا لنص الجسم. */
+svg.lucide { scale: var(--icon-k, 1); }
+:root[data-icon-tint] svg.lucide { color: color-mix(in srgb, var(--accent) var(--icon-tint, 0%), currentColor); }
+/* وزن النص، سلوك التمرير، حلقة التركيز عالية التباين، تباين عالٍ */
+:root[data-weight="bold"] .island-body { font-weight: 700; }
+:root[data-scroll="smooth"] * { scroll-behavior: smooth; }
+:root[data-focus="contrast"] :focus-visible { outline: 2px solid var(--island-fg, #fff) !important; outline-offset: 2px; }
 
 /* ───────── النشاط الحي (docs/MOTION.md §النشاط الحي) ─────────
    لمسة واحدة لكل نوع نشاط، تُستعمل بالاتساق في الكبسولة المدمجة والبطاقة معًا. ألوان مصمتة (بلا تدرّجات ولا توهّج)،
@@ -202,7 +218,7 @@ html, body, #root {
 .pl-play { width: 44px; height: 44px; background: var(--island-fg); color: #111; }
 :root[data-theme="light"] .pl-play { color: #fff; }
 .pl-play:hover { transform: scale(1.06); }
-.pl-btn:active:not(:disabled) { transform: scale(0.86); }
+.pl-btn:active:not(:disabled) { transform: scale(var(--press-btn, 0.86)); } /* themeTune.press */
 .pl-btn:disabled { opacity: 0.35; }
 .pl-btn:focus-visible { box-shadow: 0 0 0 2px var(--player-accent, #fff); }
 :root[data-motion="off"] .pl-btn, :root[data-motion="reduced"] .pl-btn { transition: none !important; }

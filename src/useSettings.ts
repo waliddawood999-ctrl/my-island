@@ -3,8 +3,9 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { DEFAULTS, type Settings } from "./settings";
 import { setLang } from "./i18n";
-import { setMotionTuning, useMotionSync, useEco } from "./motion";
-import { appearanceVars, effectiveMotion, fxFor, glassAllowed, migrateSettings, resolveTheme, type Env, type Fx } from "./appearance";
+import { setMotionTuning, setPressTap, useMotionSync, useEco } from "./motion";
+import { PRESS, normTune } from "./themeTune";
+import { appearanceVars, deriveFor, effectiveMotion, fxFor, glassAllowed, migrateSettings, resolveTheme, type Env, type Fx } from "./appearance";
 import { resolvePack } from "./themePacks";
 import { extractSwatches, type ArtSwatches } from "./artwork";
 
@@ -142,6 +143,12 @@ function useAppearance(s: Partial<Settings>, env: Env) {
   }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
+/** الاشتقاق الحيّ للإعدادات الحالية (للإعدادات: قياسات التباين وسجل التعديلات الآلية). */
+export function useDerivedTheme(s: Partial<Settings>) {
+  const env = useEnv(s);
+  return deriveFor(s, env);
+}
+
 /** الثيم الفعلي (system ⇒ تفضيل النظام) وهل الزجاج المُحاكى مسموح (ليس Eco ولا «تقليل الشفافية» ولا شفافية ويندوز مطفأة). */
 export function useResolvedTheme(s: Partial<Settings>): { theme: "dark" | "light"; glassOk: boolean } {
   const env = useEnv(s);
@@ -176,8 +183,10 @@ export function useSettings(): Partial<Settings> & { loaded?: boolean; /** تأ�
   useAppearance(s, env);
   useEffect(() => { setMotionTuning(s.motionSpeed, s.motionPreset, s.motionBounce); }, [s.motionSpeed, s.motionPreset, s.motionBounce]);
   useMotionSync(effectiveMotion(s, env));
+  const pressKey = normTune(s.themeTune).en.press;
+  useEffect(() => { setPressTap(PRESS[pressKey].tap); }, [pressKey]);
   const fx = fxFor(s, env);
-  const fxKey = `${fx.hero}|${fx.shape.corner}|${fx.shape.pillR}|${fx.shape.peekR}|${fx.shape.panelR}`;
+  const fxKey = `${fx.hero}|${fx.shape.corner}|${fx.shape.pillR}|${fx.shape.peekR}|${fx.shape.panelR}|${fx.scale.pill}|${fx.scale.panel}`;
   return useMemo(() => ({ ...s, fx }), [s, fxKey]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 

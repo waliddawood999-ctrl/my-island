@@ -125,7 +125,7 @@ ok("Porcelain is light-first (surface detected light) and the dark variant is de
   ok("editorial: single accent vermilion survives on light (≥3:1) and is logged if adjusted", ink(false).measures.find((m) => m.role === "accent").ok);
   // هـ) الشكل
   const sh = (id) => P.SHAPES[get(id).shape];
-  ok("shape-led: sharp < default < squircle < arena corner scales; radii ordered", sh("edge").corner < 1 && sh("squircle-max").corner > 1 && sh("arena").corner > sh("squircle-max").corner && sh("edge").panelR < 34 && sh("squircle-max").panelR > 34);
+  ok("shape-led: sharp < default < squircle < arena corner scales; radii ordered", sh("angular").corner < 1 && sh("squircle-max").corner > 1 && sh("arena").corner > sh("squircle-max").corner && sh("angular").panelR < 34 && sh("squircle-max").panelR > 34);
   // و) الوقت
   ok("time-aware: hue shift ±24° on the sun cycle (peak noon, trough midnight), 0 at 06:00/18:00", P.timeHueShift(12) === 24 && P.timeHueShift(0) === -24 && P.timeHueShift(6) === 0 && P.timeHueShift(18) === 0);
   { const sd = get("solar-drift"); const noon = E.deriveTheme(P.packInput(sd, true, { hueShift: P.timeHueShift(12) })), night = E.deriveTheme(P.packInput(sd, true, { hueShift: P.timeHueShift(0) }));

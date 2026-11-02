@@ -4,9 +4,12 @@ import { DEFAULTS, type Settings } from "./settings";
 import { PILL } from "./tokens";
 import { migratePreset, migrateReduce, migrateSpeed, normSpeed, resolveReduce } from "./islandMotion";
 import { contrast, deriveTheme, hex6, hexToRgb, luminance, over, type Derived } from "./themeEngine";
-import { DEFAULT_PACK, effectivePack, getPack, packInput, resolvePack, SHAPES, timeHueShift, type Pack, type ShapeTune } from "./themePacks";
+import { DEFAULT_PACK, PACKS, effectivePack, getPack, packInput, resolvePack, sanitizeUserTheme, SHAPES, timeHueShift, type Pack, type ShapeTune, type UserTheme } from "./themePacks";
 import type { ArtSwatches } from "./artwork";
+import { DIVIDER_ALPHA, ELEVATION_K, compactTune, normTune, tuneVars, type Tune } from "./themeTune";
 export { contrast, luminance, over };
+export { compactTune, normTune, resetTuneFields, TUNE_MODULE_FIELDS } from "./themeTune";
+export { resolvePack } from "./themePacks";
 
 export type ResolvedTheme = "dark" | "light";
 const num = (v: unknown, lo: number, hi: number, d: number) => (typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v))) : d);
@@ -70,15 +73,17 @@ export function deriveFor(s: Partial<Settings>, env: Env): { derived: Derived; p
   // الغسلة المتحرّكة: اختيارية، وتُطفأ في Eco وعند تقليل الحركة/إيقافها
   const anim = !!eff.anim && s.themeAnim !== false && !env.eco && effectiveMotion(s, env) === "full";
   const hueShift = eff.source === "time" && typeof env.hour === "number" ? timeHueShift(env.hour) : 0;
-  const derived = deriveTheme(packInput(pack, theme === "dark", { accent: accentOverride(s, env), eco: env.eco, borderStrength: num(s.borderStrength, 0, 100, 50), live, anim, hueShift }));
+  const tune = normTune(s.themeTune);
+  const derived = deriveTheme(packInput(pack, theme === "dark", { accent: accentOverride(s, env), eco: env.eco, borderStrength: tune.highContrast ? 100 : num(s.borderStrength, 0, 100, 50), live, anim, hueShift, ink: tune.highContrast || undefined }));
   return { derived, packId: eff.id, theme, pack: eff };
 }
 
 /** تأثيرات الحزمة غير اللونية: الشكل (زوايا/أنصاف أقطار) ومنطقة بطل الغلاف. تُرفق بكائن الإعدادات (useSettings) وتستهلكها الحبة. */
-export interface Fx { shape: ShapeTune; hero: boolean }
+export interface Fx { shape: ShapeTune; hero: boolean; /** مقياس الحبة واللوحة (themeTune) */ scale: { pill: number; panel: number } }
 export function fxFor(s: Partial<Settings>, env: Env): Fx {
   const { pack } = deriveFor(s, env);
-  return { shape: SHAPES[pack.shape ?? "default"], hero: !!pack.hero };
+  const t = normTune(s.themeTune);
+  return { shape: SHAPES[pack.shape ?? "default"], hero: !!pack.hero, scale: { pill: t.num.pillScale, panel: t.num.panelScale } };
 }
 /** نصف القطر الفعلي: إعداد المستخدم الصريح (≠ الافتراضي) يغلب نمط الشكل؛ الافتراضي ⇒ نمط الحزمة إن وُجد. */
 export function shapeRadius(setting: unknown, def: number, fromShape: number | null): number | null {
@@ -99,15 +104,30 @@ export function appearanceVars(s: Partial<Settings>, env: Env): { attrs: Record<
   const pr = sp !== null ? sp : num(s.pillRadius, 0, 22, 0);
   const radius = pr === 0 ? ph / 2 : Math.min(pr, ph / 2);
   const speed = normSpeed(s.motionSpeed);
+  const tune = normTune(s.themeTune), tv = tuneVars(tune);
+  // تجاوزات الرموز الخام (محرر الخبير): hex فقط، تُطبَّق بعد الاشتقاق (التحذير من التباين في الإعدادات لا يمنعها)
+  const ov: Record<string, string> = {};
+  for (const [k, v] of Object.entries(tune.tokens)) {
+    if (!v) continue;
+    ov[k] = k === "--glass-base" ? `rgb(${hexToRgb(v).join(" ")})` : v;
+    if (k === "--accent") { ov["--app-accent"] = v; ov["--accent-fg"] = contrast(hexToRgb(v), [255, 255, 255]) >= contrast(hexToRgb(v), [6, 8, 12]) ? "#ffffff" : "#06080c"; }
+    if (k === "--island-fg") ov["--t-fg"] = v;
+    if (k === "--glass-base") ov["--c-surface"] = v;
+  }
+  const divA = tune.highContrast ? Math.max(DIVIDER_ALPHA[tune.en.dividers], 0.16) : DIVIDER_ALPHA[tune.en.dividers];
+  const shadowK = (num(s.shadowStrength, 0, 100, 50) / 50) * ELEVATION_K[tune.en.elevation];
   return {
     attrs: {
+      ...tv.attrs, contrast: tune.highContrast ? "high" : "",
       theme, pack: packId, washAnim: derived.washAnim ? "on" : "", decor: pack.decor && pack.decor !== "none" ? pack.decor : "", shape: pack.shape && pack.shape !== "default" ? pack.shape : "", hero: pack.hero ? "on" : "", material: glass ? "glass" : "solid", glass: style, density: s.density === "compact" ? "compact" : "comfortable",
       fallback: (s.themeMaterial ?? "glass") === "glass" && !glass ? "solid" : "",
     },
     vars: {
-      ...derived.vars,
-      "--border-k": String(num(s.borderStrength, 0, 100, 50) / 50), "--shadow-k": String(num(s.shadowStrength, 0, 100, 50) / 50),
-      "--corner-scale": String(Math.round((s.cornerStyle === "extra" ? 1.3 : 1) * SHAPES[pack.shape ?? "default"].corner * 1000) / 1000), "--font-scale": String(num(s.fontScale, 90, 120, 100) / 100),
+      ...derived.vars, ...tv.vars, ...ov,
+      ...(theme === "light" ? { "--color-white": derived.vars["--t-fg"], "--color-black": derived.vars["--t-base"] } : {}),
+      "--c-divider": `rgb(${hexToRgb(derived.vars["--t-fg"]).join(" ")} / ${divA})`,
+      "--border-k": String(num(s.borderStrength, 0, 100, 50) / 50), "--shadow-k": String(Math.round(shadowK * 1000) / 1000),
+      "--corner-scale": String(Math.round((s.cornerStyle === "extra" ? 1.3 : 1) * SHAPES[pack.shape ?? "default"].corner * tune.num.cornerK * 1000) / 1000), "--font-scale": String(num(s.fontScale, 90, 120, 100) / 100),
       "--speed": String(speed), "--pill-width": `${pw}px`, "--pill-height": `${ph}px`, "--pill-radius": `${radius}px`,
       "--glass-tint": String(num(s.glassTint, 0, 80, 45)),
       "--glass-a": String(glassAlpha(style, theme === "light", num(s.glassTint, 0, 80, 45), s.backgroundOpacity)),
@@ -152,7 +172,7 @@ export function glassAlpha(style: "crystal" | "clear", light: boolean, tint: num
 export const SECTION_KEYS: Record<string, (keyof Settings)[]> = {
   general: ["autostart", "language", "monitor"],
   island: ["pillWidth", "pillHeight", "pillRadius", "peekWidth", "peekHeight", "peekRadius", "panelWidth", "panelHeight", "panelRadius", "hoverDelayMs", "hoverZone", "peekWheelCycle", "peekCardOrder", "panelWheelPaging", "panelTabsStyle", "offsetX", "offsetY", "pillPosition", "islandDocking", "autoHide", "hideInFullscreen", "opacityRest", "opacityOpen", "showClock", "clockFormat", "eyesEnabled", "captureVisible"],
-  appearance: ["themeMode", "themePack", "artBloom", "themePackLight", "themePackDark", "accentSource", "themeMaterial", "glassStyle", "glassTint", "backgroundOpacity", "accentMode", "accentColor", "borderStrength", "shadowStrength", "cornerStyle", "fontScale", "density"],
+  appearance: ["themeMode", "themePack", "artBloom", "themeAnim", "themeCustom", "themeTune", "themeDisclosure", "themePackLight", "themePackDark", "accentSource", "themeMaterial", "glassStyle", "glassTint", "backgroundOpacity", "accentMode", "accentColor", "borderStrength", "shadowStrength", "cornerStyle", "fontScale", "density"],
   motion: ["motionLevel", "motionPreset", "motionSpeed", "motionBounce", "reduceMotion"],
   modules: ["showToday", "prayerCity", "showWeather", "weatherCity", "weatherUnits", "showCountdowns", "showWorldClock", "showBattery", "batteryTip", "btBatteries", "showNetSpeed", "clipLimit", "pasteOnClick", "clipExcludedApps", "privacyIndicator", "showVolume", "showMeetings", "screenshotDir", "recordFormat", "recordingFps", "recordingQuality", "recordingDir", "liveRates", "liquidSpectrum", "playerLayout", "visualizer", "showPlaybackTime", "showSourceBadge", "showProgress", "artworkBackdrop", "attentionTracking"],
   notifications: ["soundChoice", "soundVolume", "prayerAlerts", "loadAlert", "meetingLeadMin", "breakReminders", "breakMinutes"],
@@ -218,4 +238,55 @@ export const resetPatch = (keys: (keyof Settings)[]): P => Object.fromEntries(ke
 export function glassSurface(style: "crystal" | "clear", theme: ResolvedTheme, tint: number, accent?: string, density: unknown = 1, packId: string = DEFAULT_PACK): { color: [number, number, number]; alpha: number } {
   const d = deriveTheme(packInput(getPack(packId), theme === "dark", { accent }));
   return { color: d.base.map((v) => Math.round(v)) as [number, number, number], alpha: glassAlpha(style, theme === "light", tint, density) };
+}
+
+// ───────── ثيماتي: رفّ المستخدم + تصدير/استيراد الثيم (JSON) ─────────
+/** المفاتيح التي يحملها ملف الثيم (لا أسرار ولا إعدادات غير مظهرية). */
+export const THEME_KEYS = ["themeMode", "themePack", "themePackLight", "themePackDark", "accentSource", "accentColor", "accentMode", "artBloom", "themeAnim", "themeCustom", "myThemes", "themeTune", "themeMaterial", "glassStyle", "glassTint", "backgroundOpacity", "borderStrength", "shadowStrength", "cornerStyle", "fontScale", "density"] as const;
+export const MAX_SHELF = 24;
+export function exportTheme(s: P): string {
+  const theme: Record<string, unknown> = {};
+  for (const k of THEME_KEYS) if (s[k] !== undefined) theme[k] = s[k];
+  return JSON.stringify({ app: "myisland-theme", version: 1, theme }, null, 2);
+}
+const ENUMS: Record<string, string[]> = {
+  themeMode: ["system", "dark", "light", "sun"], accentSource: ["pack", "custom", "windows", "wallpaper"], accentMode: ["auto", "fixed"],
+  themeMaterial: ["solid", "glass"], glassStyle: ["crystal", "clear"], cornerStyle: ["rounded", "extra"], density: ["comfortable", "compact"],
+};
+/** هل المعرّف حزمة صالحة (مصنع أو custom أو u:xxxx)؟ */
+const validPackId = (v: unknown, mine: UserTheme[]) => typeof v === "string" && (v === "" || v === "custom" || PACKS.some((p) => p.id === v) || mine.some((u) => u.id === v));
+/** يستورد ملف ثيم: يقبل مفاتيح المظهر المعروفة بأنواعها ونطاقاتها فقط، ويطهّر حزم المستخدم وthemeTune. غير صالح ⇒ null. */
+export function parseThemeImport(text: string): P | null {
+  try {
+    const j = JSON.parse(text) as { app?: string; theme?: Record<string, unknown> };
+    if (j?.app !== "myisland-theme" || !j.theme || typeof j.theme !== "object") return null;
+    const t = j.theme, out: Record<string, unknown> = {};
+    const mine = (Array.isArray(t.myThemes) ? t.myThemes : []).map(sanitizeUserTheme).filter((u): u is UserTheme => !!u && u.id.startsWith("u:")).slice(0, MAX_SHELF);
+    if (Array.isArray(t.myThemes)) out.myThemes = mine;
+    for (const k of THEME_KEYS) {
+      const v = t[k];
+      if (v === undefined || k === "myThemes") continue;
+      if (k in ENUMS) { if (typeof v === "string" && ENUMS[k].includes(v)) out[k] = v; }
+      else if (k === "themePack" || k === "themePackLight" || k === "themePackDark") { if (validPackId(v, mine) && (k === "themePack" ? v !== "" : true)) out[k] = v; }
+      else if (k === "accentColor") { if (typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v)) out[k] = v.toLowerCase(); }
+      else if (k === "themeAnim") { if (typeof v === "boolean") out[k] = v; }
+      else if (k === "themeCustom") { const u = sanitizeUserTheme({ id: "custom", ...(v && typeof v === "object" ? v : {}) }); if (u) { const { id: _id, name: _n, ...rest } = u; out[k] = rest; } }
+      else if (k === "themeTune") out[k] = compactTune(normTune(v));
+      else if (typeof v === "number" && Number.isFinite(v)) {
+        const r: Record<string, [number, number]> = { artBloom: [0, 200], glassTint: [0, 80], backgroundOpacity: [0.3, 1], borderStrength: [0, 100], shadowStrength: [0, 100], fontScale: [90, 120] };
+        if (r[k]) out[k] = Math.min(r[k][1], Math.max(r[k][0], v));
+      }
+    }
+    return Object.keys(out).length ? (out as P) : null;
+  } catch { return null; }
+}
+/** إدخال رفّ من حزمة مفعّلة: يحفظ الأساس والتعديلات (نسخة مستخدم) باسم جديد. */
+export function shelfEntry(pack: Pack, id: string, name: string): UserTheme {
+  return sanitizeUserTheme({ id, name, base: pack.baseId ?? pack.id, accent: pack.seeds.accent, wash: pack.wash, glow: pack.glow, grain: pack.grain, washDir: pack.washDir })!;
+}
+/** معرّف رفّ جديد غير مستخدم. */
+export function newShelfId(mine: unknown, rnd: () => number = Math.random): string {
+  const used = new Set((Array.isArray(mine) ? mine : []).map((u) => (u as { id?: string })?.id));
+  for (let n = 0; n < 50; n++) { const id = `u:${Math.floor(rnd() * 36 ** 6).toString(36).padStart(6, "0")}`; if (!used.has(id)) return id; }
+  return `u:${Date.now().toString(36).slice(-8)}`;
 }

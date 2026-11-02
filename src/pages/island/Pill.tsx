@@ -141,7 +141,9 @@ export function Pill() {
   const { theme } = useResolvedTheme(settings);
   const fmt = settings.clockFormat ?? "auto";
   // مقاس الحبة المنكمشة من الإعدادات؛ k = الارتفاع/32 يقيس الخط والعيون والأيقونات معًا (بلا تشوّه).
-  const pill = { w: clampN(settings.pillWidth, PILL_TOKEN.minW, PILL_TOKEN.maxW, PILL_DEFAULT.w), h: clampN(settings.pillHeight, PILL_TOKEN.minH, PILL_TOKEN.maxH, PILL_DEFAULT.h) };
+  // مقياس الحبة (themeTune.pillScale): يضرب المقاس المخزّن؛ السقف المطلق ضمن النافذة الثابتة.
+  const pSc = settings.fx?.scale.pill ?? 1;
+  const pill = { w: Math.min(520, Math.round(clampN(settings.pillWidth, PILL_TOKEN.minW, PILL_TOKEN.maxW, PILL_DEFAULT.w) * pSc)), h: Math.min(56, Math.round(clampN(settings.pillHeight, PILL_TOKEN.minH, PILL_TOKEN.maxH, PILL_DEFAULT.h) * pSc)) };
   // نصف قطر الحبة: pillRadius=0 ⇒ كبسولة كاملة (نصف الارتفاع)، وإلا مقيّد بنصف الارتفاع.
   // الشكل قائد (docs/THEMES.md): حزمة شكل تفرض نصف القطر ما لم يضبطه المستخدم صراحةً.
   const shapePill = shapeRadius(settings.pillRadius ?? 0, 0, settings.fx?.shape.pillR ?? null);
@@ -249,7 +251,9 @@ export function Pill() {
   const collapseT = useRef<number | undefined>(undefined);
   const shrinkT = useRef<number | undefined>(undefined);
   const shrinkPending = useRef(false);
-  const panel = { w: clampN(settings.panelWidth, 420, 720, 520), h: clampN(settings.panelHeight, 220, 420, 290) };
+  // مقياس اللوحة (themeTune.panelScale): ضمن النافذة الثابتة 800×500 (مع هامش المنطقة)
+  const aSc = settings.fx?.scale.panel ?? 1;
+  const panel = { w: Math.min(760, Math.round(clampN(settings.panelWidth, 420, 720, 520) * aSc)), h: Math.min(470, Math.round(clampN(settings.panelHeight, 220, 420, 290) * aSc)) };
   const tabs = tabDefs(shelfOn, shelf.items.length, launcherOn, meetingsOn);
   const tab = Math.max(0, tabs.findIndex((t) => t.id === tabId));
   const curTab = tabs[tab].id;

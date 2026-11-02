@@ -30,7 +30,7 @@ eq("fallback is the fully opaque base (--island-bg: var(--glass-solid))", css.in
 eq("border 1px from --c-border (6–10%), inset top highlight, anchor glow var, soft outer shadow", css.includes("inset 0 0 0 1px var(--c-border)") && css.includes("var(--t-glow") && css.includes("inset 0 1px 0 var(--glass-spec)") && /0 5px 12px rgb\(0 0 0/.test(css), true);
 eq("grain: SVG feTurbulence data-URI tile at 3.5% on ::before, glass only", /island-body::before \{[^}]*opacity: var\(--t-grain-a, 0\.035\)[^}]*feTurbulence/s.test(css) && !/fallback="solid"\] \.island-body::before/.test(css), true);
 eq("no gradient rim mask (old acrylic-era rim) left", css.includes("mask-composite"), false);
-eq("inner cards flat: .i-glass = .i-card = engine card level (--island-surface)", css.includes(".i-glass { background: var(--island-surface); }") && css.includes('.i-glass { background: var(--island-surface); box-shadow: inset 0 0 0 1px var(--c-border); }'), true);
+eq("inner cards flat: .i-card and .i-glass both use the engine card level (--t-card-a of the foreground ink) with per-surface veil/edge overrides", css.includes('.i-card { background: rgb(from var(--t-fg, #fff) r g b / calc(var(--t-card-a, .05) * var(--sf-cards-veil, 1)))') && css.includes('.i-glass { background: rgb(from var(--t-fg, #fff) r g b / calc(var(--t-card-a, .05) * var(--sf-pop-veil, 1)))') && css.includes("var(--sf-cards-edge, 1)") && css.includes("var(--sf-pop-edge, 1)"), true);
 // ── الإعدادات المسبقة: أربعة فقط
 eq("presets = frosted/smoked/clear/minimal", A.STYLE_PRESETS.map((p) => p.id), ["frosted", "smoked", "clear", "minimal"]);
 eq("presets: veil styles/tints", A.STYLE_PRESETS.slice(0, 3).map((p) => [p.values.glassStyle, p.values.glassTint]), [["crystal", 45], ["crystal", 68], ["clear", 25]]);

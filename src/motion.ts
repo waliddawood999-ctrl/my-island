@@ -158,6 +158,14 @@ function buildVariants() {
 // ───────── مستوى الحركة (نقطة التحكّم الوحيدة) ─────────
 
 let level: MotionLevel = "full";
+/** مقياس ضغط العناصر التفاعلية (themeTune.press: none 1 · normal .97 · strong .92). */
+let pressTap = 0.97;
+export function setPressTap(k: unknown) {
+  const v = typeof k === "number" && Number.isFinite(k) ? Math.min(1, Math.max(0.85, k)) : 0.97;
+  if (v === pressTap) return;
+  pressTap = v;
+  setMotionLevel(level);
+}
 const subs = new Set<() => void>();
 
 /** الإعداد المختار + حالة Eco ⇒ المستوى الفعلي. قيمة غير صالحة ⇒ full؛ Eco يخفض full إلى reduced (ولا يرفع off). */
@@ -179,7 +187,7 @@ export function setMotionLevel(l: MotionLevel) {
     Object.assign(shift, { swap: 6, section: 8 });
     Object.assign(stagger, { section: 0.05, item: 0.03 });
     Object.assign(scale, { enter: 0.97, exit: 0.98 });
-    tap.whileHover = { scale: 1.05 }; tap.whileTap = { scale: 0.97 };
+    tap.whileHover = { scale: 1.05 }; tap.whileTap = { scale: pressTap };
     thumbHover.scale = 1.03;
     alertShake.animate = { rotate: [0, -16, 14, -10, 0] };
     alertShake.transition = { duration: FULL_DUR.alert, repeat: 2 };
@@ -195,7 +203,7 @@ export function setMotionLevel(l: MotionLevel) {
     Object.assign(shift, { swap: l === "off" ? 0 : 2, section: l === "off" ? 0 : 3 });
     Object.assign(stagger, { section: 0, item: 0 });
     Object.assign(scale, { enter: l === "off" ? 1 : 0.995, exit: 1 });
-    tap.whileHover = { scale: l === "off" ? 1 : 1.02 }; tap.whileTap = { scale: l === "off" ? 1 : 0.97 };
+    tap.whileHover = { scale: l === "off" ? 1 : 1.02 }; tap.whileTap = { scale: l === "off" ? 1 : Math.max(pressTap, 0.97) };
     thumbHover.scale = 1;
     alertShake.animate = { rotate: 0 };
     alertShake.transition = NONE;

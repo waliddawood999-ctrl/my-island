@@ -290,7 +290,7 @@ export function deriveTheme(inp: DeriveInput): Derived {
     "--t-wash-c": wc, "--t-wash-c2": mesh ? hexOf(mesh) : wc, "--t-wash-a": a3(washAlpha), "--t-wash-img": washImg,
     "--t-glow-c": hexOf(inp.glowColor ? hexToRgb(hex6(inp.glowColor)) : mesh ?? washColor), "--t-glow-a": a3(glowAlpha), "--t-glow-blur": `${glowBlur}px`, "--t-glow": glowShadow,
     "--t-decor-a": a3(decorA), "--t-grain-a": a3(grainA), "--t-after-img": afterImg, "--t-after-a": a3(afterA),
-    "--t-fg": hexOf(fgRgb),
+    "--t-fg": hexOf(fgRgb), "--t-card-a": a3(A.card), "--t-hover-a": a3(A.hover), "--t-active-a": a3(A.active),
   };
   return { dark, base, accent, onAccent, washAlpha, glowAlpha, washAnim, vars, adjustments, measures, surfaces };
 }

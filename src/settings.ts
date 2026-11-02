@@ -88,6 +88,8 @@ export interface Settings {
   themePackLight:string,          // حزمة منفصلة للوضع الفاتح ('' = themePack)
   themePackDark:string,           // حزمة منفصلة للوضع الداكن ('' = themePack)
   artBloom:number,                // مقياس إزهار Living Artwork 0..200 (٪؛ 100 = سقوف الرصّة)
+  themeTune:Record<string, unknown>, // مخزون التخصيص الشامل (themeTune.ts): أسطح/أحجام/أيقونات/ظل/ضغط/تمرير… ضمن نطاقات مصمَّمة — المفاتيح غير الافتراضية فقط
+  themeDisclosure:'basic'|'advanced'|'expert', // مستوى إفصاح قسم المظهر (الخبير يفتح محرر الرموز الخام)
   themeAnim:boolean,              // حركة الغسلة البطيئة (حزم التدرّج) — تعمل فقط والجزيرة مفتوحة وتُطفأ في Eco/تقليل الحركة
   themeCustom:Record<string, unknown>, // خانة الحزمة المخصصة الحيّة (بذور المستخدم ضمن نطاقات مصمَّمة)
   myThemes:Array<Record<string, unknown>>, // رفّ «ثيماتي»: نسخ المستخدم من حزم المصنع (id يبدأ بـ u:)
@@ -194,6 +196,8 @@ export const DEFAULTS: Partial<Settings> = {
   themePackDark: '',
   accentSource: 'pack',
   themeAnim: true,
+  themeTune: {},
+  themeDisclosure: 'basic',
   themeCustom: {},
   myThemes: [],
   artBloom: 60,

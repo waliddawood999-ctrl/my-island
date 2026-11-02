@@ -33,6 +33,8 @@ export interface Pack {
   ink?: boolean;
   /** متغير «منطقة غلاف بطل الترويسة»: الغلاف يظهر كمنطقة محصورة في أعلى الجزيرة لا بكامل الخلفية. */
   hero?: boolean;
+  /** حزمة مستخدم: معرّف الحزمة الأساس (المصنع) التي نُسخت منها. */
+  baseId?: string;
 }
 
 export const OBSIDIAN: Pack = {
@@ -82,7 +84,7 @@ const MECH_PACKS: Pack[] = [
   { id: "ink-vermilion", ar: "حبر وقرمزي", en: "Ink & Vermilion", family: "editorial", dar: "أحادي + أكسنت قرمزي واحد بطابع مطبوع", den: "Monochrome with a single vermilion accent, print-like",
     seeds: { surface: "#f5f2ea", fg: "#0c0c0c", accent: "#d9381e" }, wash: 0, washDir: "top", glow: 0, grain: 0.02, ink: true },
   // هـ) الشكل قائد: الهندسة هي الثيم
-  { id: "edge", ar: "حدّة", en: "Edge", family: "shape", dar: "حادّ زاوي بزوايا شبه مربّعة", den: "Angular and sharp with near-square corners",
+  { id: "angular", ar: "حدّة", en: "Angular", family: "shape", dar: "حادّ زاوي بزوايا شبه مربّعة", den: "Angular and sharp with near-square corners",
     seeds: { surface: "#15171b", fg: "#eef0f3", accent: "#ffcf3d" }, wash: 0.5, washDir: "start", glow: 0.3, grain: 0.02, shape: "sharp" },
   { id: "squircle-max", ar: "سكويركل", en: "Squircle Max", family: "shape", dar: "أقصى استدارة سكويركل", den: "Maximum squircle roundness",
     seeds: { surface: "#171520", fg: "#f0eef8", accent: "#c084fc" }, wash: 0.8, washDir: "top", glow: 0.55, grain: 0.03, shape: "squircle" },
@@ -124,7 +126,7 @@ export function sanitizeUserTheme(u: unknown): UserTheme | null {
 export function userPack(u: UserTheme): Pack {
   const b = getPack(u.base ?? "obsidian");
   return {
-    ...b, id: u.id, ar: u.name, en: u.name, family: "custom", dar: "نسخة مستخدم", den: "A user copy",
+    ...b, id: u.id, baseId: b.baseId ?? b.id, ar: u.name, en: u.name, family: "custom", dar: "نسخة مستخدم", den: "A user copy",
     seeds: { ...b.seeds, accent: u.accent ?? b.seeds.accent },
     wash: u.wash ?? b.wash, glow: u.glow ?? b.glow, grain: u.grain ?? b.grain, washDir: u.washDir ?? b.washDir,
     // نسخة المستخدم لا ترث مصدرًا حيًّا (windows/artwork/time) لأن أكسنتها صريح؛ الزخرفة/الشكل/الحبر موروثة
@@ -148,7 +150,7 @@ export interface LiveSources { winAccent?: string | null; art?: ArtSwatches | nu
 export const effectivePack = (p: Pack, live: LiveSources = {}): Pack => (p.source === "artwork" && !live.art ? OBSIDIAN : p);
 
 /** يحوّل حزمة إلى دخل المحرك للوضع المطلوب (الأكسنت يمكن تجاوزه من مصدر خارجي). */
-export function packInput(p0: Pack, dark: boolean, o: { accent?: string; hueShift?: number; eco?: boolean; borderStrength?: number; live?: LiveSources; anim?: boolean } = {}): DeriveInput {
+export function packInput(p0: Pack, dark: boolean, o: { accent?: string; hueShift?: number; eco?: boolean; borderStrength?: number; live?: LiveSources; anim?: boolean; ink?: boolean } = {}): DeriveInput {
   const live = o.live ?? {};
   const p = effectivePack(p0, live);
   let seeds: Seeds = { ...p.seeds }, washColor: string | undefined, glowColor: string | undefined, bloom = 1;
@@ -165,6 +167,6 @@ export function packInput(p0: Pack, dark: boolean, o: { accent?: string; hueShif
   return {
     seeds, dark, wash: p.wash, washDir: p.washDir, washMesh: p.mesh ?? null, washColor, glowColor,
     glow: o.eco ? 0 : p.glow, grain: o.eco && p.anim ? 0 : p.grain, decor: p.decor ?? "none", decorAmount: p.decorAmount,
-    anim: o.anim, ink: p.ink, hueShift: o.hueShift ?? 0, bloom, lumaFloor: p.source === "artwork", borderStrength: o.borderStrength,
+    anim: o.anim, ink: o.ink ?? p.ink, hueShift: o.hueShift ?? 0, bloom, lumaFloor: p.source === "artwork", borderStrength: o.borderStrength,
   };
 }
