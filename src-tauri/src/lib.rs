@@ -193,6 +193,7 @@ pub fn run() {
             mascot::mascot_active,
             netspeed::netspeed_active,
             backdrop::system_transparency,
+            backdrop::webview_runtime,
             accent::system_accent,
             accent::wallpaper_color,
             capture::capture_start,

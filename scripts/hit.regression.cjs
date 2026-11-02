@@ -57,7 +57,7 @@ const ok = (n, c, extra = "") => { if (!c) fails++; console.log(`${c ? "✓" : "
   ok("island body has no outer box-shadow (only inset ring/highlight)", css.outer.length === 0, JSON.stringify(css.outer));
   ok("no live filter/blur on body or halo", css.bodyFilter === "none" && css.haloFilter.every((f) => f === "none"), JSON.stringify(css));
   ok("halo has no box-shadow (gradient-mask layer only)", css.haloShadow.every((s) => s === "none"), JSON.stringify(css.haloShadow));
-  ok("halo is a baked mask layer and never takes the mouse", /svg/.test(css.haloMask) && css.haloEvents === "none", css.haloMask.slice(0, 60));
+  ok("halo is a baked mask layer and never takes the mouse", /png|svg/.test(css.haloMask) && css.haloEvents === "none", css.haloMask.slice(0, 60));
   ok("halo opacity follows the island opacity (animated by opacity only)", Math.abs(css.haloOpacity - css.bodyOpacity) < 0.02, JSON.stringify([css.haloOpacity, css.bodyOpacity]));
   await browser.close();
   console.log(fails ? `${fails} FAILED` : "all passed"); process.exit(fails ? 1 : 0);

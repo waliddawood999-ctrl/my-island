@@ -4,6 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 import { LottieIcon, LottieShownProvider } from "../../lottie";
 import { Coffee, Settings as SettingsIcon, Timer as TimerIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { IslandHalo } from "./Halo";
 import { alertShake, dur, ease, islandSpring, paletteVariants, useMotionLevel, sectionVariants, spring, swapVariants, tap } from "../../motion";
 import { i } from "../../i18n";
 import { useResolvedTheme, useSettings } from "../../useSettings";
@@ -558,9 +559,14 @@ export function Pill() {
   return (
     <LottieShownProvider shown={!hidden && opacity > 0}>
     <div className={`flex w-full ${settings.pillPosition === "left" ? "justify-start" : settings.pillPosition === "right" ? "justify-end" : "justify-center"}`}>
-      {/* غلاف يتبع مقاس الجسم؛ الهالة (ظل+توهّج) طبقة تدرّج شعاعي مُعدّة مسبقًا تتحرّك بالعتامة فقط — لا box-shadow ولا blur حيّ (GLASS.md). */}
+      {/* غلاف يتبع مقاس الجسم؛ الهالة (ظل+توهّج) طبقة مُعدّة مسبقًا بمقاس الهدف تتحرّك بالتحويل/العتامة فقط — لا box-shadow ولا blur حيّ (Halo.tsx · GLASS.md). */}
       <div className="island-wrap">
-      <motion.span aria-hidden className="island-halo" initial={false} animate={{ opacity }} transition={{ opacity: { duration: reduceUI ? 0.15 : dur.base, ease: ease.out } }} />
+      <IslandHalo
+        w={(palette || !animSize ? size : animSize).w} h={(palette || !animSize ? size : animSize).h} opacity={opacity}
+        align={settings.pillPosition === "left" ? "left" : settings.pillPosition === "right" ? "right" : "center"}
+        transition={kind === "close" ? islandSpring.close : kind === "panel" ? islandSpring.panel : islandSpring.open}
+        opacityTransition={{ duration: reduceUI ? 0.15 : dur.base, ease: ease.out }}
+      />
       <motion.div
         onMouseEnter={onEnter}
         onMouseLeave={onLeave}

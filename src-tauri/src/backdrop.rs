@@ -3,6 +3,8 @@
 // (window-vibrancy#139 · PowerToys PR #48281 حذفت SWCA). «الزجاج» سطح مُحاكى مرسوم في الصفحة (docs/GLASS.md · Tier A).
 // ARCH: حُذفت منطقة النافذة (SetWindowRgn) كليًا — الشكل = ألفا الصفحة؛ اختبار الإصابة في hit.rs (استطلاع المؤشر).
 // `system_transparency`: قراءة «تأثيرات الشفافية» في ويندوز — مطفأ ⇒ تصير الواجهة سطحًا معتمًا بالكامل (لا مؤقّتات هنا؛ الواجهة تسأل عند الحدث).
+use serde::Serialize;
+use std::sync::atomic::{AtomicI8, Ordering};
 use tauri::AppHandle;
 
 
@@ -20,6 +22,9 @@ pub const TRANSPARENT_ENV_VALUE: &str = "00000000";
 /// هل اللون (A,R,G,B) شفاف تمامًا؟ المنصة تدعم ألفا 0 أو 255 فقط، فأي ألفا غير صفر ⇒ معتم.
 pub fn is_fully_transparent(a: u8, _r: u8, _g: u8, _b: u8) -> bool { a == 0 }
 // PURE-END
+
+/// نتيجة آخر تحقق من DefaultBackgroundColor لنافذة main: -1 لم يُفحص · 0 غير شفاف · 1 شفاف.
+static BG_CLEAR: AtomicI8 = AtomicI8::new(-1);
 
 /// يضبط متغير البيئة قبل إنشاء أي ويب فيو (يُستدعى أول main/run).
 pub fn apply_transparency_env() {
@@ -45,7 +50,9 @@ pub fn force_webview_transparent(app: &AppHandle) {
                 let mut got = COREWEBVIEW2_COLOR { A: 255, R: 255, G: 255, B: 255 };
                 for attempt in 0..2 {
                     let _ = c2.SetDefaultBackgroundColor(clear);
-                    if c2.DefaultBackgroundColor(&mut got).is_ok() && is_fully_transparent(got.A, got.R, got.G, got.B) { return; }
+                    let clear_now = c2.DefaultBackgroundColor(&mut got).is_ok() && is_fully_transparent(got.A, got.R, got.G, got.B);
+                    if lbl == crate::win::MAIN { BG_CLEAR.store(clear_now as i8, Ordering::Relaxed); }
+                    if clear_now { return; }
                     eprintln!("[backdrop] {lbl}: DefaultBackgroundColor بعد الضبط = ({},{},{},{}) محاولة {attempt}", got.A, got.R, got.G, got.B);
                 }
             });
@@ -80,6 +87,31 @@ mod imp {
     }
 }
 
+/// نسخة WebView2 Runtime الفعلية (للتشخيص في «حول»): تُقرأ من API Tauri (`tauri::webview_version`) لا من رقم مُخمَّن.
+#[derive(Serialize)]
+pub struct WebviewRuntime {
+    /// سلسلة النسخة (مثل 145.0.3770.0) أو فارغة إن تعذّرت القراءة.
+    pub version: String,
+    /// الرقم الرئيسي للنسخة (0 إن تعذّر).
+    pub major: u32,
+    /// DefaultBackgroundColor شفاف ومُتحقَّق منه بعد الضبط؟ None = لم يُفحص (غير ويندوز/لم تُنشأ النافذة بعد).
+    pub background_clear: Option<bool>,
+}
+
+// PURE-BEGIN
+/// الرقم الرئيسي من سلسلة نسخة «145.0.3770.0»؛ 0 إن لم تُفهم.
+pub fn major_of(version: &str) -> u32 {
+    version.trim().split('.').next().and_then(|m| m.parse().ok()).unwrap_or(0)
+}
+// PURE-END
+
+#[tauri::command]
+pub fn webview_runtime() -> WebviewRuntime {
+    let version = tauri::webview_version().unwrap_or_default();
+    let background_clear = match BG_CLEAR.load(Ordering::Relaxed) { 0 => Some(false), 1 => Some(true), _ => None };
+    WebviewRuntime { major: major_of(&version), version, background_clear }
+}
+
 /// هل «تأثيرات الشفافية» مفعّلة في ويندوز؟ الواجهة تسأل عند التحميل وعند أول تفاعل (بلا مؤقّتات)؛ غير ويندوز ⇒ true.
 /// false ⇒ السطح المُحاكى يصير معتمًا بالكامل (docs/GLASS.md).
 #[tauri::command]
@@ -93,6 +125,14 @@ pub fn system_transparency() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn major_version_parsing() {
+        assert_eq!(major_of("145.0.3770.0"), 145);
+        assert_eq!(major_of(" 147.0.1 "), 147);
+        assert_eq!(major_of(""), 0);
+        assert_eq!(major_of("abc"), 0);
+    }
 
     #[test]
     fn transparency_guard() {
