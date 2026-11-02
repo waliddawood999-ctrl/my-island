@@ -15,6 +15,7 @@ import { webviewVerdict, type WebviewRuntime } from "../../webview";
 import { saveSettings, useSettings } from "../../useSettings";
 import { EcoIndicator, RamUsage } from "./Perf";
 import { WorkspacesEditor } from "./Workspaces";
+import { ClockPad } from "./ClockPad";
 import { CountdownsEditor, WorldClockEditor } from "./TodayExtras";
 import { manualCheck } from "../../useUpdater";
 import type { ManualStatus } from "../../updater";
@@ -321,9 +322,21 @@ function App() {
           <Row icon={ic(Clock)} label={i("إظهار الساعة", "Show clock")} hint={i("يعرض الوقت داخل الحبة", "Shows the time inside the pill")}>
             <Toggle label={i("إظهار الساعة", "Show clock")} value={s.showClock ?? true} onChange={(v) => set({ showClock: v })} />
           </Row>
-          <Row icon={ic(Clock)} label={i("مكان الساعة في الحبة", "Clock position in the pill")} hint={i("تلقائي = الترتيب الحالي · يسار/يمين بجانب العيون · فوق/تحت (يحتاج ارتفاع حبة ≥ 34)", "Auto = current order · left/right beside the eyes · top/bottom (needs pill height ≥ 34)")}>
-            <Segmented label={i("مكان الساعة في الحبة", "Clock position in the pill")} value={s.clockPosition ?? "auto"} onChange={(v) => set({ clockPosition: v })}
-              options={[{ value: "auto", label: i("تلقائي", "Auto") }, { value: "left", label: i("يسار", "Left") }, { value: "right", label: i("يمين", "Right") }, { value: "top", label: i("فوق", "Top") }, { value: "bottom", label: i("تحت", "Bottom") }]} />
+          <Row icon={ic(Clock)} label={i("مكان الساعة في الحبة", "Clock position in the pill")} hint={i("اسحب النقطة في الدائرة فتتحرّك الساعة داخل الحبة لأي مكان؛ «تلقائي» يرجع للترتيب الحالي", "Drag the dot in the circle to place the clock anywhere inside the pill; “Auto” restores the current layout")}>
+            <div className="flex w-full flex-col gap-2">
+              <ClockPad x={s.clockX ?? 50} y={s.clockY ?? 50} scale={s.clockScale ?? 100} onChange={(x, y) => set({ clockPosition: "free", clockX: x, clockY: y })} />
+              <div className="flex gap-2">
+                <button className={btnOutline} data-testid="clock-auto" onClick={() => set({ clockPosition: "auto" })} aria-pressed={(s.clockPosition ?? "auto") === "auto"}>{i("تلقائي (الحالي)", "Auto (current)")}</button>
+                <button className={btnOutline} data-testid="clock-center" onClick={() => set({ clockPosition: "free", clockX: 50, clockY: 50 })}>{i("إعادة للوسط", "Center")}</button>
+              </div>
+            </div>
+          </Row>
+          <Row icon={ic(Clock)} label={i("حجم الساعة", "Clock size")} hint={i("٦٠–١٨٠٪ من الحجم الأساسي", "60–180% of the base size")}>
+            <Slider label={i("حجم الساعة", "Clock size")} value={s.clockScale ?? 100} min={60} max={180} step={5} format={(v) => `${v}%`} onCommit={(v) => set({ clockScale: v })} />
+          </Row>
+          <Row icon={ic(Eye)} label={i("مكان العيون", "Eyes position")} hint={i("يسار / وسط / يمين الحبة (تلقائي = بجانب الساعة)", "Left / center / right of the pill (Auto = beside the clock)")}>
+            <Segmented label={i("مكان العيون", "Eyes position")} value={s.eyesAlign ?? "auto"} onChange={(v) => set({ eyesAlign: v })}
+              options={[{ value: "auto", label: i("تلقائي", "Auto") }, { value: "left", label: i("يسار", "Left") }, { value: "center", label: i("وسط", "Center") }, { value: "right", label: i("يمين", "Right") }]} />
           </Row>
           <Row icon={ic(Clock)} label={i("نظام الساعة", "Clock format")} hint={i("طريقة عرض الوقت في الحبة", "How the time is shown in the pill")}>
             <Segmented label={i("نظام الساعة", "Clock format")} value={s.clockFormat ?? "auto"} onChange={(v) => set({ clockFormat: v })}

@@ -48,7 +48,7 @@ import { Palette } from "./Palette";
 import { TabBar } from "./TabBar";
 import { IdleHome } from "./IdleHome";
 import { isWideLayout } from "./layoutMode";
-import { clockLayout } from "./clockPlacement";
+import { clampPct, clockAbsStyle, clockFontSize, eyesAlignStyle, normClockPosition } from "./clockPlacement";
 import { Dock, SubTabs, groupIndexOf, pageGroups, targetTab } from "./Dock";
 import { AttentionSection } from "./AttentionSection";
 import { BatteryChip, BatterySection, hasBatteryContent } from "./BatterySection";
@@ -279,7 +279,9 @@ export function Pill() {
   const dockStyle = (settings.panelTabsStyle ?? "dock") === "dock";
   // تخطيط عريض تلقائي: لوحة قليلة الارتفاع عريضة (≥2.1× ، ≤320px) ⇒ الرئيسية تصير صفًّا (مشغّل/اقتراحات بجانب البلاطات). مقاسات المستخدم لا تُمسّ.
   const wide = isWideLayout(panel.w, panel.h);
-  const cl = clockLayout(settings.clockPosition ?? "auto", pill.h);
+  const clockFree = normClockPosition(settings.clockPosition) === "free";
+  const clockFs = clockFontSize(settings.clockScale);
+  const eyesAlign = eyesAlignStyle(settings.eyesAlign, Math.round(12 * (pill.h / 34)));
   const liveDataW = wide && liveData.player ? { ...liveData, player: { ...liveData.player, wide: true } } : liveData;
   const groups = pageGroups(PAGE_DEFS, tabs.map((t) => t.id));
   const groupIdx = groupIndexOf(groups, curTab);
@@ -712,6 +714,7 @@ export function Pill() {
               exit="exit"
               onPanEnd={(_, info) => { if (capKinds.length > 1 && Math.abs(info.offset.x) > 28) { lastPanAt.current = performance.now(); cycleCap(); } }}
               className="flex w-full items-center justify-center"
+              style={pillKey === "clock" && !clockFree && eyesAlign ? eyesAlign : undefined}
             >
               {pillKey === "alert" && alert ? (
                 <span dir="auto" className="flex max-w-full items-center gap-2 px-3" role="alert">
@@ -762,17 +765,29 @@ export function Pill() {
                 <CapsuleSplit kind="net" k={k} dots={dots} left={i("الشبكة", "Network")} value={<NetValue down={net.down} up={net.up} />} />
               ) : (
                 (settings.eyesEnabled ?? true) ? (
-                  // عيون التميمة بجانب الساعة؛ ينعكس الترتيب بالعربية فقط (التتبّع فيزيائي لا يتأثر).
-                  <span
-                    data-testid="pill-row" data-clock={settings.clockPosition ?? "auto"}
-                    className={`flex items-center ${cl?.stacked ? "gap-0" : "gap-2.5"}`}
-                    style={cl ? { direction: "ltr", flexDirection: cl.flexDirection } : { flexDirection: rowReversed(settings.language === "en" ? "en" : "ar") ? "row-reverse" : "row" }}
-                  >
-                    <Eyes islandHidden={hidden || mode !== "pill" || !!palette} k={k} />
-                    {(settings.showClock ?? true) && <span dir="ltr" data-testid="pill-clock" style={cl?.stacked ? { fontSize: "0.62em", lineHeight: 1, marginTop: -1 } : undefined}>{time}</span>}
-                  </span>
+                  clockFree ? (
+                    // وضع الساعة الحرّ: العيون تُحاذى لوحدها (eyesAlign) والساعة تُثبَّت بنسبتي clockX/clockY داخل الحبة (لا تخرج عنها).
+                    <>
+                      <span className="flex w-full items-center" style={eyesAlign ?? { justifyContent: "center" }}>
+                        <Eyes islandHidden={hidden || mode !== "pill" || !!palette} k={k} />
+                      </span>
+                      {(settings.showClock ?? true) && <span dir="ltr" data-testid="pill-clock" style={{ ...clockAbsStyle(settings.clockX, settings.clockY), fontSize: clockFs, lineHeight: 1 }}>{time}</span>}
+                    </>
+                  ) : (
+                    // عيون التميمة بجانب الساعة؛ ينعكس الترتيب بالعربية فقط (التتبّع فيزيائي لا يتأثر).
+                    <span
+                      data-testid="pill-row"
+                      className="flex items-center gap-2.5"
+                      style={{ flexDirection: rowReversed(settings.language === "en" ? "en" : "ar") ? "row-reverse" : "row" }}
+                    >
+                      <Eyes islandHidden={hidden || mode !== "pill" || !!palette} k={k} />
+                      {(settings.showClock ?? true) && <span dir="ltr" data-testid="pill-clock" style={{ fontSize: clockFs }}>{time}</span>}
+                    </span>
+                  )
                 ) : (
-                  (settings.showClock ?? true) && <span dir="ltr">{time}</span>
+                  (settings.showClock ?? true) && (clockFree
+                    ? <span dir="ltr" data-testid="pill-clock" style={{ ...clockAbsStyle(settings.clockX, settings.clockY), fontSize: clockFs, lineHeight: 1 }}>{time}</span>
+                    : <span dir="ltr" data-testid="pill-clock" style={{ fontSize: clockFs }}>{time}</span>)
                 )
               )}
               {pillKey === "clock" && showBat && battery?.has_battery && (

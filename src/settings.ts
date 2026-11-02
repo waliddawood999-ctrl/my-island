@@ -20,7 +20,10 @@ export interface Settings {
   captureVisible:boolean,
   showClock:boolean,
   clockFormat:'auto'|'24'|'12',
-  clockPosition:'auto'|'left'|'right'|'top'|'bottom', // موضع الساعة داخل الحبة المنكمشة (auto = الترتيب الحالي)
+  clockPosition:'auto'|'free', // auto = الترتيب الحالي · free = الساعة حيث تضعها بـ clockX/clockY
+  clockX:number, clockY:number, // مركز الساعة كنسبة 0..100 من عرض/ارتفاع الحبة (الوسط = 50)
+  clockScale:number,            // حجم الساعة ٪ (60..180؛ 100 = الأساس)
+  eyesAlign:'auto'|'left'|'center'|'right', // محاذاة العيون داخل الحبة
   showBattery:boolean,
   btBatteries:boolean,
   batteryTip:boolean,
@@ -127,6 +130,10 @@ export const DEFAULTS: Partial<Settings> = {
   hoverDelayMs: 250,        // مهلة فتح اللمحة (0..800 خطوة 50)
   clockFormat: "auto",
   clockPosition: "auto",
+  clockX: 50,
+  clockY: 50,
+  clockScale: 100,
+  eyesAlign: "auto",
   recordingFps: 30,
   recordFormat: "mp4",
   hotkeyPalette: "Alt+Space", // فارغ = شريط الأوامر معطّل
