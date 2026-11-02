@@ -472,3 +472,10 @@
 - الملفات: `src/pages/settings/{fields,main,TodayExtras,Workspaces}.tsx`، `src/index.css` (`.sh-range`)، `scripts/settings.regression.cjs` (بنية جديدة + تأكيدات شكل shadcn).
 - التحقق: `npm run build` ✓ · `cargo check --target x86_64-pc-windows-gnu` ✓ · `npm run test:settings` ALL PASSED · لقطات Playwright داكن/فاتح/زجاج/RTL.
 - لم يُتحقق منه (يحتاج ويندوز): المظهر داخل WebView2 الفعلي فوق أكريليك النظام.
+
+## 2026-11-02 — isolated regression fixes (verification pending on Windows)
+- Base: ca0b8e9fee74e5ed03fec6652366d8e9e379afc9; rollback branch: backup/pre-fixes-2026-11-02-ca0b8e9; existing installer: my-island-releases/v1.0.70. No schema/data migration or release publication.
+- Registered system_accent/wallpaper_color in the ACL manifest and granted read access to main/settings; granted settings media_now/system_transparency used by live appearance previews.
+- Aligned the opener with the launcher's existing ftp/tel/sms links. Kept quote/control-character, UNC, file:, unknown-scheme and non-existing local-path rejection; added Rust cross-module regression cases.
+- Added IPC registry/capability regression (fails on the original snapshot, passes after the fix), plus a Windows-only native WebView2 test for command permissions, real settings window, persistence across restart, heartbeat and app_quit.
+- Local Linux: npm run build and npm test pass. Rust/Windows are not installed locally; Windows workflow and native smoke must pass before merge. UI regression run in progress. Main/released installer unchanged.

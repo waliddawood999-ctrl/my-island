@@ -1,0 +1,58 @@
+name: Verify Windows fixes
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - name: Rust tests and native debug build
+        working-directory: src-tauri
+        run: |
+          cargo test --locked
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo build --locked
+      - name: Install browser test runner (no dependency changes)
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install chromium
+      - name: Start development frontend for native debug build
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force docs/screenshots, test-results | Out-Null
+          Start-Process -FilePath 'node' -ArgumentList 'node_modules/vite/bin/vite.js --host localhost --port 1420 --strictPort' -RedirectStandardOutput 'test-results/vite.log' -RedirectStandardError 'test-results/vite-error.log'
+          for ($i = 0; $i -lt 30; $i++) {
+            try { $r = Invoke-WebRequest 'http://localhost:1420' -TimeoutSec 2; if ($r.StatusCode -eq 200) { exit 0 } } catch {}
+            Start-Sleep -Seconds 1
+          }
+          throw 'Vite did not start'
+      - name: Native WebView2 IPC, settings persistence and quit
+        run: node scripts/native.regression.cjs
+      - name: Browser UI regressions (mock bridge)
+        env:
+          BASE: http://localhost:1420
+        run: npm run test:ui
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-verification-${{ github.run_id }}
+          path: |
+            test-results/
+            docs/screenshots/
+          retention-days: 14
