@@ -98,8 +98,7 @@ fn ensure_fixed_size(w: &WebviewWindow) {
 
 /// الواجهة تبلّغ بشكل الجزيرة الهدف (CSS px): تُضبط المنطقة (اختبار الإصابة + شكل الأكريليك) والنافذة ثابتة لا تتغيّر.
 pub fn resize_to_island(app: &AppHandle, width: f64, height: f64, radius: Option<f64>) {
-    // الأكريليك يُسقَط قبل تغيّر الهدف (صبغته فقط) وتعيد الواجهة طلبه بعد استقرار الحركة؛ المنطقة تتبع الهدف فورًا.
-    crate::backdrop::drop_for_resize(app);
+    // المنطقة تتبع الهدف فورًا (لا خلفية نظامية تُسقَط أو تُعاد — الزجاج مرسوم في الصفحة).
     crate::backdrop::set_shape(app, width, height, radius.unwrap_or(height / 2.0));
 }
 

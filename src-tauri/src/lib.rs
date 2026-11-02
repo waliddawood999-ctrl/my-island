@@ -41,7 +41,7 @@ pub mod note;       // الملاحظة + التذكيرات + المؤقّت (k
 pub mod files;      // فهرس شريط الأوامر (ذاكرة فقط) + تطبيقات + أيقونات
 pub mod perf;       // الأداء والتوفير: وضع Eco + استهلاك رام التطبيق
 pub mod lazywin;    // نافذتا الإعدادات/المحرّر عند الطلب (تُنشآن عند أول فتح وتُدمَّران عند الإغلاق)
-pub mod backdrop;   // زجاج حقيقي (Acrylic عبر DWM) لنافذة main عند themeMaterial=glass
+pub mod backdrop;   // شكل نافذة main (المنطقة) + system_transparency — الزجاج مُحاكى في الصفحة (لا SWCA)
 pub mod mascot;     // عيون التميمة: موضع المؤشر الحقيقي (mascot:look)، خيط مركون ما لم يُفعَّل
 pub mod rates;      // أسعار العملات الحية لشريط الأوامر (open.er-api.com، كاش 12 ساعة)
 pub mod palette;    // اختصار شريط الأوامر + الأخيرة + run_shell
@@ -186,7 +186,7 @@ pub fn run() {
             perf::perf_ram,
             mascot::mascot_active,
             netspeed::netspeed_active,
-            backdrop::island_backdrop,
+            backdrop::system_transparency,
             capture::capture_start,
             capture::capture_frame,
             capture::capture_ready,

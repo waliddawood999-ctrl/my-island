@@ -336,12 +336,12 @@ function App() {
             <Segmented label={i("النمط", "Theme")} value={s.themeMode ?? "system"} onChange={(v) => set({ themeMode: v })}
               options={[{ value: "system", label: i("النظام", "System") }, { value: "light", label: i("فاتح", "Light") }, { value: "dark", label: i("داكن", "Dark") }]} />
           </Row>
-          <Row icon={ic(Layers)} label={i("الخلفية", "Background")} hint={i("الزجاج يبيّن اللي خلف الجزيرة بشكل ضبابي", "Glass shows what is behind the island, blurred")} col>
+          <Row icon={ic(Layers)} label={i("الخلفية", "Background")} hint={i("الزجاج سطح ملوّن شبه شفاف مرسوم في الجزيرة (ليس تمويهًا حقيقيًا لما خلفها)، ويصير معتمًا تلقائيًا إذا أطفأت «تأثيرات الشفافية» في ويندوز", "Glass is a tinted semi-transparent surface drawn by the island (not a real blur of what is behind it); it turns fully opaque automatically if Windows “Transparency effects” is off")} col>
             <div className="st-gstyles st-gstyles3" role="radiogroup" aria-label={i("الخلفية", "Background")}>
               {([
-                { id: "solid", ar: "أسود صلب", en: "Solid black", dar: "سطح معتم بلا شفافية", den: "An opaque surface, no see-through" },
-                { id: "crystal", ar: "الزجاج المثلّج", en: "Frosted glass", dar: "تمويه أصلي من ويندوز بتظليل أقوى", den: "Native Windows blur with stronger tint" },
-                { id: "clear", ar: "الزجاج الشفاف", en: "Clear glass", dar: "نفس التمويه الأصلي بتظليل خفيف", den: "The same native blur with a light tint" },
+                { id: "solid", ar: "مصمت", en: "Solid", dar: "سطح معتم بلا شفافية", den: "An opaque surface, no see-through" },
+                { id: "crystal", ar: "زجاج مُحاكى — مثلّج", en: "Simulated frosted glass", dar: "حجاب ملوّن كثيف بحدّ ولمعة وحبيبات — الموصى به", den: "A dense tinted veil with border, highlight and grain — recommended" },
+                { id: "clear", ar: "زجاج مُحاكى — شفاف", en: "Simulated clear glass", dar: "حجاب أخفّ يُظهر ما خلفه أكثر (بلا تمويه)", den: "A lighter veil that shows more of what is behind (no blur)" },
               ] as const).map((g) => (
                 <button key={g.id} role="radio" aria-label={i(g.ar, g.en)} aria-checked={(!glassOn ? "solid" : (s.glassStyle ?? "crystal")) === g.id} data-bg={g.id} className="st-gstyle"
                   onClick={() => set(g.id === "solid" ? { themeMaterial: "solid" } : GLASS_STYLE_VALUES[g.id])}>
@@ -352,7 +352,7 @@ function App() {
               ))}
             </div>
           </Row>
-          <Row icon={ic(Percent)} label={i("الكثافة", "Density of background")} hint={i("كم تغطي الخلفية اللي خلف الجزيرة", "How much the background covers what is behind the island")}>
+          <Row icon={ic(Percent)} label={i("الكثافة", "Density of background")} hint={i("العتامة الكلية للحجاب — الأقل يُظهر ما خلف الجزيرة أكثر", "Overall opacity of the veil — lower shows more of what is behind the island")}>
             <Slider label={i("الكثافة", "Density of background")} value={s.backgroundOpacity ?? 1} min={0.3} max={1} step={0.05} format={(v) => `${Math.round(v * 100)}%`} onLive={(v) => set({ backgroundOpacity: v })} onCommit={(v) => set({ backgroundOpacity: v })} />
           </Row>
           <Row icon={ic(Brush)} label={i("لون التمييز", "Accent source")} hint={i("تلقائي من غلاف الأغنية أو لون ثابت", "Automatic from the album art, or a fixed color")}>
@@ -361,8 +361,8 @@ function App() {
           </Row>
           
           {glassOn && (
-            <Row icon={ic(Moon)} label={i("قوة تظليل الزجاج", "Glass tint strength")} hint={i("قوة التظليل فوق التمويه — الأعلى أوضح للنص", "Tint strength over the blur — higher is easier to read")}>
-              <Slider label={i("قوة تظليل الزجاج", "Glass tint strength")} value={s.glassTint ?? 45} min={0} max={80} step={1} format={pct} onLive={(v) => set({ glassTint: v })} onCommit={(v) => set({ glassTint: v })} />
+            <Row icon={ic(Moon)} label={i("شدة الحجاب", "Veil strength")} hint={i("لون الحجاب وعتامته فوق سطح المكتب — الأعلى أوضح للنص", "Colour and opacity of the veil over the desktop — higher is easier to read")}>
+              <Slider label={i("شدة الحجاب", "Veil strength")} value={s.glassTint ?? 45} min={0} max={80} step={1} format={pct} onLive={(v) => set({ glassTint: v })} onCommit={(v) => set({ glassTint: v })} />
             </Row>
           )}
           

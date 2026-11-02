@@ -51,10 +51,9 @@
   --c-success: #34d399; --c-warning: #fbbf24; --c-danger: #f87171; --c-info: #8ea2ff;
   --accent: #4fd1c5; --accent-fg: #06201d; --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
 
-  /* معاملات الزجاج (glassTint/Blur/Saturation من الإعدادات؛ style يضبطه data-glass) */
+  /* معاملات الزجاج المُحاكى (glassTint من الإعدادات ⇒ --glass-a؛ الأسلوب data-glass) — docs/GLASS.md */
   --glass-tint: 45;
-  --glass-rim-hi: rgb(255 255 255 / 0.35); --glass-rim-lo: rgb(255 255 255 / 0.08);
-  --glass-spec: rgb(255 255 255 / 0.55);
+  --glass-spec: rgb(255 255 255 / 0.22);
   --glass-shadow: rgb(0 0 0 / calc(0.25 * var(--shadow-k)));
 }
 :root[data-theme="light"] {
@@ -68,8 +67,7 @@
   --shadow-1: 0 1px 2px rgb(13 16 23 / calc(0.08 * var(--shadow-k))), 0 1px 1px rgb(13 16 23 / calc(0.05 * var(--shadow-k)));
   --shadow-2: 0 4px 12px rgb(13 16 23 / calc(0.10 * var(--shadow-k))), 0 1px 3px rgb(13 16 23 / calc(0.06 * var(--shadow-k)));
   --shadow-3: 0 16px 40px rgb(13 16 23 / calc(0.16 * var(--shadow-k))), 0 4px 12px rgb(13 16 23 / calc(0.08 * var(--shadow-k)));
-  --glass-rim-hi: rgb(255 255 255 / 0.85); --glass-rim-lo: rgb(255 255 255 / 0.30);
-  --glass-spec: rgb(255 255 255 / 0.95);
+  --glass-spec: rgb(255 255 255 / 0.85);
   --glass-shadow: rgb(13 16 23 / calc(0.14 * var(--shadow-k)));
 }
 :root[data-density="compact"] { --density-pad: var(--space-3); --row-h: 48px; }
