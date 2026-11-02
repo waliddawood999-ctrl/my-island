@@ -266,11 +266,27 @@ export function PlayerPeek({ media, s, accent, reduce, visible }: PlayerProps) {
 }
 
 /** المشغّل في اللوحة (تبويب الرئيسية): نفس المصغّرة (THUMB) + عنوان 20/650 + «فنان · ألبوم» + شريط تقديم + أزرار. */
-export function PlayerPanel({ media, s, accent, reduce, visible }: PlayerProps) {
+/** wide ⇒ تخطيط مدمج بصفّين (غلاف+عنوان+أزرار / شريط التقدّم) لمقاسات اللوحة العريضة القليلة الارتفاع (layoutMode.ts). */
+export function PlayerPanel({ media, s, accent, reduce, visible, wide = false }: PlayerProps & { wide?: boolean }) {
   const { info, cover, sources } = media;
   const layout = s.playerLayout ?? "compact";
   const pos = usePos(media, visible);
   if (!info.session) return <Empty />;
+  if (wide) {
+    return (
+      <div data-testid="player-panel" data-wide="true" style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 8, height: "100%", ["--player-accent" as string]: accent }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          {layout !== "minimal" && <Thumb cover={cover} coverW={media.coverW} coverH={media.coverH} session={info.session} trackKey={tkey(info)} source={info.source} sourceName={info.source_name} duration={info.duration} accent={accent} reduce={reduce} h={Math.min(thumbH(layout), 64)} />}
+          <div style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+            <div dir="auto" className="truncate" style={{ fontSize: 18, fontWeight: 650, lineHeight: 1.2 }}>{mediaTitle(info)}</div>
+            <div dir="auto" className="truncate" style={{ fontSize: 12.5, opacity: 0.65 }}>{sub(info) || " "}</div>
+          </div>
+          <Controls info={info} />
+        </div>
+        {(s.showProgress ?? true) && <SeekBar pos={pos} info={info} accent={accent} h={5} reduce={reduce} showTimes={s.showPlaybackTime ?? true} />}
+      </div>
+    );
+  }
   return (
     <div data-testid="player-panel" style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 10, height: "100%", ["--player-accent" as string]: accent }}>
       <div style={{ display: "flex", alignItems: "center", gap: 18 }}>

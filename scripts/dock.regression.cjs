@@ -11,7 +11,7 @@ const open = async (browser, settings, media) => {
   const errs = []; page.on("pageerror", (e) => errs.push(String(e)));
   await page.addInitScript(bridge({ settings: { language: "en", eyesEnabled: false, settingsVersion: 3, hoverDelayMs: 0, ...settings }, media }));
   await page.goto(`${BASE}/index.html`); await page.waitForTimeout(800);
-  await page.mouse.move(400, 10); await page.waitForTimeout(500); await page.click(".island-body"); await page.waitForTimeout(1600);
+  await page.mouse.move(400, 10); await page.waitForTimeout(500); await page.click(".island-body", { position: { x: 8, y: 8 } }); await page.waitForTimeout(1600);
   return { ctx, page, errs };
 };
 (async () => {
@@ -58,6 +58,12 @@ const open = async (browser, settings, media) => {
   ok("default panel size ⇒ tall layout", (await page.locator('[data-layout="tall"]').count()) === 1);
   await ctx.close();
   // ميديا شغّالة ⇒ المشغّل لا الرئيسية الخاملة
+  ({ ctx, page } = await open(browser, { panelTabsStyle: "dock" }, { session: true, source: "Spotify.exe", source_name: "Spotify", title: "Song A", artist: "B", album: "C", duration: 200, position: 10, playing: true, can_prev: true, can_next: true, can_seek: true, can_play: true, can_pause: true }));
+  ok("tall panel ⇒ regular player layout (not the compact wide one)", (await page.locator('[data-testid="player-panel"][data-wide="true"]').count()) === 0);
+  await ctx.close();
+  ({ ctx, page } = await open(browser, { panelTabsStyle: "dock", panelWidth: 720, panelHeight: 260 }, { session: true, source: "Spotify.exe", source_name: "Spotify", title: "Song A", artist: "B", album: "C", duration: 200, position: 10, playing: true, can_prev: true, can_next: true, can_seek: true, can_play: true, can_pause: true }));
+  ok("wide panel + media ⇒ compact two-row player whose controls sit above the dock", await page.evaluate(() => { const pl = document.querySelector('[data-testid="player-panel"][data-wide="true"]'); const dk = document.querySelector('[data-testid="page-dock"]'); if (!pl || !dk) return false; const c = pl.querySelector("button:last-of-type") || pl; return pl.getBoundingClientRect().bottom <= dk.getBoundingClientRect().top + 1; }));
+  await ctx.close();
   ({ ctx, page } = await open(browser, { panelTabsStyle: "dock" }, { session: true, source: "Spotify.exe", source_name: "Spotify", title: "Song A", artist: "B", album: "C", duration: 200, position: 10, playing: true, can_prev: true, can_next: true, can_seek: true, can_play: true, can_pause: true }));
   ok("media session ⇒ player shown, idle home hidden", (await page.getByTestId("idle-home").count()) === 0 && (await page.getByText("Song A").count()) >= 1);
   await ctx.close();
