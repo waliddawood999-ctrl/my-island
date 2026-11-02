@@ -1,5 +1,17 @@
 # حالة المشروع
 
+## ARCH — حذف منطقة النافذة نهائيًا + شفافية WebView2 مفروضة + سلاسة الحركة (2026-11-02، من `origin/main` عند 640549e)
+
+**قيد البيئة:** Linux بلا ويندوز/WebView2؛ لا يُدّعى أي سلوك ويندوز غير مثبت بالكود. القياسات من Chromium بلا GPU (محاكاة) لا ويندوز.
+
+1. **شفافية مفروضة** — `backdrop.rs`: متغير `WEBVIEW2_DEFAULT_BACKGROUND_COLOR=00000000` في `run()` قبل أي ويب فيو + `ICoreWebView2Controller2::SetDefaultBackgroundColor(0,0,0,0)` على main/overlay مع قراءة القيمة والتحقق (يُسجَّل عدم التطابق ويُعاد الضبط). الحارس: `scripts/arch.test.mjs` + اختبار Rust `transparency_guard`.
+2. **لا `SetWindowRgn` في أي مكان** — المستهلكون الذين حُذفوا: `backdrop::{region_rect,region_top,region_radius_px,should_apply,apply_region,set_shape,refresh_shape,EDGE_PAD_CSS}`، استدعاء `refresh_shape` في `win::position_main`، `win::resize_to_island` (صار يخزّن فقط)، اختبار `test:region` (⇒ `test:hit`). `report_island_rect` أُعيد استعماله بمعنى «مستطيل الإصابة». الجديد `hit.rs`: خيط مركون يستطلع المؤشر (16ms قرب النافذة/50ms بعيدًا) ويبدّل `set_ignore_cursor_events` عند الانتقالات فقط. `mascot` يقرأ `hit::shape()`.
+3. **سلاسة الحركة** — لا استدعاء نافذة لكل إطار (`Pill.tsx` لا ينتظر `report_island_rect`)؛ الظل والتوهّج ⇒ `Halo.tsx` طبقة مُعدّة مسبقًا (قناع PNG مُولَّد) تتحرّك بـscale/opacity فقط؛ قمة السطوع ≤0.7×قوة التوهّج. القياس: `RasterTask` لكل دورة ≈1610ms ← ≈510ms.
+4. **التشخيص** — الإعدادات ▸ حول: صف «نسخة WebView2 Runtime» (`webview_runtime`) مع تحذير لـ145–146.
+5. **الاختبارات** — `test:hit` (يحلّ محلّ `test:region`) و`test:arch` الجديدان؛ اختبارات Rust `hit::tests` (7) و`backdrop::tests` (2).
+
+**لم يُتحقق (يحتاج ويندوز):** غياب الهلالين فعليًا على الجهاز، ملمس الحركة، سلوك `set_ignore_cursor_events` مع WebView2 (نقر خارج الجسم/عجلة/سحب)، نسخ Runtime عند المستخدمين. **مخاطر معروفة:** (أ) `set_ignore_cursor_events(true)` يضيف `WS_EX_LAYERED|WS_EX_TRANSPARENT` من tao؛ (ب) أثناء «تجاهل» لا تصل الصفحةَ أحداثُ فأرة — الحوم يعتمد على تبديل الخيط خلال ≤16ms؛ (ج) نسخة 145–146 قد تُظهر بياضًا رغم الفرض (التحذير في «حول»).
+
 ## جلسة إصلاحات المالك — تعليق التحجيم · العيون · المحدّث · الهلالان (2026-11-02، من `origin/main` عند 8261ee3)
 
 **قيد البيئة:** Linux بلا ويندوز/WebView2؛ لا يُدّعى أي سلوك ويندوز غير مثبت بالكود. بنود القبول على جهاز المالك مذكورة تحت كل بند.
