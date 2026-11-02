@@ -3,7 +3,7 @@ use rusqlite::Connection;
 use serde_json::{json, Map, Value};
 use std::{path::PathBuf, sync::Mutex};
 
-/// قيَم الموضع — تطابق مفاتيح monitor / offsetX / offsetY / pillPosition في src/settings.ts.
+/// قيَم الموضع — تطابق مفاتيح monitor / offsetX / offsetY / pillPosition / islandDocking في src/settings.ts.
 #[derive(Clone, Copy, Debug)]
 pub struct PlacementSettings {
     pub monitor: usize,
@@ -12,11 +12,13 @@ pub struct PlacementSettings {
     pub offset_y: i32,
     /// -1 يسار · 0 منتصف · 1 يمين — المفتاح pillPosition.
     pub align: i8,
+    /// true = ملتصقة بأعلى الشاشة (صفر هامش، offsetY مُهمَل) — المفتاح islandDocking؛ false = عائمة (الافتراضي).
+    pub attached: bool,
 }
 
 impl Default for PlacementSettings {
     fn default() -> Self {
-        Self { monitor: 0, offset_x: 0, offset_y: 0, align: 0 }
+        Self { monitor: 0, offset_x: 0, offset_y: 0, align: 0, attached: false }
     }
 }
 
@@ -62,6 +64,7 @@ pub fn defaults() -> Map<String, Value> {
         "pillRadius": 0,
         "offsetY": 0,
         "pillPosition": "center",
+        "islandDocking": "floating",
         "motionPreset": "calm",
         "motionSpeed": 1.0,
         "motionBounce": 0.1,
@@ -270,6 +273,7 @@ impl AppState {
         if let Some(v) = s.get("offsetX").and_then(Value::as_i64) { p.offset_x = v as i32; }
         if let Some(v) = s.get("offsetY").and_then(Value::as_i64) { p.offset_y = (v as i32).clamp(0, 60); }
         if let Some(v) = s.get("pillPosition").and_then(Value::as_str) { p.align = match v { "left" => -1, "right" => 1, _ => 0 }; }
+        if let Some(v) = s.get("islandDocking").and_then(Value::as_str) { p.attached = v == "attached"; }
     }
 
     /// يحفظ كل مفتاح في kv كـ JSON ويدمجه في الذاكرة؛ يعيد المقطع المطبّق.

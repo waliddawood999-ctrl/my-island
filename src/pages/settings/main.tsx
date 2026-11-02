@@ -256,11 +256,15 @@ function App() {
             <Segmented label={i("موضع الجزيرة", "Position")} value={s.pillPosition ?? "center"} onChange={(v) => set({ pillPosition: v })}
               options={[{ value: "left", label: i("يسار", "Left") }, { value: "center", label: i("منتصف", "Center") }, { value: "right", label: i("يمين", "Right") }]} />
           </Row>
+          <Row icon={ic(PanelTop)} label={i("وضع التموضع", "Docking mode")} hint={i("عائمة: حبة منفصلة بهامش من الأعلى · ملتصقة: تلتصق بحافة الشاشة العلوية بزوايا علوية مسطّحة", "Floating: a detached pill with a gap from the top · Attached: sits flush on the top screen edge with flat top corners")}>
+            <Segmented label={i("وضع التموضع", "Docking mode")} value={s.islandDocking ?? "floating"} onChange={(v) => set({ islandDocking: v })}
+              options={[{ value: "floating", label: i("عائمة", "Floating") }, { value: "attached", label: i("ملتصقة بالأعلى", "Attached to top") }]} />
+          </Row>
           <Row icon={ic(Move)} label={i("الإزاحة الأفقية", "Horizontal offset")} hint={i("تحريك الحبة يمينًا أو يسارًا من موضعها", "Nudges the pill left or right from its place")}>
             <Slider label={i("الإزاحة الأفقية", "Horizontal offset")} value={s.offsetX ?? 0} min={-800} max={800} step={10} format={px} onCommit={(v) => set({ offsetX: v })} />
           </Row>
-          <Row icon={ic(MoveVertical)} label={i("الإزاحة الرأسية", "Vertical offset")} hint={i("المسافة بين الحبة وأعلى الشاشة", "Gap between the pill and the top of the screen")}>
-            <Slider label={i("الإزاحة الرأسية", "Vertical offset")} value={s.offsetY ?? 0} min={0} max={60} step={2} format={px} onCommit={(v) => set({ offsetY: v })} />
+          <Row icon={ic(MoveVertical)} label={i("الإزاحة الرأسية", "Vertical offset")} hint={s.islandDocking === "attached" ? i("معطَّلة في وضع الالتصاق: الحبة بلا هامش من أعلى الشاشة", "Disabled in Attached mode: the pill has no gap from the top") : i("المسافة بين الحبة وأعلى الشاشة (للوضع العائم فقط)", "Gap between the pill and the top of the screen (Floating mode only)")}>
+            <Slider disabled={s.islandDocking === "attached"} label={i("الإزاحة الرأسية", "Vertical offset")} value={s.offsetY ?? 0} min={0} max={60} step={2} format={px} onCommit={(v) => set({ offsetY: v })} />
           </Row>
         </Section>
         <Section title={i("الفتح والتنقل", "Opening & navigation")}>
