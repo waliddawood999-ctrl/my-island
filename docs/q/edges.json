@@ -1,0 +1,17 @@
+{
+  "1": {
+    "partialAlphaPx": 762,
+    "solidPx": 20,
+    "note": "partialAlpha = بكسلات حافة مضادّة للتعرّج في CSS؛ القصّ الأحادي يُسقطها كلها"
+  },
+  "1.25": {
+    "partialAlphaPx": 1239,
+    "solidPx": 31,
+    "note": "partialAlpha = بكسلات حافة مضادّة للتعرّج في CSS؛ القصّ الأحادي يُسقطها كلها"
+  },
+  "1.5": {
+    "partialAlphaPx": 1682,
+    "solidPx": 57,
+    "note": "partialAlpha = بكسلات حافة مضادّة للتعرّج في CSS؛ القصّ الأحادي يُسقطها كلها"
+  }
+}

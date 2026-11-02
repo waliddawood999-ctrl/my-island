@@ -109,12 +109,15 @@ export const paletteVariants: Variants = {};
 /** دخول عنصر قائمة بتتابع خفيف (custom = فهرس العنصر): شفافية + إزاحة صغيرة بنابض المحتوى، بلا تمويه (تكلفة أقل على قوائم طويلة). */
 export const itemVariants: Variants = {};
 
+/** بعد انتهاء دخول العنصر يُزال المرشّح كليًا: `filter: blur(0px)` المتبقّي يبقي كل نص داخله في سطح تركيب منفصل طوال بقائه (docs/STATUS.md · Q). */
+const NO_FILTER = { filter: "none" } as const;
+
 function buildVariants() {
   Object.keys(swapVariants).forEach((k) => delete swapVariants[k]);
   Object.assign(swapVariants, {
     initial: { opacity: 0, y: shift.swap, filter: `blur(${blur.swap}px)` },
     animate: {
-      opacity: 1, y: 0, filter: "blur(0px)",
+      opacity: 1, y: 0, filter: "blur(0px)", transitionEnd: NO_FILTER,
       transition: { ...spring.content, opacity: { duration: dur.swap, ease: ease.out, delay: level === "full" ? 0.06 : 0 } },
     },
     exit: {
@@ -126,7 +129,7 @@ function buildVariants() {
   Object.assign(sectionVariants, {
     initial: { opacity: 0, y: shift.section, filter: `blur(${blur.section}px)` },
     animate: (n: number = 0) => ({
-      opacity: 1, y: 0, filter: "blur(0px)",
+      opacity: 1, y: 0, filter: "blur(0px)", transitionEnd: NO_FILTER,
       transition: { ...spring.content, delay: n * stagger.section, opacity: { duration: dur.swap, ease: ease.out, delay: n * stagger.section } },
     }),
     exit: { opacity: 0, transition: { duration: dur.fast, ease: ease.inOut } },
@@ -143,7 +146,7 @@ function buildVariants() {
   Object.keys(paletteVariants).forEach((k) => delete paletteVariants[k]);
   Object.assign(paletteVariants, {
     initial: { opacity: 0, scale: scale.enter, filter: `blur(${blur.swap}px)` },
-    animate: { opacity: 1, scale: 1, filter: "blur(0px)", transition: { ...spring.content } },
+    animate: { opacity: 1, scale: 1, filter: "blur(0px)", transitionEnd: NO_FILTER, transition: { ...spring.content } },
     exit: { opacity: 0, scale: scale.exit, filter: `blur(${blur.section}px)`, transition: { duration: dur.fast, ease: ease.inOut } },
   } satisfies Variants);
 }

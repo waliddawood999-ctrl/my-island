@@ -1,0 +1,62 @@
+{
+  "1/peek": {
+    "elementsWithFilter": 5,
+    "w": 400,
+    "h": 120,
+    "diffPx": 1247,
+    "pct": 2.6,
+    "maxDelta": 6,
+    "lapWith": 1732.3,
+    "lapNone": 1727.7
+  },
+  "1/panel": {
+    "elementsWithFilter": 6,
+    "w": 520,
+    "h": 290,
+    "diffPx": 2133,
+    "pct": 1.41,
+    "maxDelta": 7,
+    "lapWith": 1133.9,
+    "lapNone": 1133
+  },
+  "1.25/peek": {
+    "elementsWithFilter": 5,
+    "w": 500,
+    "h": 150,
+    "diffPx": 1920,
+    "pct": 2.56,
+    "maxDelta": 7,
+    "lapWith": 1240.1,
+    "lapNone": 1238.9
+  },
+  "1.25/panel": {
+    "elementsWithFilter": 6,
+    "w": 650,
+    "h": 363,
+    "diffPx": 3190,
+    "pct": 1.35,
+    "maxDelta": 87,
+    "lapWith": 864.1,
+    "lapNone": 864
+  },
+  "1.5/peek": {
+    "elementsWithFilter": 5,
+    "w": 600,
+    "h": 180,
+    "diffPx": 2143,
+    "pct": 1.98,
+    "maxDelta": 63,
+    "lapWith": 1063.5,
+    "lapNone": 1062.2
+  },
+  "1.5/panel": {
+    "elementsWithFilter": 6,
+    "w": 780,
+    "h": 435,
+    "diffPx": 4339,
+    "pct": 1.28,
+    "maxDelta": 105,
+    "lapWith": 709,
+    "lapNone": 708.4
+  }
+}
