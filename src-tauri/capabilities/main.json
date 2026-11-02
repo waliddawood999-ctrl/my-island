@@ -14,7 +14,7 @@
     "allow-battery-status", "allow-attention-today",
     "allow-palette-apps", "allow-palette-icon", "allow-files-search", "allow-files-warm", "allow-palette-recent",
     "allow-run-shell", "allow-open-path", "allow-workspace-open",
-    "allow-rates-get", "allow-perf-status", "allow-mascot-active", "allow-netspeed-active", "allow-island-backdrop",
+    "allow-rates-get", "allow-perf-status", "allow-mascot-active", "allow-netspeed-active", "allow-system-transparency",
     "allow-capture-start", "allow-open-captures",
     "allow-record-begin", "allow-record-stop", "allow-record-status",
     "allow-color-pick", "allow-color-patch", "allow-color-history",

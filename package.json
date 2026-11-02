@@ -8,7 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "tauri": "tauri",
     "test": "npm run test:reminders && npm run test:palette && npm run test:motion && npm run test:eyes && npm run test:wow && npm run test:updater && npm run test:home && npm run test:today && npm run test:clip && npm run test:glass && npm run test:appearance && npm run test:island && npm run test:p",
-    "test:ui": "npm run test:tabs && npm run test:updater-ui && npm run test:quit && npm run test:settings && npm run test:lottie && npm run test:shape && npm run test:t02 && npm run test:motion-ui && npm run test:t03 && npm run test:layout && npm run test:t06 && npm run test:docking && npm run test:p-ui",
+    "test:ui": "npm run test:tabs && npm run test:updater-ui && npm run test:quit && npm run test:settings && npm run test:lottie && npm run test:shape && npm run test:t02 && npm run test:motion-ui && npm run test:t03 && npm run test:layout && npm run test:t06 && npm run test:docking && npm run test:p-ui && npm run test:glass-ui",
     "test:reminders": "node scripts/reminderParse.test.mjs",
     "test:palette": "node scripts/palette.test.mjs",
     "test:motion": "node scripts/motion.test.mjs",
@@ -34,6 +34,7 @@
     "test:t06": "node scripts/t06.regression.cjs",
     "test:docking": "node scripts/docking.regression.cjs",
     "test:p": "node scripts/p.test.mjs",
+    "test:glass-ui": "node scripts/t04.regression.cjs",
     "test:p-ui": "node scripts/p.regression.cjs"
   },
   "dependencies": {

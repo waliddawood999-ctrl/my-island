@@ -43,9 +43,10 @@ ok("import drops unknown keys and wrong types", (() => { const p = a.parseImport
 // خريطة الأقسام: لا تكرار
 ok("no key in two sections", (() => { const all = Object.values(a.SECTION_KEYS).flat(); return new Set(all).size === all.length; })(), (() => { const all = Object.values(a.SECTION_KEYS).flat(); return all.filter((k, i) => all.indexOf(k) !== i).join(); })());
 ok("resetPatch gives a value for every section key", Object.values(a.SECTION_KEYS).flat().every((k) => k in a.resetPatch([k]) && a.resetPatch([k])[k] !== undefined), Object.values(a.SECTION_KEYS).flat().filter((k) => a.resetPatch([k])[k] === undefined).join());
-// تباين الزجاج WCAG (T04): النص فوق السطح المركّب = صبغة الأكريليك (styleAlpha) فوق الخلفية.
-//  · Frosted (45) وSmoked (68): ≥ 4.5 فوق أسوأ خلفية (أبيض نقيّ في الداكن / أسود نقيّ في الفاتح) وفوق المتوسط.
-//  · Clear (25): الصبغة الخفيفة مقصودة ⇒ ≥ 4.5 فوق خلفية متوسطة السطوع (سطح مكتب اعتيادي) مع ظل النص؛ ويُقاس الأسوأ للتقرير (بلا ادّعاء AA عليه).
+// تباين الزجاج المُحاكى WCAG: النص فوق السطح المركّب = لون الحجاب (glassSurface) بعتمته glassAlpha فوق الخلفية.
+//  لا تمويه ⇒ ما خلف الحجاب يظهر بحدّته، فنقيس الحالات: أسوأ خلفية (أبيض نقيّ في الداكن / أسود نقيّ في الفاتح) وخلفية متوسطة.
+//  · Frosted (45) وSmoked (68): ≥ 4.5 فوق أسوأ خلفية وفوق المتوسط.
+//  · Clear (25): حجاب أخفّ مقصود ⇒ ≥ 4.5 فوق خلفية متوسطة؛ الأسوأ يُقاس للتقرير فقط (بلا ادّعاء AA عليه).
 const TEXT = { dark: [255, 255, 255], light: [13, 16, 23] };
 const worst = { dark: [255, 255, 255], light: [0, 0, 0] };
 const mid = [128, 128, 128];
@@ -54,9 +55,17 @@ for (const theme of ["dark", "light"]) for (const [style, tint] of cases) {
   const sf = a.glassSurface(style, theme, tint);
   const cw = a.contrast(TEXT[theme], a.over([...sf.color, sf.alpha], worst[theme]));
   const cm = a.contrast(TEXT[theme], a.over([...sf.color, sf.alpha], mid));
+  console.log(`  [report] ${style}/${theme}/tint${tint}: alpha ${sf.alpha} worst ${cw.toFixed(2)} mid ${cm.toFixed(2)}`);
   if (style === "crystal") ok(`contrast frosted/${theme}/tint${tint}: worst backdrop ${cw.toFixed(2)} ≥ 4.5, mid ${cm.toFixed(2)}`, cw >= 4.5 && cm >= 4.5);
   else ok(`contrast clear/${theme}/tint${tint}: mid backdrop ${cm.toFixed(2)} ≥ 4.5 (extreme worst case ${cw.toFixed(2)} reported, not claimed)`, cm >= 4.5);
 }
-ok("styleAlpha mirrors the Rust map (frosted 45 dark = .6175; clear 25 dark = .225)", Math.abs(a.styleAlpha("frosted", false, 45) - 0.6175) < 1e-9 && Math.abs(a.styleAlpha("clear", false, 25) - 0.225) < 1e-9);
+ok("glassAlpha anchors: crystal 45 = .78/.82 (±.005), clear 25 = .60/.64", [a.glassAlpha("crystal", false, 45) - 0.78, a.glassAlpha("crystal", true, 45) - 0.82, a.glassAlpha("clear", false, 25) - 0.6, a.glassAlpha("clear", true, 25) - 0.64].every((d) => Math.abs(d) < 0.005));
+ok("glassAlpha monotonic in tint, clear < crystal, cap .97, density scales, garbage safe", (() => {
+  for (const style of ["crystal", "clear"]) for (const light of [false, true]) { let prev = -1; for (let t = 0; t <= 80; t++) { const v = a.glassAlpha(style, light, t); if (!(v >= prev) || v > 0.97) return false; prev = v; } }
+  return a.glassAlpha("clear", false, 45) < a.glassAlpha("crystal", false, 45) && a.glassAlpha("crystal", false, 45, 0.5) < a.glassAlpha("crystal", false, 45) * 0.55 && Number.isFinite(a.glassAlpha("crystal", false, NaN, "x"));
+})());
+ok("appearanceVars exposes --glass-a (and no --glass-blur/saturate)", (() => { const v = a.appearanceVars({ glassTint: 45 }, a.ENV_DEFAULT).vars; return Math.abs(Number(v["--glass-a"]) - 0.779) < 0.002 && !("--glass-blur" in v) && !("--glass-saturate" in v); })());
+ok("Windows transparency off ⇒ solid fallback (opaque surface)", (() => { const r = a.appearanceVars({}, { ...a.ENV_DEFAULT, transparency: false }); return r.attrs.fallback === "solid" && r.attrs.material === "solid"; })());
+ok("accent tints the veil (5%): teal vs coral differ but stay within 12 levels of the base", (() => { const t = a.glassSurface("crystal", "dark", 45, "#4fd1c5").color, c = a.glassSurface("crystal", "dark", 45, "#ff6b5e").color; return t.join() !== c.join() && t.every((v, i) => Math.abs(v - a.GLASS_BASE.dark[i]) <= 12); })());
 console.log(fail ? `FAILED ${fail}` : "ALL PASSED");
 process.exit(fail ? 1 : 0);

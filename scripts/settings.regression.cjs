@@ -85,7 +85,7 @@ const where = {};
 
   // المظهر: أسلوب الزجاج + الإعدادات المسبقة
   await nav("appearance").click(); await page.waitForTimeout(300);
-  await page.getByRole("radio", { name: "Clear glass" }).click(); await page.waitForTimeout(150);
+  await page.getByRole("radio", { name: "Simulated clear glass" }).click(); await page.waitForTimeout(150);
   const gs = (await calls("settings_set")).filter((c) => c.patch && c.patch.glassStyle === "clear").pop();
   ok("Clear glass ⇒ glassStyle=clear, tint 25, no blur key", gs && gs.patch.glassTint === 25 && !("glassBlur" in gs.patch), JSON.stringify(gs));
   await page.locator('[data-preset="smoked"]').click(); await page.waitForTimeout(150);

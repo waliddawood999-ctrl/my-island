@@ -35,7 +35,7 @@ module.exports.bridge = (cfg) => `
       if (['reminders_get','shelf_list','launcher_list','launcher_groups_get'].includes(cmd)) return Promise.resolve([]);
       if (cmd === 'launcher_hotkeys_get') return Promise.resolve({});
       if (cmd === 'attention_today') return Promise.resolve({ total: 0, apps: [], enabled: true, day: '2026-11-01' });
-      if (cmd === 'island_backdrop') return cfg.backdrop === 'reject' ? Promise.reject('unsupported') : Promise.resolve(cfg.backdrop || 'none');
+      if (cmd === 'system_transparency') return Promise.resolve(cfg.transparency !== false);
       if (cmd === 'clip_list' || cmd === 'color_history') return Promise.resolve([]);
       if (cmd === 'note_get') return Promise.resolve({ html: '<p>hello note</p>', folder: '' });
       if (cmd === 'note_folders_get') return Promise.resolve([]);

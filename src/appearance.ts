@@ -43,11 +43,12 @@ export function accentVars(hex: unknown, theme: ResolvedTheme): { accent: string
   return { accent: `#${c.map((v) => v.toString(16).padStart(2, "0")).join("")}`, accentFg: fg };
 }
 
-export interface Env { systemDark: boolean; eco: boolean; reducedTransparency: boolean; osReducedMotion: boolean }
-export const ENV_DEFAULT: Env = { systemDark: true, eco: false, reducedTransparency: false, osReducedMotion: false };
+/** transparency = «تأثيرات الشفافية» في ويندوز (system_transparency). false ⇒ السطح المُحاكى معتم بالكامل. */
+export interface Env { systemDark: boolean; eco: boolean; reducedTransparency: boolean; osReducedMotion: boolean; transparency: boolean }
+export const ENV_DEFAULT: Env = { systemDark: true, eco: false, reducedTransparency: false, osReducedMotion: false, transparency: true };
 
-/** هل الزجاج مسموح؟ لا ⇒ سطح مصبوغ شبه مصمت (احتياط). */
-export const glassAllowed = (s: Partial<Settings>, env: Env) => (s.themeMaterial ?? "glass") === "glass" && !env.eco && !env.reducedTransparency;
+/** هل الزجاج المُحاكى مسموح؟ لا (Eco / تقليل الشفافية / «تأثيرات الشفافية» مطفأة في ويندوز) ⇒ السطح نفسه لكن معتم بالكامل. */
+export const glassAllowed = (s: Partial<Settings>, env: Env) => (s.themeMaterial ?? "glass") === "glass" && !env.eco && !env.reducedTransparency && env.transparency !== false;
 
 /** كل خصائص <html>: data-* ومتغيرات CSS الحيّة. */
 export function appearanceVars(s: Partial<Settings>, env: Env): { attrs: Record<string, string>; vars: Record<string, string> } {
@@ -70,6 +71,7 @@ export function appearanceVars(s: Partial<Settings>, env: Env): { attrs: Record<
       "--corner-scale": s.cornerStyle === "extra" ? "1.3" : "1", "--font-scale": String(num(s.fontScale, 90, 120, 100) / 100),
       "--speed": String(speed), "--pill-width": `${pw}px`, "--pill-height": `${ph}px`, "--pill-radius": `${radius}px`,
       "--glass-tint": String(num(s.glassTint, 0, 80, 45)),
+      "--glass-a": String(glassAlpha(style, theme === "light", num(s.glassTint, 0, 80, 45), s.backgroundOpacity)),
       "--bg-k": String(Math.min(1, Math.max(0.3, typeof s.backgroundOpacity === "number" && Number.isFinite(s.backgroundOpacity) ? s.backgroundOpacity : 1))),
     },
   };
@@ -95,18 +97,19 @@ export const GLASS_STYLE_VALUES: Record<"crystal" | "clear", P> = {
   clear: { glassStyle: "clear", themeMaterial: "glass", glassTint: 25 },
 };
 
-/** ألفا صبغة الأكريليك (مرآة src-tauri/src/backdrop.rs::style_alpha): frosted داكن 0.28+0.0075t · فاتح min(0.32+0.0075t,0.92)؛ clear داكن 0.10+0.005t · فاتح min(0.14+0.005t,0.60). */
-export function styleAlpha(style: "frosted" | "clear", light: boolean, tint: number): number {
-  const t = Math.min(80, Math.max(0, tint));
-  return style === "clear" ? (light ? Math.min(0.14 + 0.005 * t, 0.6) : 0.1 + 0.005 * t) : light ? Math.min(0.32 + 0.0075 * t, 0.92) : 0.28 + 0.0075 * t;
-}
-/** يعيد glassTint المكافئ لألفا مضروبة بـ«الكثافة» backgroundOpacity (الحد الأدنى من خريطة الأسلوب). */
-export function tintForOpacity(style: "frosted" | "clear", light: boolean, tint: number, bo: number): number {
-  const t = Math.min(80, Math.max(0, Math.round(tint)));
-  if (!(bo < 1)) return t;
-  const base = styleAlpha(style, light, 0), k = style === "clear" ? 0.005 : 0.0075;
-  const a = styleAlpha(style, light, t) * Math.max(0.3, bo);
-  return Math.round(Math.min(80, Math.max(0, (a - base) / k)));
+/** السطح المُحاكى (Tier A — docs/GLASS.md): قاعدة اللون الداكنة/الفاتحة + نسبة مزج الأكسنت (مرآة --glass-base/--glass-accent-mix في island.css). */
+export const GLASS_BASE: Record<ResolvedTheme, [number, number, number]> = { dark: [22, 22, 27], light: [245, 245, 248] };
+export const GLASS_ACCENT_MIX = 0.05;
+/**
+ * عتامة الحجاب (0..0.97) من الأسلوب والثيم وglassTint (0–80) وكثافة backgroundOpacity (0.3–1، تضرب النتيجة).
+ * crystal: داكن 0.50 + 0.0062·t · فاتح 0.54 + 0.0062·t  ⇒ عند 45: 0.78 / 0.82 (نقطة البداية المعتمدة).
+ * clear:   داكن 0.425 + 0.007·t · فاتح 0.465 + 0.007·t ⇒ عند 25: 0.60 / 0.64.   سقف 0.97 (لا مصمت كامل من الشريط).
+ */
+export function glassAlpha(style: "crystal" | "clear", light: boolean, tint: number, density: unknown = 1): number {
+  const t = Math.min(80, Math.max(0, Number.isFinite(tint) ? tint : 45));
+  const a = style === "clear" ? (light ? 0.465 : 0.425) + 0.007 * t : (light ? 0.54 : 0.5) + 0.0062 * t;
+  const k = typeof density === "number" && Number.isFinite(density) ? Math.min(1, Math.max(0.3, density)) : 1;
+  return Math.round(Math.min(0.97, a) * k * 1000) / 1000;
 }
 
 /** مفاتيح كل قسم (لزر «إعادة ضبط القسم»). المصدر الوحيد لخريطة الأقسام. */
@@ -171,10 +174,9 @@ export const FULL_DEFAULTS: P = {
 /** مقطع إعادة الضبط لقائمة مفاتيح. */
 export const resetPatch = (keys: (keyof Settings)[]): P => Object.fromEntries(keys.map((k) => [k, (FULL_DEFAULTS as Record<string, unknown>)[k]])) as P;
 
-/** لون وألفا السطح الفعلي خلف النص (وسط الحبة) — مرآة لقيم island.css/backdrop.rs، يُستعمل لاختبار تباين WCAG (scripts/appearance.test.mjs). */
-export function glassSurface(style: "crystal" | "clear", theme: ResolvedTheme, tint: number): { color: [number, number, number]; alpha: number } {
-  const dark = theme === "dark";
-  const alpha = styleAlpha(style === "clear" ? "clear" : "frosted", !dark, tint);
-  // لون الصبغة: داكن أسود · فاتح Frosted #eceff3 · فاتح Clear أبيض (يطابق tint_abgr في Rust)
-  return { color: dark ? [0, 0, 0] : style === "clear" ? [255, 255, 255] : [236, 239, 243], alpha };
+/** لون وألفا السطح الفعلي خلف النص (وسط الحبة) — مرآة island.css (قاعدة الثيم ممزوجة بـ5٪ أكسنت)، يُستعمل لاختبار تباين WCAG (scripts/appearance.test.mjs). */
+export function glassSurface(style: "crystal" | "clear", theme: ResolvedTheme, tint: number, accent: unknown = "#4fd1c5", density: unknown = 1): { color: [number, number, number]; alpha: number } {
+  const base = GLASS_BASE[theme], ac = rgb(hex6(accent));
+  const color = base.map((v, i) => Math.round(v * (1 - GLASS_ACCENT_MIX) + ac[i] * GLASS_ACCENT_MIX)) as [number, number, number];
+  return { color, alpha: glassAlpha(style, theme === "light", tint, density) };
 }

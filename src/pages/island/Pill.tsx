@@ -6,7 +6,7 @@ import { Coffee, Settings as SettingsIcon, Timer as TimerIcon } from "lucide-rea
 import { AnimatePresence, motion } from "motion/react";
 import { alertShake, dur, ease, islandSpring, paletteVariants, useMotionLevel, sectionVariants, spring, swapVariants, tap } from "../../motion";
 import { i } from "../../i18n";
-import { clampTint, useResolvedTheme, useSettings } from "../../useSettings";
+import { useResolvedTheme, useSettings } from "../../useSettings";
 import { PANEL as PANEL_TOKEN, PANEL_PALETTE, PEEK, PILL as PILL_TOKEN } from "../../tokens";
 import { useMedia, mediaTitle } from "../../useMedia";
 import { useBattery } from "../../useBattery";
@@ -30,7 +30,6 @@ const makeNoteTab = () => lazy(importNote);
 import { normSound, normVolume, playSound } from "../../sounds";
 import { IslandMachine, normCardOrder, realSched } from "../../islandMachine";
 import { crossfade, normSpeed, resolveReduce } from "../../islandMotion";
-import { tintForOpacity } from "../../appearance";
 import { PeekView } from "./PeekView";
 import { PillMedia, PlayerPanel, useAccent } from "./Player";
 import { scrollsFurther } from "./wheel";
@@ -41,7 +40,6 @@ import { TodaySection } from "./TodaySection";
 import { HomeTiles } from "./HomeTiles";
 import { Liquid } from "./Liquid";
 import { Eyes } from "./Eyes";
-import { useBackdrop } from "./useBackdrop";
 import { TabBoundary } from "./TabBoundary";
 import { rowReversed } from "../../eyes";
 import { Palette } from "./Palette";
@@ -139,7 +137,7 @@ function PillTitle({ text, inset }: { text: string; inset: number }) {
 export function Pill() {
   const settings = useSettings();
   const motion_level = useMotionLevel();
-  const { theme, glassOk } = useResolvedTheme(settings);
+  const { theme } = useResolvedTheme(settings);
   const fmt = settings.clockFormat ?? "auto";
   // مقاس الحبة المنكمشة من الإعدادات؛ k = الارتفاع/32 يقيس الخط والعيون والأيقونات معًا (بلا تشوّه).
   const pill = { w: clampN(settings.pillWidth, PILL_TOKEN.minW, PILL_TOKEN.maxW, PILL_DEFAULT.w), h: clampN(settings.pillHeight, PILL_TOKEN.minH, PILL_TOKEN.maxH, PILL_DEFAULT.h) };
@@ -173,7 +171,6 @@ export function Pill() {
   const paletteRef = useRef<{ wasHidden: boolean } | null>(null);
   const moduleMedia = settings.moduleMedia ?? true;
   const media = useMedia(moduleMedia);
-  const glassStyle = settings.glassStyle === "clear" ? "clear" as const : "frosted" as const;
   const trackKey = `${media.info.source}|${media.info.title}|${media.info.artist}|${media.info.album}`;
   const accent = useAccent(media.cover, trackKey, settings);
   const reduceUI = motion_level !== "full" || resolveReduce(settings.reduceMotion, false);
@@ -421,16 +418,6 @@ export function Pill() {
     settleT.current = window.setTimeout(settleNow, SHRINK_GUARD_MS + 700);
     return () => window.clearTimeout(settleT.current);
   }, [sizeKey, settled]);
-  useBackdrop({
-    // أكريليك ويندوز الأصلي لكلا الأسلوبين (frosted/clear) حين تكون المادة زجاجية ومسموحة (ليس Eco/تقليل الشفافية)؛ docs/GLASS.md.
-    glass: (settings.themeMaterial ?? "glass") === "glass" && glassOk,
-    light: theme === "light",
-    ready: settled && !hidden && opacity > 0,
-    radius,
-    // الكثافة (backgroundOpacity) تضرب ألفا الصبغة؛ الحدّ الأدنى من خريطة الأسلوب.
-    tint: tintForOpacity(glassStyle, theme === "light", clampTint(settings.glassTint), clampN(settings.backgroundOpacity, 0.3, 1, 1)),
-    style: glassStyle,
-  });
   M.setCfg({ hoverDelayMs: clampN(settings.hoverDelayMs, 0, 800, 250), wheelCycle: settings.peekWheelCycle ?? true, panelPaging: settings.panelWheelPaging ?? true, cards: normCardOrder(settings.peekCardOrder), slowMo: Number((globalThis as { __slowmo?: number }).__slowmo) || 1 });
   const upcomingForPeek = upMeeting ? { title: upMeeting.item.title, start: upMeeting.item.start } : null;
   // Esc: لوحة ⇒ لمحة (إغلاق بنابض close بلا ارتداد).

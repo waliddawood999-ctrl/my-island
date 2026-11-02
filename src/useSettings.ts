@@ -19,13 +19,35 @@ function useMedia(q: string): boolean {
   );
 }
 
-/** بيئة المظهر: تفضيلات النظام + Eco. */
+/** «تأثيرات الشفافية» في ويندوز (system_transparency). يُسأل عند التحميل ثم عند أول تفاعل/تركيز بحدّ أدنى 5ث بين النداءات — بلا مؤقّتات.
+ *  false ⇒ السطح المُحاكى معتم بالكامل. فشل الأمر (نافذة بلا صلاحية/متصفح) ⇒ true. */
+function useSystemTransparency(): boolean {
+  const [on, setOn] = useState(true);
+  useEffect(() => {
+    let last = 0, alive = true;
+    const ask = () => {
+      const now = Date.now();
+      if (now - last < 5000) return;
+      last = now;
+      invoke<boolean>("system_transparency").then((v) => { if (alive) setOn(v !== false); }).catch(() => {});
+    };
+    ask();
+    window.addEventListener("pointerover", ask, { passive: true });
+    window.addEventListener("focus", ask);
+    document.addEventListener("visibilitychange", ask);
+    return () => { alive = false; window.removeEventListener("pointerover", ask); window.removeEventListener("focus", ask); document.removeEventListener("visibilitychange", ask); };
+  }, []);
+  return on;
+}
+
+/** بيئة المظهر: تفضيلات النظام + Eco + شفافية ويندوز. */
 function useEnv(): Env {
   const { eco } = useEco();
   const systemDark = !useMedia("(prefers-color-scheme: light)"); // الافتراضي داكن إن لم يُعرَف
   const reducedTransparency = useMedia("(prefers-reduced-transparency: reduce)");
   const osReducedMotion = useMedia("(prefers-reduced-motion: reduce)");
-  return { systemDark, eco, reducedTransparency, osReducedMotion };
+  const transparency = useSystemTransparency();
+  return { systemDark, eco, reducedTransparency, osReducedMotion, transparency };
 }
 
 /** يطبّق المظهر كله على <html> (data-* + متغيرات CSS من tokens.css) حيًّا بلا إعادة تحميل. */
@@ -40,7 +62,7 @@ function useAppearance(s: Partial<Settings>, env: Env) {
   }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
-/** الثيم الفعلي (system ⇒ تفضيل النظام) وهل الزجاج مسموح (ليس Eco ولا «تقليل الشفافية») — للأكريليك الأصلي في الحبة. */
+/** الثيم الفعلي (system ⇒ تفضيل النظام) وهل الزجاج المُحاكى مسموح (ليس Eco ولا «تقليل الشفافية» ولا شفافية ويندوز مطفأة). */
 export function useResolvedTheme(s: Partial<Settings>): { theme: "dark" | "light"; glassOk: boolean } {
   const env = useEnv();
   return { theme: resolveTheme(s.themeMode, env.systemDark), glassOk: glassAllowed(s, env) };
