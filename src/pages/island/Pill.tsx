@@ -1,3 +1,4 @@
+import { flushSync } from "react-dom";
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -251,6 +252,9 @@ export function Pill() {
   const collapseT = useRef<number | undefined>(undefined);
   const shrinkT = useRef<number | undefined>(undefined);
   const shrinkPending = useRef(false);
+  // الحجم المرسوم فعلًا: ينمو بعد تغطية المنطقة له (انظر useLayoutEffect أدناه) ويتبع الهدف فورًا عند الانكماش.
+  const [animSize, setAnimSize] = useState<{ w: number; h: number } | null>(null);
+  const growTok = useRef(0);
   // مقياس اللوحة (themeTune.panelScale): ضمن النافذة الثابتة 800×500 (مع هامش المنطقة)
   const aSc = settings.fx?.scale.panel ?? 1;
   const panel = { w: Math.min(760, Math.round(clampN(settings.panelWidth, 420, 720, 520) * aSc)), h: Math.min(470, Math.round(clampN(settings.panelHeight, 220, 420, 290) * aSc)) };
@@ -284,9 +288,9 @@ export function Pill() {
   }, []);
 
   // آخر مقاس أُبلغت به النافذة (لتمييز النمو الذي يسبق الحركة عن الانكماش الذي يليها).
-  const reported = useRef({ w: 0, h: 0 });
+  const reported = useRef({ w: 0, h: 0, r: -1 });
   const report = (w: number, h: number, r?: number) => {
-    reported.current = { w, h };
+    reported.current = { w, h, r: r ?? h / 2 };
     return invoke("report_island_rect", { width: w, height: h, radius: r ?? h / 2 }).catch(() => {});
   };
   // مقاس النافذة الاستراحي الحالي (يُحدَّث في العرض): الحبة · مدمجة منقسمة · تنبيه · أو ارتفاع شريط التبويبات عند الإرساء.
@@ -298,6 +302,9 @@ export function Pill() {
     shrinkPending.current = false;
     window.clearTimeout(shrinkT.current);
     const rest = restWinRef.current;
+    const rep = reported.current;
+    // المنطقة تطابق الاستراحة سلفًا (لا انكماش فعلي): لا استدعاء مكرّر يعيد إنشاء المنطقة ويُعيد رسم النافذة أثناء/بعد الحركة.
+    if (rest.w === rep.w && rest.h === rep.h && ((rest as { r?: number }).r ?? rest.h / 2) === rep.r) { settleNow(); return true; }
     // الاستقرار (للزجاج الحقيقي) بعد أن تُضبط المنطقة فعلًا: وإلا يُطبَّق الأكريليك على شكل قديم.
     report(rest.w, rest.h, (rest as { r?: number }).r).finally(settleNow);
     return true;
@@ -400,9 +407,19 @@ export function Pill() {
   // النافذة الأصلية ثابتة دائمًا (800×500)؛ ما يتغيّر هو المنطقة (اختبار الإصابة + الأكريليك) فقط.
   useLayoutEffect(() => {
     if (paletteRef.current || !settings.loaded) return; // لا مقاس قبل وصول الإعدادات: الحبة لا تقفز من الافتراضي إلى مقاس المستخدم
-    const grow = size.w > reported.current.w || size.h > reported.current.h;
-    if (grow) { cancelShrink(); report(size.w, size.h, targetR); }
-    else scheduleShrink();
+    const rep = reported.current;
+    const grow = size.w > rep.w || size.h > rep.h;
+    const tok = ++growTok.current;
+    if (grow) {
+      cancelShrink();
+      // المنطقة قبل الحركة فعلًا: الجسم المرسوم لا ينمو إلا بعد أن يعود الأمر (وإلا قصّت المنطقةُ القديمة الأولى إطارات النمو فتبدو
+      // الجزيرة «تقفز سريعًا» بعد تأخّر الاستدعاء). اتحاد المقاسين كي لا تنكمش المنطقة في بُعد بينما ينمو الآخر.
+      report(Math.max(size.w, rep.w), Math.max(size.h, rep.h), targetR).finally(() => { if (growTok.current === tok) flushSync(() => setAnimSize({ w: size.w, h: size.h })); });
+      if (size.w < rep.w || size.h < rep.h) scheduleShrink();
+    } else {
+      setAnimSize({ w: size.w, h: size.h });
+      scheduleShrink();
+    }
   }, [size.w, size.h, targetR, settings.loaded, hoverZoneKey]);
   // الشفافية من الإعدادات؛ autoHide يخفي الحبة في الراحة (النافذة تبقى تستقبل المرور فتظهر عند الهوفر).
   const rest = (settings.opacityRest ?? 100) / 100;
@@ -557,7 +574,7 @@ export function Pill() {
         onContextMenu={(e) => { e.preventDefault(); invoke("open_settings").catch(() => {}); }}
         initial={false}
         animate={{
-          opacity, width: size.w, height: size.h, y: 0,
+          opacity, width: (palette || !animSize ? size : animSize).w, height: (palette || !animSize ? size : animSize).h, y: 0,
           borderTopLeftRadius: rTop, borderTopRightRadius: rTop, borderBottomLeftRadius: rBot, borderBottomRightRadius: rBot,
         }}
         transition={{ default: kind === "close" ? islandSpring.close : kind === "panel" ? islandSpring.panel : islandSpring.open, opacity: { duration: reduceUI ? 0.15 : dur.base, ease: ease.out } }}

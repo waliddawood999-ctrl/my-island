@@ -32,10 +32,22 @@ pub fn region_rect(attached: bool, x0: i32, pw: i32, ph: i32, rad: i32, pad: i32
     let top = if attached { -(rad + pad) } else { 0 };
     (x0 - pad, top, x0 + pw + pad + 1, ph + pad + 1, (rad + pad) * 2)
 }
+
+/// مفتاح منطقة مطبَّقة: (HWND، عرض النافذة، l، t، r، b، قطر).
+pub type RegionKey = (isize, i32, i32, i32, i32, i32, i32);
+/// هل تُطبَّق المنطقة؟ لا إن طابقت آخر ما طُبِّق؛ وإلا تُسجَّل كآخر مطبَّق.
+pub fn should_apply(last: &mut Option<RegionKey>, key: RegionKey) -> bool {
+    if *last == Some(key) { return false; }
+    *last = Some(key);
+    true
+}
 // PURE-END
 
 /// شكل الجزيرة الهدف (CSS px): العرض، الارتفاع، نصف القطر. تحدّثه report_island_rect.
 static SHAPE: std::sync::Mutex<(f64, f64, f64)> = std::sync::Mutex::new((220.0, 34.0, 17.0));
+
+/// شكل الجزيرة الحالي (عرض، ارتفاع، نصف قطر) بالـCSS px — mascot يحسب عليه «فوق الحبة»/القرب (النافذة ثابتة وأكبر منها).
+pub fn shape() -> (f64, f64, f64) { *SHAPE.lock().unwrap() }
 
 /// يضبط شكل الجزيرة الهدف ويطبّق المنطقة على النافذة الثابتة (ويندوز) — الواجهة تستدعيه قبل النمو وبعد الانكماش فقط.
 pub fn set_shape(app: &AppHandle, w: f64, h: f64, radius: f64) {
@@ -61,6 +73,9 @@ mod imp {
     use windows::Win32::Graphics::Gdi::{CreateRoundRectRgn, SetWindowRgn, HRGN};
     use windows::Win32::System::Registry::{RegGetValueW, HKEY_CURRENT_USER, RRF_RT_REG_DWORD};
     use windows::Win32::UI::WindowsAndMessaging::GetWindowRect;
+
+    /// آخر منطقة طُبِّقت فعليًا (نافذة، عرضها، l,t,r,b,قطر).
+    static LAST: std::sync::Mutex<Option<RegionKey>> = std::sync::Mutex::new(None);
 
     /// «تأثيرات الشفافية» في إعدادات ويندوز (Personalize\\EnableTransparency): 0 ⇒ مطفأة. غياب القيمة ⇒ مفعّلة.
     pub fn transparency_enabled() -> bool {
@@ -101,8 +116,13 @@ mod imp {
             let x0 = match align { -1 => 0, 1 => (ww - pw).max(0), _ => ((ww - pw) / 2).max(0) };
             let rad = region_radius_px(cr, scale, pw as u32, (ch * scale) as u32);
             let (l, t, rr, b, e) = region_rect(attached, x0, pw, ph, rad, (EDGE_PAD_CSS * scale).round() as i32);
-            let rgn: HRGN = CreateRoundRectRgn(l, t, rr, b, e, e);
-            if rgn.is_invalid() || SetWindowRgn(h, Some(rgn), true) == 0 { return None; }
+            // نفس المنطقة المطبَّقة سلفًا على نفس النافذة ⇒ لا SetWindowRgn: كل استدعاء (redraw=TRUE) يعيد إنشاء المنطقة ويُلزم إعادة رسم
+            // النافذة 800×500 على خيط الواجهة؛ طلبات متطابقة (انكماش بلا تغيّر، إعادة تموضع، تكرار الواجهة) كانت وميضًا/تعليقًا بلا فائدة.
+            let key = (h.0 as isize, ww, l, t, rr, b, e);
+            if should_apply(&mut *LAST.lock().unwrap(), key) {
+                let rgn: HRGN = CreateRoundRectRgn(l, t, rr, b, e, e);
+                if rgn.is_invalid() || SetWindowRgn(h, Some(rgn), true) == 0 { *LAST.lock().unwrap() = None; return None; }
+            }
             Some((pw, ph, rad))
         }
     }
@@ -121,6 +141,17 @@ pub fn system_transparency() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn identical_region_is_not_reapplied() {
+        let k: RegionKey = (7, 800, 280, 0, 521, 45, 54);
+        let mut last = None;
+        assert!(should_apply(&mut last, k), "أول مرة تُطبَّق");
+        assert!(!should_apply(&mut last, k), "نفس المنطقة على نفس النافذة ⇒ لا تطبيق (لا إعادة رسم)");
+        assert!(should_apply(&mut last, (7, 800, 280, 0, 600, 45, 54)), "شكل مختلف ⇒ تُطبَّق");
+        assert!(should_apply(&mut last, (8, 800, 280, 0, 600, 45, 54)), "نافذة أخرى ⇒ تُطبَّق");
+        assert!(should_apply(&mut last, (8, 900, 280, 0, 600, 45, 54)), "عرض نافذة مختلف ⇒ تُطبَّق");
+    }
 
     #[test]
     fn docking_region_top() {

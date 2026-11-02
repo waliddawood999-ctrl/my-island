@@ -13,8 +13,6 @@ use tauri::{AppHandle, Emitter, Manager};
 pub const NEAR_PX: f64 = 240.0;
 /// هستيريسيس: بعد القرب لا يعود «بعيدًا» إلا بعد تجاوز هذه المسافة (يمنع الرجفان عند الحدّ).
 pub const FAR_PX: f64 = 272.0;
-/// ارتفاع الحبة المنكمشة (CSS px): مركزها الرأسي = نصفه من أعلى النافذة.
-const PILL_H: f64 = 32.0;
 
 #[derive(Serialize, Clone, Debug, PartialEq)]
 pub struct Look {
@@ -32,17 +30,22 @@ pub struct Look {
     pub near: bool,
 }
 
-/// cur: موضع المؤشر على الشاشة (فيزيائي) · win: (x,y,w,h) فيزيائي لمنطقة محتوى النافذة · scale: معامل DPI.
+/// مستطيل الجزيرة (الحبة) داخل صفحة main بالـCSS px: (x0, عرض, ارتفاع). النافذة ثابتة 800×500 شفافة منذ T03 فلا تمثّل الحبة؛
+/// `over`/`near` يُحسبان على هذا المستطيل لا على النافذة (وإلا كان كل ما حول الحبة «فوقها» والعيون «سعيدة» دائمًا).
+pub fn island_x0(align: i8, win_w_css: f64, pill_w: f64) -> f64 {
+    match align { -1 => 0.0, 1 => (win_w_css - pill_w).max(0.0), _ => ((win_w_css - pill_w) / 2.0).max(0.0) }
+}
+
+/// cur: موضع المؤشر على الشاشة (فيزيائي) · win: (x,y,w,h) فيزيائي لمنطقة محتوى النافذة · island: (x0,w,h) CSS للحبة · scale: معامل DPI.
 /// over/near تُحسبان هنا بالإحداثيات المنطقية نفسها التي تستعملها الواجهة (cur − win) ÷ scale بلا تقريب.
-pub fn look(cur: (i32, i32), win: (i32, i32, u32, u32), scale: f64, was_near: bool) -> Look {
+pub fn look(cur: (i32, i32), win: (i32, i32, u32, u32), island: (f64, f64, f64), scale: f64, was_near: bool) -> Look {
     let s = if scale > 0.0 { scale } else { 1.0 };
-    let (wx, wy, ww, wh) = win;
+    let (wx, wy, _, _) = win;
+    let (ix, iw, ih) = island;
     let x = (cur.0 - wx) as f64 / s;
     let y = (cur.1 - wy) as f64 / s;
-    let w = ww as f64 / s;
-    let h = wh as f64 / s;
-    let over = x >= 0.0 && y >= 0.0 && x < w && y < h;
-    let (dx, dy) = (x - w / 2.0, y - PILL_H / 2.0);
+    let over = x >= ix && y >= 0.0 && x < ix + iw && y < ih;
+    let (dx, dy) = (x - (ix + iw / 2.0), y - ih / 2.0);
     let dist = (dx * dx + dy * dy).sqrt();
     let near = if was_near { dist <= FAR_PX } else { dist <= NEAR_PX };
     Look { cx: cur.0, cy: cur.1, wx, wy, s, over, near }
@@ -84,7 +87,11 @@ fn sample(app: &AppHandle, was_near: bool) -> Option<Look> {
     let w = app.get_webview_window(crate::win::MAIN)?;
     // الداخلية (منطقة المحتوى) لا الخارجية: إحداثيات الصفحة تبدأ من محتوى النافذة، وأي إطار/ظلّ خارجي كان يزيح التتبّع.
     let (p, s) = (w.inner_position().ok()?, w.inner_size().ok()?);
-    Some(look(cursor_pos()?, (p.x, p.y, s.width, s.height), w.scale_factor().unwrap_or(1.0), was_near))
+    let scale = w.scale_factor().unwrap_or(1.0);
+    let (pw, ph, _) = crate::backdrop::shape();
+    let align = app.state::<crate::state::AppState>().placement.lock().unwrap().align;
+    let island = (island_x0(align, s.width as f64 / scale, pw), pw, ph);
+    Some(look(cursor_pos()?, (p.x, p.y, s.width, s.height), island, scale, was_near))
 }
 
 /// يُنشئ الخيط المركون (لا يعمل شيء قبل mascot_active(true)).
@@ -128,8 +135,9 @@ pub fn mascot_active(active: bool) {
 mod tests {
     use super::*;
 
-    // نافذة 200×32 عند (860,0) بمقياس 1.
+    // نافذة 200×32 عند (860,0) بمقياس 1؛ الحبة تملؤها (x0=0، 200×32).
     const W: (i32, i32, u32, u32) = (860, 0, 200, 32);
+    const I: (f64, f64, f64) = (0.0, 200.0, 32.0);
 
     /// ما تفعله الواجهة (eyes.ts::toPage) — لمطابقة الخلفية: (cur − win) ÷ s.
     fn page(l: &Look) -> (f64, f64) {
@@ -138,30 +146,46 @@ mod tests {
 
     #[test]
     fn over_and_raw_physical_payload() {
-        let l = look((960, 16), W, 1.0, false);
+        let l = look((960, 16), W, I, 1.0, false);
         assert!(l.over && l.near);
         assert_eq!((l.cx, l.cy, l.wx, l.wy), (960, 16, 860, 0));
         assert_eq!(page(&l), (100.0, 16.0));
-        assert!(!look((960, 200), W, 1.0, false).over);
+        assert!(!look((960, 200), W, I, 1.0, false).over);
     }
 
     #[test]
     fn dpi_scale_to_css_per_monitor() {
         // مقياس 2: نافذة 400×64 فيزيائيًا؛ المؤشر عند منتصفها = (100,16) CSS.
-        let l = look((860 + 200, 32), (860, 0, 400, 64), 2.0, false);
+        let l = look((860 + 200, 32), (860, 0, 400, 64), I, 2.0, false);
         assert_eq!(page(&l), (100.0, 16.0));
         assert!(l.over);
         // مقياس 1.25 (شاشة ثانوية): بلا تقريب — 1.25 فيزيائي = 1 CSS بالضبط.
-        let l = look((1000 + 125, 40), (1000, 0, 250, 40), 1.25, false);
+        let l = look((1000 + 125, 40), (1000, 0, 250, 40), I, 1.25, false);
         assert_eq!(page(&l), (100.0, 32.0));
         // نافذة على شاشة بإحداثيات سالبة (يسار الرئيسية).
-        let l = look((-1500 + 150, 30), (-1500, 0, 300, 60), 1.5, false);
+        let l = look((-1500 + 150, 30), (-1500, 0, 300, 60), I, 1.5, false);
         assert_eq!(page(&l), (100.0, 20.0));
+    }
+
+    /// انحدار T03: النافذة 800×500 شفافة والحبة 220×34 في منتصفها — المؤشر ضمن النافذة لكن خارج الحبة ليس «فوقها»
+    /// ويبقى «قريبًا» فيتتبّعه العينان (قبل الإصلاح: over=true دائمًا ⇒ سعيد بلا تتبّع).
+    #[test]
+    fn over_uses_island_rect_not_transparent_window() {
+        let win = (560, 0, 800, 500); // نافذة 800×500 عند x=560 (مقياس 1)
+        let island = (island_x0(0, 800.0, 220.0), 220.0, 34.0);
+        assert_eq!(island.0, 290.0);
+        let at = |x: i32, y: i32| look((560 + x, y), win, island, 1.0, false);
+        assert!(at(400, 17).over, "فوق الحبة فعلًا");
+        assert!(!at(560, 100).over, "داخل النافذة الشفافة خارج الحبة ⇒ ليس فوقها");
+        assert!(at(560, 100).near, "ويبقى ضمن 240px ⇒ مستيقظ يتتبّع");
+        assert!(!at(790, 400).near, "بعيد ⇒ نعسان");
+        assert_eq!(island_x0(-1, 800.0, 220.0), 0.0);
+        assert_eq!(island_x0(1, 800.0, 220.0), 580.0);
     }
 
     #[test]
     fn near_threshold_and_hysteresis() {
-        let at = |dx: i32, was: bool| look((960 + dx, 16), W, 1.0, was);
+        let at = |dx: i32, was: bool| look((960 + dx, 16), W, I, 1.0, was);
         assert!(at(240, false).near);
         assert!(!at(250, false).near, "من بعيد: لا استيقاظ فوق 240");
         assert!(at(250, true).near, "كان قريبًا: يبقى حتى FAR_PX");
@@ -171,9 +195,9 @@ mod tests {
     #[test]
     fn far_polls_slow_and_emits_only_on_transition() {
         assert!(interval_ms(false) > interval_ms(true) * 4);
-        let far = look((3000, 900), W, 1.0, false);
-        let far2 = look((3100, 950), W, 1.0, false);
-        let near = look((960, 16), W, 1.0, false);
+        let far = look((3000, 900), W, I, 1.0, false);
+        let far2 = look((3100, 950), W, I, 1.0, false);
+        let near = look((960, 16), W, I, 1.0, false);
         assert!(should_emit(None, &far), "أول عيّنة تُبثّ دائمًا");
         assert!(!should_emit(Some(&far), &far2), "نوم: لا بثّ بين عيّنتين بعيدتين");
         assert!(should_emit(Some(&far), &near), "الاقتراب يوقظ");
