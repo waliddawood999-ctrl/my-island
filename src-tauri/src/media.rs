@@ -25,6 +25,8 @@ pub struct MediaInfo {
     pub can_seek: bool,
     /// نوع المصدر: "gsmtc" (جلسة ميديا حقيقية) أو "audio" (نشاط صوتي بديل بلا جلسة — لا بيانات وصفية ولا تحكم)؛ فارغ = لا جلسة.
     pub kind: String,
+    /// تعذّر جلب خصائص الجلسة أو معلومات تشغيلها أو خطها الزمني: تُعرض باسم تطبيقها وغلاف عام ولا تُسقَط أبدًا.
+    pub degraded: bool,
 }
 
 pub const KIND_GSMTC: &str = "gsmtc";
@@ -67,6 +69,18 @@ pub fn friendly_name(id: &str) -> String {
     let base = base.strip_suffix(".exe").or_else(|| base.strip_suffix(".EXE")).unwrap_or(base);
     let base = base.rsplit('.').next().unwrap_or(base);
     if base.is_empty() { id.to_string() } else { base.to_string() }
+}
+
+/// معلومات الحبة لنشاط صوتي بديل: صدق كامل — لا عنوان/فنان/مدة مختلقة ولا تحكم (can_* خاطئة)؛ الواجهة تركّب «صوت من <الاسم>».
+pub fn audio_info(a: &AltActivity) -> MediaInfo {
+    MediaInfo {
+        session: true,
+        source: format!("audio:{}", a.exe),
+        source_name: a.name.clone(),
+        playing: true,
+        kind: KIND_AUDIO.into(),
+        ..Default::default()
+    }
 }
 
 /// الثواني ← ثواني آمنة (NaN/سالب → 0)
@@ -260,13 +274,16 @@ mod win_impl {
     fn read_info(s: &Session, props: &Option<Props>) -> MediaInfo {
         let source = aumid(s);
         let mut m = MediaInfo { session: true, kind: KIND_GSMTC.into(), source_name: friendly_name(&source), source, ..Default::default() };
+        m.degraded = props.is_none();
         if let Some(p) = props {
             m.title = p.Title().map(|h| h.to_string()).unwrap_or_default();
             m.artist = p.Artist().map(|h| h.to_string()).unwrap_or_default();
             m.album = p.AlbumTitle().map(|h| h.to_string()).unwrap_or_default();
         }
         let mut rate = 1.0;
-        if let Ok(pb) = s.GetPlaybackInfo() {
+        let pb = s.GetPlaybackInfo();
+        m.degraded |= pb.is_err();
+        if let Ok(pb) = pb {
             m.playing = pb.PlaybackStatus().map(|st| st == PStatus::Playing).unwrap_or(false);
             if let Ok(r) = pb.PlaybackRate().and_then(|r| r.Value()) {
                 if r > 0.0 { rate = r; }
@@ -277,7 +294,9 @@ mod win_impl {
                 m.can_seek = c.IsPlaybackPositionEnabled().unwrap_or(false);
             }
         }
-        if let Ok(tl) = s.GetTimelineProperties() {
+        let tl = s.GetTimelineProperties();
+        m.degraded |= tl.is_err();
+        if let Ok(tl) = tl {
             let start = tl.StartTime().map(|t| t.Duration).unwrap_or(0);
             let end = tl.EndTime().map(|t| t.Duration).unwrap_or(0);
             let pos = tl.Position().map(|t| t.Duration).unwrap_or(0);
@@ -417,6 +436,7 @@ mod win_impl {
         loop {
             let mut info = MediaInfo::default();
             let mut props: Option<Props> = None;
+            let mut alt_icon: Option<String> = None;
             let on = enabled(&app);
             if on {
                 // تعداد كل الجلسات + اشتراك أحداث لكل جلسة؛ لا استطلاع: الحلقة تنام حتى يوقظها حدث (انظر نهاية الحلقة).
@@ -432,7 +452,13 @@ mod win_impl {
                         props = s.TryGetMediaPropertiesAsync().and_then(|o| o.get()).ok();
                         info = read_info(s, &props);
                     }
-                    Resolution::Audio | Resolution::Nothing => {}
+                    Resolution::Audio => {
+                        if let Some(a) = alt.as_ref() {
+                            info = audio_info(a);
+                            alt_icon = a.icon.clone();
+                        }
+                    }
+                    Resolution::Nothing => {}
                 }
             } else {
                 for (_, old) in subs.drain() { unsubscribe(old); }
@@ -452,7 +478,15 @@ mod win_impl {
             } else {
                 since = since.saturating_add(1);
             }
-            if info.session && (since < 20 || since % 5 == 0) {
+            if info.kind == KIND_AUDIO {
+                // نشاط صوتي بديل: الغلاف = أيقونة التطبيق (تُبثّ مرة واحدة بعد تصفير تغيّر الهوية)
+                if st.cover.lock().unwrap().is_none() {
+                    if let Some(ic) = alt_icon {
+                        *st.cover.lock().unwrap() = Some(ic.clone());
+                        let _ = app.emit("media:cover", Some(ic));
+                    }
+                }
+            } else if info.session && (since < 20 || since % 5 == 0) {
                 if let Some((hash, uri)) = props.as_ref().and_then(|p| read_cover(p, cover_hash)) {
                     cover_hash = hash;
                     if let Some(c) = uri {
@@ -462,7 +496,7 @@ mod win_impl {
                 }
             }
 
-            let ticking = on && info.session && ((info.playing && info.kind == KIND_GSMTC) || since < 20);
+            let ticking = on && info.kind == KIND_GSMTC && (info.playing || since < 20);
             if info != last {
                 *st.info.lock().unwrap() = info.clone();
                 let _ = app.emit("media:update", &info);

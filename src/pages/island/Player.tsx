@@ -6,7 +6,7 @@ import { Music, Pause, Play, SkipBack, SkipForward } from "lucide-react";
 import { LottieIcon } from "../../lottie";
 import { i } from "../../i18n";
 import type { Settings } from "../../settings";
-import type { MediaView } from "../../useMedia";
+import { mediaTitle, type MediaView } from "../../useMedia";
 import { classifySource, vibrant } from "../../mediaSource";
 
 // المشغّل (T03): عناصر مشتركة بين اللمحة واللوحة والحبة — غلاف، شارة مصدر، شريط تقدّم، أزرار، مؤشر صوتي، لون إبراز من الغلاف.
@@ -195,7 +195,7 @@ export function Controls({ info, accent }: { info: MediaView["info"]; accent?: s
   return (
     <div dir="ltr" data-testid="player-controls" onClick={stop} onMouseDown={stop} style={{ display: "flex", alignItems: "center", gap: 14 }}>
       <button className="pl-btn pl-ghost" disabled={!info.can_prev} onClick={(e) => ctl(e, "prev")} aria-label={i("السابق", "Previous")} title={i("السابق", "Previous")}><SkipBack size={16} fill="currentColor" /></button>
-      <button className="pl-btn pl-play" onClick={(e) => ctl(e, "toggle")} aria-label={info.playing ? i("إيقاف مؤقت", "Pause") : i("تشغيل", "Play")} title={info.playing ? i("إيقاف مؤقت", "Pause") : i("تشغيل", "Play")}>
+      <button className="pl-btn pl-play" disabled={info.kind === "audio"} onClick={(e) => ctl(e, "toggle")} aria-label={info.playing ? i("إيقاف مؤقت", "Pause") : i("تشغيل", "Play")} title={info.playing ? i("إيقاف مؤقت", "Pause") : i("تشغيل", "Play")}>
         {info.playing ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" style={{ marginInlineStart: 2 }} />}
       </button>
       <button className="pl-btn pl-ghost" disabled={!info.can_next} onClick={(e) => ctl(e, "next")} aria-label={i("التالي", "Next")} title={i("التالي", "Next")}><SkipForward size={16} fill="currentColor" /></button>
@@ -227,7 +227,7 @@ export function PlayerPeek({ media, s, accent, reduce, visible }: PlayerProps) {
       {art > 0 && <Artwork cover={cover} size={art} radiusPct={0.24} accent={accent} />}
       <div style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: 3 }}>
         {(s.showSourceBadge ?? true) && <div><SourceBadge aumid={info.source} name={info.source_name} /></div>}
-        <div dir="auto" className="truncate" style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.25 }}>{info.title || i("بدون عنوان", "Untitled")}</div>
+        <div dir="auto" className="truncate" style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.25 }}>{mediaTitle(info)}</div>
         <div dir="auto" className="truncate" style={{ fontSize: 12, opacity: 0.62 }}>{sub(info) || " "}</div>
         {(s.showProgress ?? true) && <Progress pos={pos} dur={info.duration} playing={info.playing} accent={accent} h={3} reduce={reduce} />}
         {(s.showPlaybackTime ?? true) && (s.showProgress ?? true) && <Times pos={pos} dur={info.duration} />}
@@ -259,7 +259,7 @@ export function PlayerPanel({ media, s, accent, reduce, visible }: PlayerProps) 
             {(s.showSourceBadge ?? true) ? <SourceBadge aumid={info.source} name={info.source_name} /> : <span />}
             <Visualizer kind={s.visualizer ?? "bars"} count={7} playing={info.playing} visible={visible} reduce={reduce} accent={accent} w={4} h={20} />
           </div>
-          <div dir="auto" className="truncate" style={{ fontSize: 20, fontWeight: 650, lineHeight: 1.2 }}>{info.title || i("بدون عنوان", "Untitled")}</div>
+          <div dir="auto" className="truncate" style={{ fontSize: 20, fontWeight: 650, lineHeight: 1.2 }}>{mediaTitle(info)}</div>
           <div dir="auto" className="truncate" style={{ fontSize: 13, opacity: 0.65 }}>{sub(info) || " "}</div>
           {(s.showProgress ?? true) && <div style={{ marginTop: 4 }}><Progress pos={shown} dur={info.duration} playing={info.playing && seek === null} accent={accent} h={5} reduce={reduce} onSeek={onSeek} /></div>}
           {(s.showPlaybackTime ?? true) && (s.showProgress ?? true) && <Times pos={shown} dur={info.duration} />}
@@ -287,7 +287,7 @@ export function PillMedia({ media, accent, reduce, visible, k, viz, dots }: { me
       <div style={{ width: a, height: a, flex: "none", borderRadius: a * 0.28, overflow: "hidden", background: "rgba(255,255,255,.12)" }}>
         {cover ? <img src={cover} alt="" draggable={false} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <Music size={Math.round(a * 0.6)} style={{ margin: "20%" }} />}
       </div>
-      <span dir="auto" className="min-w-0 flex-1 truncate" style={{ textAlign: "start", fontSize: 12.5 * k }}>{info.title}</span>
+      <span dir="auto" className="min-w-0 flex-1 truncate" style={{ textAlign: "start", fontSize: 12.5 * k }}>{mediaTitle(info)}</span>
       <Visualizer kind={viz === "off" ? "off" : "bars"} count={4} playing={info.playing} visible={visible} reduce={reduce} accent={accent} w={Math.round(3 * k)} h={Math.round(14 * k)} />
       {dots}
     </div>

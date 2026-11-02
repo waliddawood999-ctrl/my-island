@@ -4,7 +4,7 @@ import { Music, Pause, Play, SkipBack, SkipForward } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { dur, ease, spring, tap } from "../../motion";
 import { i } from "../../i18n";
-import type { MediaView } from "../../useMedia";
+import { mediaTitle, type MediaView } from "../../useMedia";
 import { LottieIcon } from "../../lottie";
 import { ICON, Ring, STROKE } from "./primitives";
 
@@ -34,7 +34,7 @@ function useLivePos(m: MediaView): number {
 
 /** قسم الميديا في الرئيسية: غلاف + عنوان/فنان + شريط تقدم قابل للنقر + سابق/تشغيل/التالي. */
 export function MediaSection({ media }: { media: MediaView }) {
-  const { info, cover, sources } = media;
+  const { info, cover, sources, level } = media;
   const live = useLivePos(media);
   const [seekTo, setSeekTo] = useState<number | null>(null);
   const seekT = useRef<number | undefined>(undefined);
@@ -85,11 +85,16 @@ export function MediaSection({ media }: { media: MediaView }) {
         <div className="min-w-0 flex-1">
           {/* العنوان والفنان والألبوم: تبديل بتمويه قصير وتوقيت دخول مستقل لكل سطر فلا يتداخل */}
           <AnimatePresence mode="wait" initial={false}>
-            <motion.div key={`t-${info.title}`} {...line(0)} dir="auto" className="truncate text-[18px] font-semibold">{info.title || i("بدون عنوان", "Untitled")}</motion.div>
+            <motion.div key={`t-${mediaTitle(info)}`} {...line(0)} dir="auto" className="truncate text-[18px] font-semibold">{mediaTitle(info)}</motion.div>
           </AnimatePresence>
           <AnimatePresence mode="wait" initial={false}>
             <motion.div key={`a-${info.artist}`} {...line(0.05)} dir="auto" className="truncate text-[14px] text-white/60">{info.artist}</motion.div>
           </AnimatePresence>
+          {info.kind === "audio" && (
+            <div data-testid="audio-level" aria-label={i("مستوى الصوت", "Sound level")} className="mt-1 h-1 w-full overflow-hidden rounded-full bg-white/10">
+              <div className="h-full rounded-full bg-white/70" style={{ width: `${Math.round(level * 100)}%`, transition: "width 120ms linear" }} />
+            </div>
+          )}
           {info.album && (
             <AnimatePresence mode="wait" initial={false}>
               <motion.div key={`b-${info.album}`} {...line(0.1)} dir="auto" className="truncate text-[12px] text-white/40">{info.album}</motion.div>
@@ -125,7 +130,8 @@ export function MediaSection({ media }: { media: MediaView }) {
         <Ring p={info.duration > 0 ? pos / info.duration : 0} size={62} stroke={3}>
         <motion.button
           {...tap}
-          className="rounded-full bg-white p-3 text-black hover:bg-white/85 active:bg-white/70"
+          className="rounded-full bg-white p-3 text-black hover:bg-white/85 active:bg-white/70 disabled:opacity-40"
+          disabled={info.kind === "audio"}
           onClick={() => ctl("toggle")}
           aria-label={info.playing ? i("إيقاف مؤقت", "Pause") : i("تشغيل", "Play")}
           title={info.playing ? i("إيقاف مؤقت", "Pause") : i("تشغيل", "Play")}

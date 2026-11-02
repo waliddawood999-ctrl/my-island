@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { i } from "./i18n";
 
 export type MediaInfo = {
   session: boolean;
@@ -17,15 +18,23 @@ export type MediaInfo = {
   can_seek: boolean;
   /** "gsmtc" = جلسة ميديا حقيقية · "audio" = نشاط صوتي بديل بلا جلسة (بلا عنوان/تحكم) · "" = لا جلسة */
   kind: "gsmtc" | "audio" | "";
+  /** جلسة تعذّر جلب خصائصها/خطها الزمني: تُعرض باسم تطبيقها وغلاف عام بدل أن تختفي */
+  degraded: boolean;
 };
 export type MediaSource = { id: string; name: string };
 
 export const NO_MEDIA: MediaInfo = {
   session: false, source: "", source_name: "", title: "", artist: "", album: "",
-  duration: 0, position: 0, playing: false, can_prev: false, can_next: false, can_seek: false, kind: "",
+  duration: 0, position: 0, playing: false, can_prev: false, can_next: false, can_seek: false, kind: "", degraded: false,
 };
 
-export type MediaView = { info: MediaInfo; cover: string | null; sources: MediaSource[]; at: number };
+export type MediaView = { info: MediaInfo; cover: string | null; sources: MediaSource[]; at: number; /** مستوى الصوت الحي 0..1 (للنشاط البديل "audio" فقط، وإلا 0) */ level: number };
+
+/** العنوان المعروض: النشاط الصوتي البديل «صوت من <التطبيق>» (لا عنوان مختلق)؛ وجلسة بلا عنوان تُعرض باسم تطبيقها لا فارغة. */
+export function mediaTitle(info: MediaInfo): string {
+  if (info.kind === "audio") return i(`صوت من ${info.source_name}`, `Audio from ${info.source_name}`);
+  return info.title || info.source_name || i("بدون عنوان", "Untitled");
+}
 
 /** يعكس media:update / media:cover من media.rs؛ `at` لحظة وصول آخر تحديث (لاستيفاء الموضع محليًا). */
 export function useMedia(enabled: boolean): MediaView {
@@ -33,6 +42,7 @@ export function useMedia(enabled: boolean): MediaView {
   const [cover, setCover] = useState<string | null>(null);
   const [sources, setSources] = useState<MediaSource[]>([]);
   const [at, setAt] = useState(() => performance.now());
+  const [level, setLevel] = useState(0);
   const lastSrc = useRef(0);
 
   useEffect(() => {
@@ -55,5 +65,13 @@ export function useMedia(enabled: boolean): MediaView {
     return () => { alive = false; u1.then((f) => f()); u2.then((f) => f()); };
   }, [enabled]);
 
-  return { info, cover, sources, at };
+  // مستوى الصوت الحي: يُستمع له فقط أثناء نشاط بديل "audio" (الباقي لا يبثّه Rust أصلًا).
+  const audioKind = enabled && info.kind === "audio";
+  useEffect(() => {
+    if (!audioKind) { setLevel(0); return; }
+    const u = listen<number>("media:level", (e) => setLevel(Math.max(0, Math.min(1, e.payload || 0))));
+    return () => { u.then((f) => f()); setLevel(0); };
+  }, [audioKind]);
+
+  return { info, cover, sources, at, level };
 }

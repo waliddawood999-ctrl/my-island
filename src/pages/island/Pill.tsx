@@ -8,7 +8,7 @@ import { alertShake, dur, ease, islandSpring, paletteVariants, useMotionLevel, s
 import { i } from "../../i18n";
 import { clampTint, useResolvedTheme, useSettings } from "../../useSettings";
 import { PANEL as PANEL_TOKEN, PANEL_PALETTE, PILL as PILL_TOKEN } from "../../tokens";
-import { useMedia } from "../../useMedia";
+import { useMedia, mediaTitle } from "../../useMedia";
 import { useBattery } from "../../useBattery";
 import { activeKinds, clampLeadMin, fmtStopwatch, nextKind, shownKind, type ActivityKind } from "../../liveActivity";
 import { useStopwatchNow } from "../../useStopwatch";
@@ -175,8 +175,8 @@ export function Pill() {
   const reduceUI = motion_level !== "full" || resolveReduce(settings.reduceMotion, false);
   // mediaPill: "off"/"clock" = تبقى الساعة؛ غير ذلك (الافتراضي) = العنوان المتحرك أثناء التشغيل فقط.
   const pillTitle =
-    moduleMedia && !["off", "clock"].includes(settings.mediaPill ?? "") && media.info.session && media.info.playing && media.info.title
-      ? [media.info.title, media.info.artist].filter(Boolean).join(" — ")
+    moduleMedia && !["off", "clock"].includes(settings.mediaPill ?? "") && media.info.session && media.info.playing
+      ? [mediaTitle(media.info), media.info.artist].filter(Boolean).join(" — ")
       : null;
   const shelfOn = settings.moduleShelf ?? true;
   const shelf = useShelf(shelfOn);
