@@ -488,3 +488,8 @@
 - Harness attempts: environment CDP flags; application-scoped elevated-runner HKLM CDP policy + built frontend; native window metadata selection + setup-stage diagnostics and four-window ACL coverage. No shipping startup logic was changed.
 - The Windows browser UI lane also has a harness mismatch: tabs.regression.cjs uses localhost:4173, while the workflow served localhost:1420. Its failure is not evidence of a UI regression. Canonical Tauri CLI startup/build and a correct 4173 preview lane need validation before retrying. Do not infer that the user's installed release is broken from these CI results.
 - Stop after three attempts per AGENTS.md; no further speculative startup changes, no merge, no published update, no database migration. Stable main and backup/pre-fixes-2026-11-02-ca0b8e9 preserve ca0b8e9fee74e5ed03fec6652366d8e9e379afc9; installer v1.0.70 remains available.
+
+## 2026-11-03 — user authorizes applying the fixes for a local trial
+- The user explicitly requested applying/building the update so they can update and test it themselves. This supersedes the earlier hold on applying unverified native changes for this trial; it does not establish a clean native startup result.
+- Retain the appearance ACL and launcher-link fixes and their contract/unit tests. Remove the unsuccessful experimental verification workflow and its native/trace harnesses from the change; historical run logs remain linked above. The existing Build Windows workflow is unchanged.
+- Shipping application source is unchanged from the tested candidate 74251dba3c44fa5efc93c3bcfb991c70e4a4fc2e. Native startup, visual behaviour and hardware integration still require the user's local trial. Preserve backup/pre-fixes-2026-11-02-ca0b8e9 and release v1.0.70 for rollback.
