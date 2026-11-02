@@ -10,10 +10,10 @@ assert.ok(registered.length > 80, "handler extraction must cover the command reg
 assert.deepEqual(registered.filter((c) => !declared.has(c)), [], "registered commands missing from the ACL manifest");
 assert.deepEqual([...declared].filter((c) => !registered.includes(c)), [], "stale commands in the ACL manifest");
 
-for (const window of ["main", "settings"]) {
+for (const window of ["main", "settings", "overlay", "editor"]) {
   const cap = JSON.parse(read(`src-tauri/capabilities/${window}.json`));
   for (const cmd of ["system_accent", "wallpaper_color", "media_now", "system_transparency"]) {
     assert.ok(cap.permissions.includes(`allow-${cmd.replaceAll("_", "-")}`), `${window}: ${cmd} needed by useSettings live theme sources`);
   }
 }
-console.log(`OK IPC integration (${registered.length} registered commands, live theme ACLs in both windows)`);
+console.log(`OK IPC integration (${registered.length} registered commands, live theme ACLs in all four windows)`);

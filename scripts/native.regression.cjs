@@ -35,10 +35,16 @@ async function launch(round) {
     await delay(1000);
   }
   assert.ok(browser, 'WebView2 remote debugging endpoint did not start');
+  const targets = await (await fetch('http://127.0.0.1:9222/json/list')).json();
+  fs.writeFileSync(path.join(out, `targets-${round}.json`), JSON.stringify(targets, null, 2));
   let main;
   for (let i = 0; i < 60; i++) {
-    main = browser.contexts().flatMap((c) => c.pages()).find((p) => /localhost:1420\/?(?:index\.html)?$/.test(p.url()));
+    for (const page of browser.contexts().flatMap((c) => c.pages())) {
+      const label = await page.evaluate(() => window.__TAURI_INTERNALS__?.metadata?.currentWindow?.label).catch(() => null);
+      if (label === 'main') { main = page; break; }
+    }
     if (main) break;
+    if (hasExited()) throw new Error(`native process exited while looking for its main window (${child.exitCode})`);
     await delay(500);
   }
   assert.ok(main, `main native WebView2 page not found; targets: ${browser.contexts().flatMap((c) => c.pages()).map((p) => p.url()).join(', ')}`);
@@ -74,6 +80,25 @@ async function settingsPage(main) {
     for (const cmd of ['system_accent', 'wallpaper_color']) {
       const v = await invoke(main, cmd);
       check(`main ${cmd} allowed and returns a colour or null`, v === null || /^#[0-9a-f]{6}$/i.test(v));
+    }
+    // useSettings also runs in the capture overlay and lazy image editor.
+    // Exercise their actual window ACLs, not a browser mock.
+    const fixture = path.join(data, 'fixture.png');
+    fs.writeFileSync(fixture, Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR4nGP8z8Dwn4GBgYGJAQoAHxgCAQqKtwwAAAAASUVORK5CYII=', 'base64'));
+    await invoke(main, 'editor_open', { path: fixture });
+    for (const label of ['overlay', 'editor']) {
+      let page;
+      for (let i = 0; i < 60; i++) {
+        page = browser.contexts().flatMap((c) => c.pages()).find((p) => p.url().includes(`${label}.html`));
+        if (page) break;
+        await delay(500);
+      }
+      assert.ok(page, `${label} native WebView2 page missing`);
+      await page.waitForFunction(() => !!window.__TAURI_INTERNALS__, null, { timeout: 10000 });
+      for (const cmd of ['system_accent', 'wallpaper_color', 'system_transparency', 'media_now']) {
+        const v = await invoke(page, cmd);
+        check(`${label} ${cmd} allowed with a valid response`, cmd === 'media_now' ? !!v?.info : cmd === 'system_transparency' ? typeof v === 'boolean' : v === null || /^#[0-9a-f]{6}$/i.test(v));
+      }
     }
     await invoke(main, 'settings_set', { patch: { language: 'en', themePack: 'aurora', updateAutoCheck: false } });
     let settings = await settingsPage(main);

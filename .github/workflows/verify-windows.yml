@@ -30,12 +30,17 @@ jobs:
         run: |
           cargo test --locked
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Push-Location ..
+          node scripts/traceStartup.cjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Pop-Location
           cargo build --locked
       - name: Install browser test runner (no dependency changes)
         run: |
           npm install --no-save --package-lock=false playwright@1.56.1
           npx playwright install chromium
       - name: Serve built frontend for native debug build
+        id: frontend
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force docs/screenshots, test-results | Out-Null
@@ -60,6 +65,7 @@ jobs:
       - name: Native WebView2 IPC, settings persistence and quit
         run: node scripts/native.regression.cjs
       - name: Browser UI regressions (mock bridge)
+        if: always() && steps.frontend.outcome == 'success'
         env:
           BASE: http://localhost:1420
         run: npm run test:ui
