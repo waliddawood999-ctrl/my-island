@@ -201,7 +201,7 @@ export const DEFAULTS: Partial<Settings> = {
   motionSpeed: 1,
   motionBounce: 0.1,
   reduceMotion: 'system',
-  peekWidth: 400, peekHeight: 120, peekRadius: 30,
+  peekWidth: 460, peekHeight: 148, peekRadius: 30,
   panelWidth: 520, panelHeight: 290, panelRadius: 34,
   hoverZone: 'island',
   peekWheelCycle: true,

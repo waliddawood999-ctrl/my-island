@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { alertShake, dur, ease, islandSpring, paletteVariants, useMotionLevel, sectionVariants, spring, swapVariants, tap } from "../../motion";
 import { i } from "../../i18n";
 import { clampTint, useResolvedTheme, useSettings } from "../../useSettings";
-import { PANEL as PANEL_TOKEN, PANEL_PALETTE, PILL as PILL_TOKEN } from "../../tokens";
+import { PANEL as PANEL_TOKEN, PANEL_PALETTE, PEEK, PILL as PILL_TOKEN } from "../../tokens";
 import { useMedia, mediaTitle } from "../../useMedia";
 import { useBattery } from "../../useBattery";
 import { activeKinds, clampLeadMin, fmtStopwatch, nextKind, shownKind, type ActivityKind } from "../../liveActivity";
@@ -61,6 +61,8 @@ const clampN = (v: unknown, lo: number, hi: number, d: number) => Math.min(hi, M
 const PANEL = { w: PANEL_TOKEN.w, h: PANEL_TOKEN.h };
 const panelSize = () => PANEL;
 const PALETTE = { w: PANEL_PALETTE.w, h: PANEL_PALETTE.h };
+/** عناصر الإطلالة الوظيفية: النقر عليها لا يُعدّ «اختصار فتح اللوحة». */
+const PEEK_INTERACTIVE = 'button, a, input, textarea, select, label, [role="slider"], [role="tab"], [contenteditable="true"], .ProseMirror, [data-no-expand]';
 /** احتياط (ms): لو لم يصل رد اكتمال الحركة تُصغَّر النافذة بعد هذه المدة. */
 const SHRINK_GUARD_MS = dur.windowShrinkGuard * 1000;
 
@@ -157,6 +159,8 @@ export function Pill() {
   const open = mode === "panel";
   const peek = mode === "peek";
   const [tabId, setTabId] = useState("home");
+  // تبويب الإطلالة مستقل عن تبويب اللوحة ويعود للرئيسية عند الانكماش للحبة (فلا تفتح كل إطلالة لاحقة على حقل بحث/قائمة)؛ الضغط على خلفية الإطلالة ينقله للوحة.
+  const [peekTab, setPeekTab] = useState("home");
   const [NoteTab, setNoteTab] = useState(makeNoteTab);
   const [retryN, setRetryN] = useState(0);
   // آخر تبويب بدأ دخوله فعلًا + حقبة AnimatePresence: حارس يكسر الاعتماد على اكتمال حركة الخروج (انظر أسفل).
@@ -246,7 +250,14 @@ export function Pill() {
   const shrinkT = useRef<number | undefined>(undefined);
   const shrinkPending = useRef(false);
   const panel = { w: clampN(settings.panelWidth, 420, 720, 520), h: clampN(settings.panelHeight, 220, 420, 290) };
-  const peekSz = { w: clampN(settings.peekWidth, 240, 560, 400), h: clampN(settings.peekHeight, 72, 200, 120) };
+  const tabs = tabDefs(shelfOn, shelf.items.length, launcherOn, meetingsOn);
+  const tab = Math.max(0, tabs.findIndex((t) => t.id === tabId));
+  const curTab = tabs[tab].id;
+  const peekIdx = Math.max(0, tabs.findIndex((t) => t.id === peekTab));
+  const peekTabId = tabs[peekIdx].id;
+  // الإطلالة التفاعلية: جسم الرئيسية = peekHeight + شريط التبويبات؛ أي تبويب آخر ⇒ جسم أطول قابل للتمرير. سقف مطلق PEEK.maxW×maxH (docs/MOTION.md §الإطلالة).
+  const peekBase = { w: clampN(settings.peekWidth, 240, PEEK.maxW, 460), h: clampN(settings.peekHeight, 72, 200, 148) };
+  const peekSz = { w: peekBase.w, h: Math.min(PEEK.maxH, peekTabId === "home" ? peekBase.h + PEEK.tabsH : Math.max(peekBase.h + PEEK.tabsH, PEEK.tabBodyH)) };
   const peekR = clampN(settings.peekRadius, 12, 60, 30), panelR = clampN(settings.panelRadius, 16, 60, 34);
   const speed = normSpeed(settings.motionSpeed);
   const hoverZoneKey = settings.hoverZone ?? "island";
@@ -326,7 +337,7 @@ export function Pill() {
   }, [closePalette]);
 
   /** النقر: لوحة كاملة (المنطقة أولًا ثم الحركة تتم في layout effect أدناه). */
-  const expand = () => { cancelShrink(); M.click(); };
+  const expand = () => { cancelShrink(); if (peek && peekTabId !== "home") setTabId(peekTabId); M.click(); };
   const collapse = () => { M.collapse(); };
 
   // إفلات ملفات من المستكشف: الدخول يفتح اللوحة على تبويب الرفّ، الإفلات يضيف فورًا، المغادرة تنكمش.
@@ -435,9 +446,6 @@ export function Pill() {
   const prevMode = useRef<"pill" | "peek" | "panel">("pill");
   const kind = palette ? "open" : rank[mode] > rank[prevMode.current] ? (mode === "panel" ? "panel" : "open") : rank[mode] < rank[prevMode.current] ? "close" : "open";
   useEffect(() => { prevMode.current = mode; }, [mode]);
-  const tabs = tabDefs(shelfOn, shelf.items.length, launcherOn, meetingsOn);
-  const tab = Math.max(0, tabs.findIndex((t) => t.id === tabId));
-  const curTab = tabs[tab].id;
   M.setPages(tabs.length); M.page = tab; // الصفحة = التبويب الحالي (العجلة في اللوحة)
   // حارس التبديل: AnimatePresence(mode="wait") لا يركّب التبويب الجديد إلا بعد اكتمال حركة خروج القديم؛ إن لم تكتمل (إطارات متوقفة/نافذة
   // مخنوقة) بقي العرض القديم رغم تحديد التبويب الجديد. بعد tabSwitchGuard نعيد تركيب AnimatePresence فيُسقَط الخارج ويُركَّب الجديد.
@@ -449,6 +457,11 @@ export function Pill() {
     }, dur.tabSwitchGuard * 1000);
     return () => window.clearTimeout(t);
   }, [curTab, open]);
+  useEffect(() => {
+    if (mode !== "pill" || peekTab === "home") return;
+    const t = window.setTimeout(() => setPeekTab("home"), 450); // بعد انتهاء تلاشي الإطلالة؛ مؤقّت واحد لكل انكماش
+    return () => window.clearTimeout(t);
+  }, [mode, peekTab]);
   const tabLabels = tabs.map((t) => t.label);
   /** ما يُعرض في الحبة المنكمشة: واحد فقط، يتبدّل بتمويه قصير. */
   const pillKey = alertShown ? "alert" : shownCap ?? "clock";
@@ -463,14 +476,85 @@ export function Pill() {
     </button>
   ) : undefined;
 
+  /** جسم التبويب (مشترك بين اللوحة والإطلالة): المكوّنات الحقيقية نفسها؛ where="peek" ⇒ الرئيسية تعرض بطاقات اللمحة (لاعب تفاعلي كامل) بدل بطاقة اللوحة. */
+  const renderTab = (id: string, where: "panel" | "peek") => (
+    <>
+    {id === "home" && where === "panel" && (
+      // بطاقة النشاط الحي الأعلى أولوية تتصدّر الرئيسية (أو حالة الميديا الفارغة)؛ تحتها صف بلاطات «لمحة» الشرطية. لا شيء آخر.
+      // الرئيسية: عمود يمرّر داخليًا إن لم يتّسع المحتوى (لا تداخل أبدًا): بطاقة النشاط/المشغّل بحدّ أدنى لمحتواها، وتحتها البلاطات.
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden" style={{ gap: "var(--island-section-gap)" }}>
+        {(shownPanel || moduleMedia) && (
+          <motion.div custom={0} variants={sectionVariants} initial="initial" animate="animate" className="min-w-0 flex-1 shrink-0 [min-height:min-content]">
+            {shownPanel ? (
+              <ActivityStack kinds={panelKinds} shown={shownPanel} onPin={setPinPanel} data={liveData} />
+            ) : (
+              <PlayerPanel media={media} s={settings} accent={accent} reduce={reduceUI} visible={open} />
+            )}
+          </motion.div>
+        )}
+        <HomeTiles settings={settings} meetings={meetings.snap.items} battery={battery} liveShown={shownPanel} />
+      </div>
+    )}
+    {id === "note" && (
+      <div className="min-h-0 flex-1">
+        <TabBoundary key={retryN} onRetry={(e) => {
+          // المتصفح يخزّن فشل الاستيراد الديناميكي لنفس العنوان طوال عمر الصفحة: لا تنفع إعادة المحاولة هنا إلا بإعادة تحميل الصفحة.
+          if (/dynamically imported module|Importing a module script failed|Failed to fetch/i.test(String(e?.message))) window.location.reload();
+          else { setNoteTab(makeNoteTab()); setRetryN((n) => n + 1); }
+        }}>
+          <Suspense fallback={null}>
+            <NoteTab timer={timer} />
+          </Suspense>
+        </TabBoundary>
+      </div>
+    )}
+    {id === "tools" && (
+      <div className="min-h-0 flex-1">
+        <ToolsTab />
+      </div>
+    )}
+    {id === "meetings" && (
+      <div className="min-h-0 flex-1">
+        <MeetingsTab snap={meetings.snap} refresh={meetings.refresh} loading={meetings.loading} />
+      </div>
+    )}
+    {id === "system" && (
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
+        <SystemSection showVolume={settings.showVolume ?? true} />
+        {/* ما خرج من الرئيسية يعيش هنا: يومي الكامل (قائمة الصلوات…)، البطارية التفصيلية، «وقتي اليوم». */}
+        {(settings.showToday ?? true) && <TodaySection settings={settings} />}
+        {showBat && <BatterySection b={battery} tip={settings.batteryTip ?? true} btOn={btOn} />}
+        {attentionOn && <AttentionSection snap={attention} />}
+      </div>
+    )}
+    {id === "clip" && (
+      <div className="min-h-0 flex-1">
+        <ClipboardTab />
+      </div>
+    )}
+    {id === "launcher" && (
+      <div className="min-h-0 flex-1">
+        <LauncherTab launcher={launcher} />
+      </div>
+    )}
+    {id === "shelf" && (
+      <div className="min-h-0 flex-1">
+        <ShelfTab items={shelf.items} dragging={dragging} reload={shelf.reload} />
+      </div>
+    )}
+    </>
+  );
+
   return (
     <LottieShownProvider shown={!hidden && opacity > 0}>
     <div className={`flex w-full ${settings.pillPosition === "left" ? "justify-start" : settings.pillPosition === "right" ? "justify-end" : "justify-center"}`}>
       <motion.div
         onMouseEnter={onEnter}
         onMouseLeave={onLeave}
-        onClick={() => {
+        onClick={(e) => {
           if (performance.now() - lastPanAt.current < 300) return; // سحب التبديل بين النشاطين لا يُحتسب نقرة
+          // الإطلالة تفاعلية: النقر على عنصر وظيفي (زر/حقل/شريط/رابط/محرّر) لا يفتح اللوحة؛ النقر على الخلفية وحدها اختصار للوحة الأكبر.
+          if (peek && (e.target as Element).closest?.(PEEK_INTERACTIVE)) return;
           if (alert) dismiss();
           else if (rec.recording && mode === "pill" && !palette) invoke("record_stop").catch(() => {});
           else if (!open && !palette) expand(); // النقر على الحبة أو اللمحة يفتح اللوحة
@@ -489,6 +573,7 @@ export function Pill() {
         data-spring={JSON.stringify(kind === "close" ? islandSpring.close : kind === "panel" ? islandSpring.panel : islandSpring.open)}
         onWheel={(e) => {
           if (palette) return;
+          if (peek && peekTabId !== "home") return; // تبويب غير الرئيسية في الإطلالة: العجلة تمرّر المحتوى نفسه (لا تبديل بطاقات)
           const handled = M.wheel(e.deltaY, { scrollsFurther: scrollsFurther(e.target, e.deltaY, e.currentTarget) });
           if (handled && M.mode === "panel" && M.page !== tab) setTabId(tabs[M.page]?.id ?? "home");
         }}
@@ -531,12 +616,36 @@ export function Pill() {
             <motion.div
               key="peek" variants={cf} initial="hidden" animate="shown" exit="hidden" data-testid="peek-layer"
               style={{ width: peekSz.w, height: peekSz.h }}
-              className="absolute left-1/2 top-0 -translate-x-1/2"
+              className="absolute left-1/2 top-0 flex -translate-x-1/2 flex-col"
             >
-              <PeekView
-                cards={M.cfg.cards} index={M.card} dir={M.dir} s={settings} media={media} accent={accent} reduce={reduceUI} speed={speed}
-                timer={timer} remaining={remaining} nextMeeting={upcomingForPeek}
-              />
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={peekTabId} variants={swapVariants} initial="initial" animate="animate" exit="exit"
+                  data-testid="peek-body" data-tab={peekTabId}
+                  className="flex min-h-0 flex-1 flex-col"
+                  style={peekTabId === "home" ? undefined : { padding: "var(--island-pad) var(--island-pad) 0" }}
+                >
+                  {peekTabId === "home" ? (
+                    <PeekView
+                      cards={M.cfg.cards} index={M.card} dir={M.dir} s={settings} media={media} accent={accent} reduce={reduceUI} speed={speed}
+                      timer={timer} remaining={remaining} nextMeeting={upcomingForPeek}
+                    />
+                  ) : renderTab(peekTabId, "peek")}
+                </motion.div>
+              </AnimatePresence>
+              {/* شريط التبويبات في أسفل الإطلالة (لا أعلاها): المؤشر يستقر أعلى المنتصف حيث كانت الحبة، فالنقر المعتاد على الإطلالة يصيب المحتوى/الخلفية ويفتح اللوحة ولا يصيب تبويبًا. */}
+              <div data-testid="peek-tabs" className="flex shrink-0 items-center justify-center" style={{ height: PEEK.tabsH, paddingInline: 12 }}>
+                <div className="min-w-0 overflow-x-auto">
+                  <TabBar
+                    labels={tabLabels}
+                    icons={tabs.map((t) => TAB_ICONS[t.id])}
+                    variant="icons"
+                    active={peekIdx}
+                    onSelect={(n) => setPeekTab(tabs[n]?.id ?? "home")}
+                    onHint={(n) => { if (tabs[n]?.id === "note") void importNote().catch(() => {}); }}
+                  />
+                </div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -699,69 +808,7 @@ export function Pill() {
                 exit="exit"
                 className="flex min-h-0 flex-1 flex-col pt-3"
               >
-                {curTab === "home" && (
-                  // بطاقة النشاط الحي الأعلى أولوية تتصدّر الرئيسية (أو حالة الميديا الفارغة)؛ تحتها صف بلاطات «لمحة» الشرطية. لا شيء آخر.
-                  // الرئيسية: عمود يمرّر داخليًا إن لم يتّسع المحتوى (لا تداخل أبدًا): بطاقة النشاط/المشغّل بحدّ أدنى لمحتواها، وتحتها البلاطات.
-                  <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden" style={{ gap: "var(--island-section-gap)" }}>
-                    {(shownPanel || moduleMedia) && (
-                      <motion.div custom={0} variants={sectionVariants} initial="initial" animate="animate" className="min-w-0 flex-1 shrink-0 [min-height:min-content]">
-                        {shownPanel ? (
-                          <ActivityStack kinds={panelKinds} shown={shownPanel} onPin={setPinPanel} data={liveData} />
-                        ) : (
-                          <PlayerPanel media={media} s={settings} accent={accent} reduce={reduceUI} visible={open} />
-                        )}
-                      </motion.div>
-                    )}
-                    <HomeTiles settings={settings} meetings={meetings.snap.items} battery={battery} liveShown={shownPanel} />
-                  </div>
-                )}
-                {curTab === "note" && (
-                  <div className="min-h-0 flex-1">
-                    <TabBoundary key={retryN} onRetry={(e) => {
-                      // المتصفح يخزّن فشل الاستيراد الديناميكي لنفس العنوان طوال عمر الصفحة: لا تنفع إعادة المحاولة هنا إلا بإعادة تحميل الصفحة.
-                      if (/dynamically imported module|Importing a module script failed|Failed to fetch/i.test(String(e?.message))) window.location.reload();
-                      else { setNoteTab(makeNoteTab()); setRetryN((n) => n + 1); }
-                    }}>
-                      <Suspense fallback={null}>
-                        <NoteTab timer={timer} />
-                      </Suspense>
-                    </TabBoundary>
-                  </div>
-                )}
-                {curTab === "tools" && (
-                  <div className="min-h-0 flex-1">
-                    <ToolsTab />
-                  </div>
-                )}
-                {curTab === "meetings" && (
-                  <div className="min-h-0 flex-1">
-                    <MeetingsTab snap={meetings.snap} refresh={meetings.refresh} loading={meetings.loading} />
-                  </div>
-                )}
-                {curTab === "system" && (
-                  <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
-                    <SystemSection showVolume={settings.showVolume ?? true} />
-                    {/* ما خرج من الرئيسية يعيش هنا: يومي الكامل (قائمة الصلوات…)، البطارية التفصيلية، «وقتي اليوم». */}
-                    {(settings.showToday ?? true) && <TodaySection settings={settings} />}
-                    {showBat && <BatterySection b={battery} tip={settings.batteryTip ?? true} btOn={btOn} />}
-                    {attentionOn && <AttentionSection snap={attention} />}
-                  </div>
-                )}
-                {curTab === "clip" && (
-                  <div className="min-h-0 flex-1">
-                    <ClipboardTab />
-                  </div>
-                )}
-                {curTab === "launcher" && (
-                  <div className="min-h-0 flex-1">
-                    <LauncherTab launcher={launcher} />
-                  </div>
-                )}
-                {curTab === "shelf" && (
-                  <div className="min-h-0 flex-1">
-                    <ShelfTab items={shelf.items} dragging={dragging} reload={shelf.reload} />
-                  </div>
-                )}
+                {renderTab(curTab, "panel")}
               </motion.div>
             )}
           </AnimatePresence>

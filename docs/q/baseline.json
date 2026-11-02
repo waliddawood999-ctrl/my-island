@@ -1,0 +1,220 @@
+{
+  "when": "2026-11-02T07:20:56.720Z",
+  "cover": {
+    "w": 1280,
+    "h": 720,
+    "uriKB": 207
+  },
+  "dpr": {
+    "1": {
+      "dpr": 1,
+      "scanPill": {
+        "transform": [],
+        "filter": [
+          "span.min-w-0.flex-1 <- div.flex.w-full blur(0px)",
+          "span.min-w-0.flex-1 <- div[pill-layer].absolute.inset-x-0 blur(0px)"
+        ],
+        "willChange": [],
+        "fractional": [
+          "span.min-w-0.flex-1 @328.00,7.03"
+        ],
+        "textEls": 1
+      },
+      "open": {
+        "n": 103,
+        "mean": 16.83,
+        "worst": 33.4,
+        "over20": 1
+      },
+      "scanOpen": {
+        "transform": [],
+        "filter": [
+          "span.truncate <- div blur(0px)",
+          "span.truncate <- div[peek-layer].absolute.left-1/2 blur(0px)",
+          "div.truncate <- div blur(0px)",
+          "div.truncate <- div[peek-layer].absolute.left-1/2 blur(0px)",
+          "span <- div blur(0px)",
+          "span <- div[peek-layer].absolute.left-1/2 blur(0px)"
+        ],
+        "willChange": [],
+        "fractional": [
+          "span.truncate @301.00,11.88",
+          "div.truncate @282.00,31.38",
+          "div.truncate @282.00,51.88",
+          "span @282.00,87.88",
+          "span @519.28,87.88"
+        ],
+        "textEls": 5
+      },
+      "close": {
+        "n": 191,
+        "mean": 16.94,
+        "worst": 33.4,
+        "over20": 4
+      },
+      "scanClosed": {
+        "transform": [],
+        "filter": [
+          "span.min-w-0.flex-1 <- div.flex.w-full blur(0px)",
+          "span.min-w-0.flex-1 <- div[pill-layer].absolute.inset-x-0 blur(0px)"
+        ],
+        "willChange": [],
+        "fractional": [
+          "span.min-w-0.flex-1 @328.00,7.03"
+        ],
+        "textEls": 1
+      },
+      "pillBox": {
+        "x": 290,
+        "y": 0,
+        "w": 220,
+        "h": 34
+      },
+      "errors": []
+    },
+    "1.25": {
+      "dpr": 1.25,
+      "scanPill": {
+        "transform": [],
+        "filter": [
+          "span.min-w-0.flex-1 <- div.flex.w-full blur(0px)",
+          "span.min-w-0.flex-1 <- div[pill-layer].absolute.inset-x-0 blur(0px)"
+        ],
+        "willChange": [],
+        "fractional": [
+          "span.min-w-0.flex-1 @328.00,7.03"
+        ],
+        "textEls": 1
+      },
+      "open": {
+        "n": 100,
+        "mean": 16.67,
+        "worst": 16.8,
+        "over20": 0
+      },
+      "scanOpen": {
+        "transform": [],
+        "filter": [
+          "span.truncate <- div blur(0px)",
+          "span.truncate <- div[peek-layer].absolute.left-1/2 blur(0px)",
+          "div.truncate <- div blur(0px)",
+          "div.truncate <- div[peek-layer].absolute.left-1/2 blur(0px)",
+          "span <- div blur(0px)",
+          "span <- div[peek-layer].absolute.left-1/2 blur(0px)"
+        ],
+        "willChange": [],
+        "fractional": [
+          "span.truncate @301.00,11.88",
+          "div.truncate @282.00,31.38",
+          "div.truncate @282.00,51.88",
+          "span @282.00,87.88",
+          "span @519.28,87.88"
+        ],
+        "textEls": 5
+      },
+      "close": {
+        "n": 195,
+        "mean": 16.75,
+        "worst": 33.3,
+        "over20": 2
+      },
+      "scanClosed": {
+        "transform": [],
+        "filter": [
+          "span.min-w-0.flex-1 <- div.flex.w-full blur(0px)",
+          "span.min-w-0.flex-1 <- div[pill-layer].absolute.inset-x-0 blur(0px)"
+        ],
+        "willChange": [],
+        "fractional": [
+          "span.min-w-0.flex-1 @328.00,7.03"
+        ],
+        "textEls": 1
+      },
+      "pillBox": {
+        "x": 290,
+        "y": 0,
+        "w": 220,
+        "h": 34
+      },
+      "errors": []
+    },
+    "1.5": {
+      "dpr": 1.5,
+      "scanPill": {
+        "transform": [],
+        "filter": [
+          "span.min-w-0.flex-1 <- div.flex.w-full blur(0px)",
+          "span.min-w-0.flex-1 <- div[pill-layer].absolute.inset-x-0 blur(0px)"
+        ],
+        "willChange": [],
+        "fractional": [
+          "span.min-w-0.flex-1 @328.00,7.03"
+        ],
+        "textEls": 1
+      },
+      "open": {
+        "n": 100,
+        "mean": 16.67,
+        "worst": 16.8,
+        "over20": 0
+      },
+      "scanOpen": {
+        "transform": [],
+        "filter": [
+          "span.truncate <- div blur(0px)",
+          "span.truncate <- div[peek-layer].absolute.left-1/2 blur(0px)",
+          "div.truncate <- div blur(0px)",
+          "div.truncate <- div[peek-layer].absolute.left-1/2 blur(0px)",
+          "span <- div blur(0px)",
+          "span <- div[peek-layer].absolute.left-1/2 blur(0px)"
+        ],
+        "willChange": [],
+        "fractional": [
+          "span.truncate @301.00,11.88",
+          "div.truncate @282.00,31.38",
+          "div.truncate @282.00,51.88",
+          "span @282.00,87.88",
+          "span @519.28,87.88"
+        ],
+        "textEls": 5
+      },
+      "close": {
+        "n": 95,
+        "mean": 16.84,
+        "worst": 33.4,
+        "over20": 1
+      },
+      "scanClosed": {
+        "transform": [],
+        "filter": [
+          "span.min-w-0.flex-1 <- div.flex.w-full blur(0px)",
+          "span.min-w-0.flex-1 <- div[pill-layer].absolute.inset-x-0 blur(0px)"
+        ],
+        "willChange": [],
+        "fractional": [
+          "span.min-w-0.flex-1 @328.00,7.03"
+        ],
+        "textEls": 1
+      },
+      "pillBox": {
+        "x": 290,
+        "y": 0,
+        "w": 220,
+        "h": 34
+      },
+      "errors": []
+    }
+  },
+  "memory": {
+    "chromiumBaselineMB": 291,
+    "afterMainNoMediaMB": 405,
+    "afterSecondMainWithCover1280x720MB": 547,
+    "afterOverlayPageMB": 642,
+    "jsHeapMainNoMediaMB": 4.2,
+    "jsHeapMainWithCoverMB": 6.3,
+    "deltaMainNoMedia": 114,
+    "deltaCoverPage": 142,
+    "deltaOverlayPage": 95
+  },
+  "idleRaf": 0
+}

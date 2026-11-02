@@ -233,10 +233,10 @@ function App() {
             <Slider label={i("استدارة الحبة", "Pill corner radius")} value={s.pillRadius ?? 0} min={0} max={22} step={1} format={(v) => (v === 0 ? i("تلقائي", "Auto") : `${v} px`)} onCommit={(v) => set({ pillRadius: v })} />
           </Row>
           <Row icon={ic(Ruler)} label={i("عرض اللمحة", "Peek width")} hint={i("عرض الجزيرة لما تتمدد عند المرور", "Island width when it expands on hover")}>
-            <Slider label={i("عرض اللمحة", "Peek width")} value={s.peekWidth ?? 400} min={240} max={560} step={4} format={px} onLive={(v) => set({ peekWidth: v })} onCommit={(v) => set({ peekWidth: v })} />
+            <Slider label={i("عرض اللمحة", "Peek width")} value={s.peekWidth ?? 460} min={240} max={560} step={4} format={px} onLive={(v) => set({ peekWidth: v })} onCommit={(v) => set({ peekWidth: v })} />
           </Row>
           <Row icon={ic(Ruler)} label={i("ارتفاع اللمحة", "Peek height")} hint={i("ارتفاع الجزيرة في اللمحة", "Island height in the peek")}>
-            <Slider label={i("ارتفاع اللمحة", "Peek height")} value={s.peekHeight ?? 120} min={72} max={200} step={2} format={px} onLive={(v) => set({ peekHeight: v })} onCommit={(v) => set({ peekHeight: v })} />
+            <Slider label={i("ارتفاع اللمحة", "Peek height")} value={s.peekHeight ?? 148} min={72} max={200} step={2} format={px} onLive={(v) => set({ peekHeight: v })} onCommit={(v) => set({ peekHeight: v })} />
           </Row>
           <Row icon={ic(Square)} label={i("زوايا اللمحة", "Peek corner radius")} hint={i("كل ما زادت صارت أنعم", "The higher, the softer")}>
             <Slider label={i("زوايا اللمحة", "Peek corner radius")} value={s.peekRadius ?? 30} min={12} max={60} step={1} format={px} onLive={(v) => set({ peekRadius: v })} onCommit={(v) => set({ peekRadius: v })} />

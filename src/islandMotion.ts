@@ -60,6 +60,7 @@ export function crossfade(speed: number, reduced: boolean) {
     hidden: { opacity: 0, filter: "blur(6px)", y: 4, scale: 0.98, transition: { duration: 0.12 / s, ease: "easeIn" as const } },
     shown: {
       opacity: 1, filter: "blur(0px)", y: 0, scale: 1,
+      transitionEnd: { filter: "none" }, // لا مرشّح متبقٍّ بعد الدخول (سطح تركيب أقل ونص بلا طبقة وسيطة)
       transition: {
         delay: 0.12 / s,
         opacity: { duration: 0.24 / s, ease: "easeOut" as const, delay: 0.12 / s },
@@ -79,6 +80,7 @@ export function peekCardVariants(speed: number, reduced: boolean) {
     enter: (dir: number) => ({ opacity: 0, filter: "blur(4px)", x: 20 * dir, transition: { duration: 0 } }),
     in: {
       opacity: 1, filter: "blur(0px)", x: 0,
+      transitionEnd: { filter: "none" },
       transition: { opacity: { duration: 0.22 / s, ease: "easeOut" as const }, filter: { duration: 0.22 / s, ease: "easeOut" as const }, x: { duration: 0.28 / s, ease: EASE_OUT_SOFT } },
     },
   };

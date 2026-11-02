@@ -60,7 +60,7 @@ const rects = (page) => page.evaluate(() => window.__calls.filter((c) => c[0] ==
     await page.mouse.move(400, 10); await page.waitForTimeout(250);
     ok("no peek before hoverDelayMs (400)", (await st(page)).mode === "pill");
     await page.waitForTimeout(1200);
-    ok("peek after the delay, size from peekWidth×peekHeight (400×120)", (await st(page)).mode === "peek" && (await st(page)).w === 400 && (await st(page)).h === 120, JSON.stringify(await st(page)));
+    ok("peek after the delay, size from peekWidth×(peekHeight+tabs strip) (460×188)", (await st(page)).mode === "peek" && (await st(page)).w === 460 && (await st(page)).h === 188, JSON.stringify(await st(page)));
     await page.mouse.move(10, 480); await page.waitForTimeout(150);
     ok("peek still open 150ms after leaving (close delay 300ms)", (await st(page)).mode === "peek");
     await page.mouse.move(400, 10); await page.waitForTimeout(600);
@@ -75,7 +75,7 @@ const rects = (page) => page.evaluate(() => window.__calls.filter((c) => c[0] ==
     await page.keyboard.press("Escape"); await page.waitForTimeout(1000);
     ok("Esc: panel ⇒ peek", (await st(page)).mode === "peek", JSON.stringify(await st(page)));
     const r = await rects(page);
-    ok("native window never resized: only region reports with radius (pill→peek→panel→…)", r.length >= 4 && r.every((x) => typeof x.radius === "number") && r.some((x) => x.width === 400 && x.height === 120) && r.some((x) => x.width === 520 && x.height === 290), JSON.stringify(r.slice(0, 5)));
+    ok("native window never resized: only region reports with radius (pill→peek→panel→…)", r.length >= 4 && r.every((x) => typeof x.radius === "number") && r.some((x) => x.width === 460 && x.height === 188) && r.some((x) => x.width === 520 && x.height === 290), JSON.stringify(r.slice(0, 5)));
     ok("no page errors", errs.length === 0, errs.join("|"));
     await ctx.close(); }
 
@@ -119,21 +119,21 @@ const rects = (page) => page.evaluate(() => window.__calls.filter((c) => c[0] ==
     await page.evaluate((c) => window.__emit("media:cover", c), COVER); await page.waitForTimeout(500);
     await page.mouse.move(400, 10); await page.waitForTimeout(1300);
     ok("peek: source badge Spotify with green dot", await page.evaluate(() => { const b = document.querySelector("[data-testid=source-badge]"); return b?.dataset.source === "spotify" && getComputedStyle(b.firstElementChild).backgroundColor === "rgb(30, 215, 96)"; }));
-    ok("peek: artwork 50px, radius 24%", await page.evaluate(() => { const a = document.querySelector("[data-testid=artwork]"); const r = a.getBoundingClientRect(); return Math.round(r.width) === 50 && Math.abs(parseFloat(getComputedStyle(a).borderTopLeftRadius) - 12) < 0.6; }));
-    ok("peek: progress track 3px, times tabular", await page.evaluate(() => Math.round(document.querySelector("[data-testid=progress] > div").getBoundingClientRect().height) === 3 && getComputedStyle(document.querySelector("[data-testid=times]")).fontVariantNumeric.includes("tabular")));
+    ok("peek: thumbnail frame at the size token (72px high), radius 14", await page.evaluate(() => { const a = document.querySelector("[data-testid=artwork]"); const r = a.getBoundingClientRect(); return Math.round(r.height) === 72 && Math.abs(parseFloat(getComputedStyle(a).borderTopLeftRadius) - 14) < 0.6; }));
+    ok("peek: seek track 4px, times tabular", await page.evaluate(() => Math.round(document.querySelector("[data-testid=seekbar] .sk-track").getBoundingClientRect().height) === 4 && getComputedStyle(document.querySelector("[data-testid=times]")).fontVariantNumeric.includes("tabular")));
     ok("peek: very long title is truncated with ellipsis, no overflow", await page.evaluate(() => { const t = [...document.querySelectorAll("[data-testid=peek-view] .truncate")].find((e) => e.textContent.startsWith("AAAA")); return !!t && getComputedStyle(t).textOverflow === "ellipsis" && t.scrollWidth > t.clientWidth; }));
     ok("backdrop: blurred artwork at 0.35 (glass) on the player card", await page.evaluate(() => { const b = document.querySelector("[data-testid=artwork-backdrop]"); return !!b && Math.abs(+getComputedStyle(b).opacity - 0.35) < 0.02 && getComputedStyle(b).filter.includes("blur(30px)") && getComputedStyle(b).filter.includes("saturate(1.5)"); }));
     await page.mouse.click(400, 10); await page.waitForTimeout(1500);
     const ctlCount = await page.evaluate(() => window.__calls.filter((c) => c[0] === "media_control").length);
     await page.getByRole("button", { name: "Pause" }).click(); await page.waitForTimeout(400);
     ok("play/pause calls media_control(toggle) and does NOT change the island state", (await st(page)).mode === "panel" && (await page.evaluate(() => window.__calls.filter((c) => c[0] === "media_control").map((c) => c[1].action))).pop() === "toggle" && ctlCount === 0);
-    ok("panel: artwork 112px (compact), controls 34/44/34", await page.evaluate(() => { const a = document.querySelector("[data-testid=player-panel] [data-testid=artwork]").getBoundingClientRect(); const b = [...document.querySelectorAll("[data-testid=player-panel] [data-testid=player-controls] button")].map((x) => x.offsetWidth); return Math.round(a.width) === 112 && b.join() === "34,44,34"; }), JSON.stringify(await page.evaluate(() => ({ a: document.querySelector("[data-testid=player-panel] [data-testid=artwork]")?.getBoundingClientRect().width, b: [...document.querySelectorAll("[data-testid=player-panel] [data-testid=player-controls] button")].map((x) => x.getBoundingClientRect().width) }))));
-    ok("panel: progress 5px; title 20px/650", await page.evaluate(() => { const t = [...document.querySelectorAll("[data-testid=player-panel] .truncate")].find((e) => e.textContent.startsWith("AAAA")); return Math.round(document.querySelector("[data-testid=player-panel] [data-testid=progress] > div").getBoundingClientRect().height) === 5 && getComputedStyle(t).fontSize === "20px" && getComputedStyle(t).fontWeight === "650"; }));
+    ok("panel: thumbnail 72px high (same token as the peek), controls 34/44/34", await page.evaluate(() => { const a = document.querySelector("[data-testid=player-panel] [data-testid=artwork]").getBoundingClientRect(); const b = [...document.querySelectorAll("[data-testid=player-panel] [data-testid=player-controls] button")].map((x) => x.offsetWidth); return Math.round(a.height) === 72 && b.join() === "34,44,34"; }), JSON.stringify(await page.evaluate(() => ({ a: document.querySelector("[data-testid=player-panel] [data-testid=artwork]")?.getBoundingClientRect().width, b: [...document.querySelectorAll("[data-testid=player-panel] [data-testid=player-controls] button")].map((x) => x.getBoundingClientRect().width) }))));
+    ok("panel: progress 5px; title 20px/650", await page.evaluate(() => { const t = [...document.querySelectorAll("[data-testid=player-panel] .truncate")].find((e) => e.textContent.startsWith("AAAA")); return Math.round(document.querySelector("[data-testid=player-panel] [data-testid=seekbar] .sk-track").getBoundingClientRect().height) === 5 && getComputedStyle(t).fontSize === "20px" && getComputedStyle(t).fontWeight === "650"; }));
     ok("panel: backdrop on Home tab", await page.evaluate(() => +getComputedStyle(document.querySelector("[data-testid=artwork-backdrop]")).opacity > 0.3));
     await page.getByRole("tab", { name: "Clipboard" }).click(); await page.waitForTimeout(900);
     ok("backdrop fades out on a non-player tab", await page.evaluate(() => +getComputedStyle(document.querySelector("[data-testid=artwork-backdrop]")).opacity < 0.05));
     await ctx.close(); }
-  for (const [layout, art] of [["large", 150], ["minimal", 0]]) {
+  for (const [layout, art] of [["large", 90], ["minimal", 0]]) {
     const { ctx, page } = await mk(browser, { media: media() }, { hoverDelayMs: 0, playerLayout: layout });
     await page.evaluate((c) => window.__emit("media:cover", c), COVER); await page.waitForTimeout(400);
     await page.mouse.move(400, 10); await page.waitForTimeout(1000); await page.mouse.click(400, 10); await page.waitForTimeout(1500);

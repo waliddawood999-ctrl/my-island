@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { i } from "./i18n";
+import { shrinkCover } from "./coverImage";
 
 export type MediaInfo = {
   session: boolean;
@@ -28,7 +29,7 @@ export const NO_MEDIA: MediaInfo = {
   duration: 0, position: 0, playing: false, can_prev: false, can_next: false, can_seek: false, kind: "", degraded: false,
 };
 
-export type MediaView = { info: MediaInfo; cover: string | null; sources: MediaSource[]; at: number; /** مستوى الصوت الحي 0..1 (للنشاط البديل "audio" فقط، وإلا 0) */ level: number };
+export type MediaView = { info: MediaInfo; cover: string | null; /** أبعاد الغلاف المعروض بعد التصغير (0 = غير معروف) */ coverW: number; coverH: number; sources: MediaSource[]; at: number; /** مستوى الصوت الحي 0..1 (للنشاط البديل "audio" فقط، وإلا 0) */ level: number };
 
 /** العنوان المعروض: النشاط الصوتي البديل «صوت من <التطبيق>» (لا عنوان مختلق)؛ وجلسة بلا عنوان تُعرض باسم تطبيقها لا فارغة. */
 export function mediaTitle(info: MediaInfo): string {
@@ -39,7 +40,15 @@ export function mediaTitle(info: MediaInfo): string {
 /** يعكس media:update / media:cover من media.rs؛ `at` لحظة وصول آخر تحديث (لاستيفاء الموضع محليًا). */
 export function useMedia(enabled: boolean): MediaView {
   const [info, setInfo] = useState<MediaInfo>(NO_MEDIA);
-  const [cover, setCover] = useState<string | null>(null);
+  const [cover, setCoverState] = useState<string | null>(null);
+  const [coverDims, setCoverDims] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
+  const coverSeq = useRef(0);
+  /** الغلاف الخام ⇒ نسخة بحجم العرض مرة واحدة؛ الرقم التسلسلي يُسقط النتائج المتأخرة عند تبدّل المسار بسرعة. null ⇒ فوري. */
+  const setCover = (raw: string | null) => {
+    const my = ++coverSeq.current;
+    if (!raw) { setCoverState(null); setCoverDims({ w: 0, h: 0 }); return; }
+    shrinkCover(raw).then((r) => { if (coverSeq.current === my) { setCoverState(r.uri); setCoverDims({ w: r.w, h: r.h }); } });
+  };
   const [sources, setSources] = useState<MediaSource[]>([]);
   const [at, setAt] = useState(() => performance.now());
   const [level, setLevel] = useState(0);
@@ -73,5 +82,5 @@ export function useMedia(enabled: boolean): MediaView {
     return () => { u.then((f) => f()); setLevel(0); };
   }, [audioKind]);
 
-  return { info, cover, sources, at, level };
+  return { info, cover, coverW: coverDims.w, coverH: coverDims.h, sources, at, level };
 }

@@ -91,6 +91,8 @@ export const MAX_STAGGER_ITEMS = 8;
 const scale = { enter: 0.97, exit: 0.98 };
 
 /** تفاعل الأزرار الموحّد (hover/active) عبر whileHover/whileTap. */
+/** تفاعل تمرير المصغّرة (P): تكبير خفيف جدًا؛ يُعطَّل (1) في reduced/off/Eco. */
+export const thumbHover: { scale: number } = { scale: 1.03 };
 export const tap: { whileHover: { scale: number }; whileTap: { scale: number }; transition: Transition } = {
   whileHover: { scale: 1.05 }, whileTap: { scale: 0.97 }, transition: spring.press,
 };
@@ -109,12 +111,15 @@ export const paletteVariants: Variants = {};
 /** دخول عنصر قائمة بتتابع خفيف (custom = فهرس العنصر): شفافية + إزاحة صغيرة بنابض المحتوى، بلا تمويه (تكلفة أقل على قوائم طويلة). */
 export const itemVariants: Variants = {};
 
+/** بعد انتهاء دخول العنصر يُزال المرشّح كليًا: `filter: blur(0px)` المتبقّي يبقي كل نص داخله في سطح تركيب منفصل طوال بقائه (docs/STATUS.md · Q). */
+const NO_FILTER = { filter: "none" } as const;
+
 function buildVariants() {
   Object.keys(swapVariants).forEach((k) => delete swapVariants[k]);
   Object.assign(swapVariants, {
     initial: { opacity: 0, y: shift.swap, filter: `blur(${blur.swap}px)` },
     animate: {
-      opacity: 1, y: 0, filter: "blur(0px)",
+      opacity: 1, y: 0, filter: "blur(0px)", transitionEnd: NO_FILTER,
       transition: { ...spring.content, opacity: { duration: dur.swap, ease: ease.out, delay: level === "full" ? 0.06 : 0 } },
     },
     exit: {
@@ -126,7 +131,7 @@ function buildVariants() {
   Object.assign(sectionVariants, {
     initial: { opacity: 0, y: shift.section, filter: `blur(${blur.section}px)` },
     animate: (n: number = 0) => ({
-      opacity: 1, y: 0, filter: "blur(0px)",
+      opacity: 1, y: 0, filter: "blur(0px)", transitionEnd: NO_FILTER,
       transition: { ...spring.content, delay: n * stagger.section, opacity: { duration: dur.swap, ease: ease.out, delay: n * stagger.section } },
     }),
     exit: { opacity: 0, transition: { duration: dur.fast, ease: ease.inOut } },
@@ -143,7 +148,7 @@ function buildVariants() {
   Object.keys(paletteVariants).forEach((k) => delete paletteVariants[k]);
   Object.assign(paletteVariants, {
     initial: { opacity: 0, scale: scale.enter, filter: `blur(${blur.swap}px)` },
-    animate: { opacity: 1, scale: 1, filter: "blur(0px)", transition: { ...spring.content } },
+    animate: { opacity: 1, scale: 1, filter: "blur(0px)", transitionEnd: NO_FILTER, transition: { ...spring.content } },
     exit: { opacity: 0, scale: scale.exit, filter: `blur(${blur.section}px)`, transition: { duration: dur.fast, ease: ease.inOut } },
   } satisfies Variants);
 }
@@ -173,6 +178,7 @@ export function setMotionLevel(l: MotionLevel) {
     Object.assign(stagger, { section: 0.05, item: 0.03 });
     Object.assign(scale, { enter: 0.97, exit: 0.98 });
     tap.whileHover = { scale: 1.05 }; tap.whileTap = { scale: 0.97 };
+    thumbHover.scale = 1.03;
     alertShake.animate = { rotate: [0, -16, 14, -10, 0] };
     alertShake.transition = { duration: FULL_DUR.alert, repeat: 2 };
     eyeBlink.close = { type: "tween", duration: 0.07, ease: ease.inOut };
@@ -188,6 +194,7 @@ export function setMotionLevel(l: MotionLevel) {
     Object.assign(stagger, { section: 0, item: 0 });
     Object.assign(scale, { enter: l === "off" ? 1 : 0.995, exit: 1 });
     tap.whileHover = { scale: l === "off" ? 1 : 1.02 }; tap.whileTap = { scale: l === "off" ? 1 : 0.97 };
+    thumbHover.scale = 1;
     alertShake.animate = { rotate: 0 };
     alertShake.transition = NONE;
     eyeBlink.close = l === "off" ? NONE : { type: "tween", duration: 0.05, ease: ease.inOut };
