@@ -493,3 +493,8 @@
 - The user explicitly requested applying/building the update so they can update and test it themselves. This supersedes the earlier hold on applying unverified native changes for this trial; it does not establish a clean native startup result.
 - Retain the appearance ACL and launcher-link fixes and their contract/unit tests. Remove the unsuccessful experimental verification workflow and its native/trace harnesses from the change; historical run logs remain linked above. The existing Build Windows workflow is unchanged.
 - Shipping application source is unchanged from the tested candidate 74251dba3c44fa5efc93c3bcfb991c70e4a4fc2e. Native startup, visual behaviour and hardware integration still require the user's local trial. Preserve backup/pre-fixes-2026-11-02-ca0b8e9 and release v1.0.70 for rollback.
+
+## 2026-11-03 — isolated installer build started; stable branch preserved
+- Automatic approval review rejected merging PR #16 into main because native Windows startup was not verified and the trial request was not sufficient authorization for that default-branch change. No merge was performed; PR #16 is draft again.
+- Safer alternative: Build Windows now also accepts pushes to fix/verified-regressions-2026-11-02. Its existing release gate still requires manual dispatch with publish=true from main, so branch builds cannot publish to the stable auto-updater.
+- Trial installer build started from b7b5f29e0df51209e4e83c8999753a22f2c827c1: https://github.com/waliddawood999-ctrl/my-island/actions/runs/41530340099 . Pending completion; downloadable installer artifact is my-island-windows-installer. User can install manually for their requested local trial. No installed-device update is claimed. Backup branch and v1.0.70 installer remain available.
