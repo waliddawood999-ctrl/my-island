@@ -74,7 +74,7 @@ html, body, #root {
 .island-note-doc ul, .island-note-doc ol { margin: 0 0 0.35em; padding-inline-start: 1.4em; }
 .island-note-doc ul { list-style: disc; }
 .island-note-doc ol { list-style: decimal; }
-.island-note-doc a { color: var(--app-accent); text-decoration: underline; cursor: text; }
+.island-note-doc a { color: inherit; text-decoration: underline; text-decoration-color: var(--app-accent); text-decoration-thickness: 2px; text-underline-offset: 2px; cursor: text; } /* لا نص جسم بلون الأكسنت: الأكسنت للخطّ تحت الرابط فقط */
 .island-note-doc blockquote { border-inline-start: 3px solid rgb(255 255 255 / 0.25); padding-inline-start: 0.7em; margin: 0.3em 0; color: var(--island-text-dim); }
 .island-note-doc code { background: rgb(255 255 255 / 0.1); border-radius: 4px; padding: 0 0.3em; }
 .island-note-doc ul[data-type="taskList"] { list-style: none; padding-inline-start: 0; }

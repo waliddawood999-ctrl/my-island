@@ -119,7 +119,7 @@ input[type="range"].st-range:focus-visible::-webkit-slider-thumb { box-shadow: 0
 :root[data-theme="light"] .st-gprev.clear::after { background: rgb(245 245 248 / .64); box-shadow: inset 0 0 0 1px rgb(13 16 23 / .12); }
 .st-kbd { min-width: 11rem; height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding-inline: var(--space-3); border-radius: var(--radius-control); background: var(--c-surface); box-shadow: inset 0 0 0 1px var(--c-border); font-size: var(--fs-13); font-variant-numeric: tabular-nums; outline: none; transition: box-shadow var(--dur-fast) var(--ease); }
 .st-kbd:hover { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c-text-primary) 28%, transparent); }
-.st-kbd[data-rec="true"] { box-shadow: inset 0 0 0 1.5px var(--accent), 0 0 0 3px var(--accent-soft); color: var(--accent); }
+.st-kbd[data-rec="true"] { box-shadow: inset 0 0 0 1.5px var(--accent), 0 0 0 3px var(--accent-soft); }
 .st-kbd kbd { padding: 1px 6px; border-radius: 6px; background: rgb(255 255 255 / 0.1); font-family: inherit; font-size: var(--fs-12); }
 :root[data-theme="light"] .st-kbd kbd { background: rgb(13 16 23 / 0.08); }
 .st-note { color: var(--c-text-secondary); font-size: var(--fs-12); padding: var(--space-2) var(--density-pad); }

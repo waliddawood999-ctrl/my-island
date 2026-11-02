@@ -14,7 +14,7 @@ const BASE = process.env.BASE || "http://localhost:4173";
   const browser = await chromium.launch();
   for (const id of ids) for (const theme of ["dark", "light"]) for (const open of [false, true]) {
     const ctx = await browser.newContext({ viewport: { width: 800, height: 300 }, colorScheme: theme }); const page = await ctx.newPage();
-    await page.addInitScript(bridge({ settings: { language: "en", eyesEnabled: false, settingsVersion: 4, showClock: true, themeMode: theme, themePack: id, hoverDelayMs: 0, themeMaterial: "glass", ...extra }, ...(process.env.CFG ? JSON.parse(process.env.CFG) : {}), ...(id === "living-artwork" ? { cover: COVER, media: MEDIA } : {}) }));
+    await page.addInitScript(bridge({ settings: { language: "en", eyesEnabled: false, settingsVersion: 4, showClock: true, themeMode: theme, themePack: id, hoverDelayMs: 0, themeMaterial: "glass", ...extra }, ...(process.env.CFG ? JSON.parse(process.env.CFG) : {}), ...(id.startsWith("living-artwork") ? { cover: COVER, media: MEDIA } : {}) }));
     await page.goto(`${BASE}/index.html`); await page.waitForTimeout(1000);
     await page.addStyleTag({ content: `html{background:linear-gradient(120deg,#3b6fd8,#c75b9b 50%,#e0a03a)!important}` });
     if (open) { await page.mouse.move(400, 10); await page.waitForTimeout(900); await page.mouse.click(400, 10); await page.waitForTimeout(1300); }

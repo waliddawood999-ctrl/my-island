@@ -82,7 +82,7 @@ export function ToolsTab() {
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="mb-1 flex shrink-0 items-center gap-2 text-xs text-white/60">
           <Pipette size={12} /><span dir="auto">{i("آخر الألوان", "Recent colors")}</span>
-          {toast && <span dir="auto" className="ms-auto text-[var(--app-accent)]">{toast}</span>}
+          {toast && <span dir="auto" className="ms-auto inline-flex items-center gap-1.5"><span aria-hidden className="h-1.5 w-1.5 rounded-full bg-[var(--app-accent)]" />{toast}</span>}
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto">
           {colors.length === 0 ? (

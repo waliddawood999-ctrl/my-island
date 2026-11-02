@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 const dir = mkdtempSync(join(tmpdir(), "th-"));
 const load = async (entry, name) => { const out = join(dir, name); await build({ entryPoints: [entry], bundle: true, format: "esm", outfile: out, logLevel: "warning" }); return import(pathToFileURL(out).href); };
 const E = await load("src/themeEngine.ts", "e.mjs");
@@ -143,6 +144,18 @@ ok("Porcelain is light-first (surface detected light) and the dark variant is de
   ok(`user theme: every allowed extreme (${worst.length} combos) still passes every WCAG role — cannot produce an unreadable theme`, worst.every((d) => d.measures.every((m) => m.ok)));
   ok("factory packs are never mutated by customisation (userPack copies)", (() => { const before = J(P.getPack("obsidian")); P.userPack({ id: "u:z", name: "z", accent: "#ff0000", wash: 0 }); return J(P.getPack("obsidian")) === before; })());
   ok("resolvePack: custom slot and u:ids resolve; unknown ⇒ Obsidian", P.resolvePack("custom", { accent: "#ff6b5e" }).seeds.accent === "#ff6b5e" && P.resolvePack("u:a1", null, [{ id: "u:a1", name: "Mine", base: "ember" }]).ar === "Mine" && P.resolvePack("u:zz", null, []).id === "obsidian" && P.resolvePack("???").id === "obsidian");
+}
+// ── محظورات الرصّة (مصدرية): لا نص جسم بلون الأكسنت · لا backdrop-filter · لا #000 كسطح · لا خط خارج المكدّس
+{
+  const files = []; const walk = (d) => { for (const f of readdirSync(d)) { const p = join(d, f); if (statSync(p).isDirectory()) walk(p); else if (/\.(tsx?|css)$/.test(f)) files.push(p); } }; walk("src");
+  const bad = [];
+  for (const f of files) readFileSync(f, "utf8").split("\n").forEach((l, n) => {
+    if (/text-\[var\(--(app-)?accent\)\]/.test(l) && !/svg|icon/i.test(l)) bad.push(`${f}:${n + 1} ${l.trim().slice(0, 80)}`);
+    if (/(^|[;{\s])color:\s*var\(--(app-)?accent\)/.test(l) && !/svg|st-row-tile|pk-tile|lucide/.test(l)) bad.push(`${f}:${n + 1} ${l.trim().slice(0, 80)}`);
+  });
+  ok("no body text coloured with the accent (icons/tiles only)", bad.length === 0, bad.join(" | "));
+  ok("no backdrop-filter in any source file (the veil is simulated)", files.every((f) => !/backdrop-filter\s*:/.test(readFileSync(f, "utf8").replace(/\/\*[\s\S]*?\*\//g, ""))), files.filter((f) => /backdrop-filter\s*:/.test(readFileSync(f, "utf8").replace(/\/\*[\s\S]*?\*\//g, ""))).join());
+  ok("island surface never falls back to #000/#fff (var(--glass-base) everywhere)", !/--island-bg:[^;]*#(000|fff)\b/i.test(readFileSync("src/pages/island/island.css", "utf8")));
 }
 // ── تقرير
 for (const dark of [true, false]) { const d = E.deriveTheme(P.packInput(obs, dark)); console.log(`  [report] obsidian/${dark ? "dark" : "light"} base ${E.rgbToHex(d.base)} accent ${E.rgbToHex(d.accent)} onAccent ${E.rgbToHex(d.onAccent)} wash ${d.washAlpha.toFixed(3)} adj ${d.adjustments.length}: ${d.measures.map((m) => `${m.role}=${m.ratio}`).join(" ")}`); }
