@@ -28,9 +28,6 @@ pub fn defaults() -> Map<String, Value> {
         "language": "ar",
         "hoverDelayMs": 250,
         "clockFormat": "auto",
-        "aiBaseUrl": "https://api.groq.com/openai/v1",
-        "sttBaseUrl": "https://api.groq.com/openai/v1",
-        "sttModel": "whisper-large-v3-turbo",
         "recordingFps": 30,
         "recordFormat": "mp4",
         "hotkeyPalette": "Alt+Space",
@@ -39,7 +36,6 @@ pub fn defaults() -> Map<String, Value> {
         "hotkeyRecord": "Ctrl+Alt+R",
         "hotkeyColor": "Ctrl+Alt+C",
         "recordingQuality": "medium",
-        "checkUpdates": true,
         "attentionTracking": true,
         "breakReminders": false,
         "breakMinutes": 60,
@@ -120,7 +116,9 @@ pub fn defaults() -> Map<String, Value> {
 }
 
 /// مفاتيح إعدادات أُزيلت ميزاتها؛ تُحذف عند فتح القاعدة ولا تعود للواجهة.
-pub const OBSOLETE_KEYS: &[&str] = &["browserTabMode", "underTaskbar", "lyricsInHome", "lyricsInPlayer", "collapseDelayMs", "animSpeed", "springStyle", "glassBlur", "glassSaturation"];
+pub const OBSOLETE_KEYS: &[&str] = &[ // + مفاتيح بلا واجهة ولا مستهلك (ARCH-UI): تُحذف من kv عند الإقلاع
+    "agentsAsk", "agentsStatus", "aiBaseUrl", "aiModels", "character", "characterMusic", "checkUpdates", "controlsNet", "dictatePaste", "gpuAcceleration", "hideForApps", "hideForAppsMode", "homePlayer", "hotkeyChat", "hotkeyClipboard", "hotkeyDictate", "hotkeyMic", "hotkeyOcr", "hotkeyPlainPaste", "hotkeyQr", "hotkeyThrough", "hotkeyVpn", "keepForApps", "moduleControls", "moduleWeather", "notifyMuted", "obsPort", "obsStatus", "opacityThrough", "showCaps", "showLayout", "showNotifications", "showOnDesktop", "showPrivacy", "showVpn", "sttBaseUrl", "sttLanguage", "sttModel", "uploadKey", "uploadService", "vpnLookupIp", "weatherAlerts", "weatherLat", "weatherLon",
+    "browserTabMode", "underTaskbar", "lyricsInHome", "lyricsInPlayer", "collapseDelayMs", "animSpeed", "springStyle", "glassBlur", "glassSaturation"];
 // glassBlur/glassSaturation: منزلقا تمويه/تشبّع وهميان (لا أثر على ويندوز) — حُذفا نهائيًا مع إزالة SWCA؛ يُنظَّف kv القديم عند الفتح (docs/GLASS.md).
 
 /// ترحيل T03 في kv (idempotent): springStyle ⇒ motionPreset (snappy⇒snappy وغيره⇒calm مع ارتداد النمط) · animSpeed(50..150) ⇒ motionSpeed(0.5..2)
@@ -152,24 +150,14 @@ pub fn migrate_t03(conn: &Connection) {
 /// مفاتيح واجهة Settings في src/settings.ts التي لا افتراضي لها في DEFAULTS — (المفتاح، نوع JSON). uploadKey مستثنى عمدًا (الأسرار لا تدخل الإعدادات).
 const EXTRA_KEYS: &[(&str, &str)] = &[
     ("autostart", "bool"), ("monitor", "number"), ("offsetX", "number"), ("style", "string"),
-    ("opacityRest", "number"), ("opacityOpen", "number"), ("opacityThrough", "number"),
-    ("gpuAcceleration", "bool"), ("autoHide", "bool"), ("showOnDesktop", "bool"), ("hideInFullscreen", "bool"),
-    ("hideForApps", "array"), ("keepForApps", "array"), ("hideForAppsMode", "string"), ("through", "bool"),
+    ("opacityRest", "number"), ("opacityOpen", "number"), ("autoHide", "bool"), ("hideInFullscreen", "bool"),
+    ("through", "bool"),
     ("captureVisible", "bool"), ("showClock", "bool"), ("showBattery", "bool"), ("mediaPill", "string"),
-    ("homePlayer", "string"), ("liquidSpectrum", "bool"), ("mascot", "string"), ("character", "string"),
-    ("characterMusic", "string"), ("screenshotDir", "string"), ("recordingDir", "string"), ("uploadService", "string"),
-    ("clipLimit", "number"), ("clipExcludedApps", "array"), ("pasteOnClick", "bool"),
-    ("moduleMedia", "bool"), ("moduleShelf", "bool"), ("moduleLauncher", "bool"), ("moduleControls", "bool"), ("moduleWeather", "bool"),
-    ("controlsNet", "string"), ("showVolume", "bool"), ("showLayout", "bool"), ("showCaps", "bool"),
-    ("obsStatus", "bool"), ("obsPort", "number"), ("agentsStatus", "bool"), ("agentsAsk", "bool"),
-    ("showPrivacy", "bool"), ("privacyIndicator", "bool"), ("showMeetings", "bool"),
-    ("showVpn", "bool"), ("vpnLookupIp", "bool"), ("showNotifications", "bool"), ("notifyMuted", "array"),
+    ("liquidSpectrum", "bool"), ("mascot", "string"), ("screenshotDir", "string"), ("recordingDir", "string"), ("clipLimit", "number"), ("clipExcludedApps", "array"), ("pasteOnClick", "bool"),
+    ("moduleMedia", "bool"), ("moduleShelf", "bool"), ("moduleLauncher", "bool"), ("showVolume", "bool"), ("privacyIndicator", "bool"), ("showMeetings", "bool"),
     ("paletteFiles", "bool"), ("paletteFolders", "bool"), ("searchEngine", "string"), ("searchUrl", "string"),
-    ("workspaces", "array"), ("weatherLat", "number"), ("weatherLon", "number"), ("weatherUnits", "string"),
-    ("showWeather", "bool"), ("weatherAlerts", "bool"), ("aiModels", "array"), ("sttLanguage", "string"), ("dictatePaste", "bool"),
-    ("hotkeyToggle", "string"), ("hotkeyChat", "string"), ("hotkeyDictate", "string"), ("hotkeyOcr", "string"),
-    ("hotkeyClipboard", "string"), ("hotkeyPlainPaste", "string"), ("hotkeyMic", "string"), ("hotkeyQr", "string"),
-    ("hotkeyThrough", "string"), ("hotkeyVpn", "string"),
+    ("workspaces", "array"), ("weatherUnits", "string"),
+    ("showWeather", "bool"), ("hotkeyToggle", "string"),
 ];
 
 fn json_kind(v: &Value) -> &'static str {

@@ -13,14 +13,8 @@ export interface Settings {
   style:string,
   opacityRest:number,
   opacityOpen:number,
-  opacityThrough:number,
-  gpuAcceleration:boolean,
   autoHide:boolean,
-  showOnDesktop:boolean,
   hideInFullscreen:boolean,
-  hideForApps:string[],
-  keepForApps:string[],
-  hideForAppsMode:string,
   through:boolean,
   hoverDelayMs:number,
   captureVisible:boolean,
@@ -33,45 +27,26 @@ export interface Settings {
   breakReminders:boolean,
   breakMinutes:number,
   mediaPill:string,
-  homePlayer:string,
   liquidSpectrum:boolean,
   soundChoice:'chime'|'glass'|'pop'|'bubble'|'bell'|'none', // صوت التنبيه (WebAudio محلي — src/sounds.ts)
   soundVolume:number,             // 0..100
   mascot:string,
-  character:string,
-  characterMusic:string,
   recordFormat:'mp4'|'gif',
   recordingFps:30|60,
   recordingQuality:string,
   screenshotDir:string,
   recordingDir:string,
-  uploadService:'none'|'imgur'|'imgbb',
-  uploadKey:string,
   clipLimit:number,
   clipExcludedApps:string[],
   pasteOnClick:boolean,
   moduleMedia:boolean,
   moduleShelf:boolean,
   moduleLauncher:boolean,
-  moduleControls:boolean,
-  moduleWeather:boolean,
-  controlsNet:string,
   showVolume:boolean,
-  showLayout:boolean,
-  showCaps:boolean,
-  obsStatus:boolean,
-  obsPort:number,
-  agentsStatus:boolean,
-  agentsAsk:boolean,
-  showPrivacy:boolean,
   privacyIndicator:boolean,
   showMeetings:boolean,
   loadAlert:boolean,     // تنبيه حمل معالج مرتفع مستمر 90%+ لمدة 30s يسمّي التطبيق المسبّب؛ مطفأ افتراضيًا (عيّنة كل 5s فقط حين يُفعَّل وخارج Eco)
   meetingLeadMin:number, // «اجتماع قريب» في الكبسولة/البطاقة: دقائق قبل البدء (1..60)
-  showVpn:boolean,
-  vpnLookupIp:boolean,
-  showNotifications:boolean,
-  notifyMuted:string[],
   paletteFiles:boolean,
   paletteFolders:boolean,
   searchEngine:string,
@@ -128,11 +103,8 @@ export interface Settings {
   showNetSpeed:boolean,
   workspaces:Workspace[],
   weatherCity:string,             // مدينة الطقس (id من جدول today.rs؛ الافتراضي madinah) — مستقلة عن prayerCity
-  weatherLat:number,
-  weatherLon:number,
   weatherUnits:'c'|'f',
   showWeather:boolean,
-  weatherAlerts:boolean,
   showToday:boolean,     // قسم «اليوم» في الرئيسية (هجري + مواقيت صلاة + طقس)
   prayerCity:string,     // معرّف مدينة سعودية من جدول today.rs (riyadh, makkah, ...)
   showCountdowns:boolean,  // «اليوم»: عدّادات أحداث المستخدم (أقرب حدثين)؛ مطفأ ⇒ لا حساب ولا عرض
@@ -140,38 +112,19 @@ export interface Settings {
   showWorldClock:boolean,  // «اليوم»: ساعة عالمية مصغّرة لمدينة أو مدينتين؛ مطفأ ⇒ لا حساب ولا عرض
   worldClocks:string[],    // أسماء IANA (حتى 2) من قائمة today.ts::WORLD_CITIES
   prayerAlerts:boolean,  // تنبيه قبل الصلاة 10د وعند دخول الوقت (بصوت alertSound إن ضُبط)
-  aiBaseUrl:string,
-  aiModels:string[],
-  sttBaseUrl:string,
-  sttModel:string,
-  sttLanguage:string,
-  dictatePaste:boolean,
-  checkUpdates:boolean,
   updateAutoCheck:boolean, // فحص صامت واحد بعد الإقلاع بثوانٍ عن تحديث موقّع (tauri-plugin-updater)؛ لا شيء يظهر عند الغياب/الفشل
   hotkeyToggle:string,
   hotkeyPalette:string,
-  hotkeyChat:string,
-  hotkeyDictate:string,
   hotkeyArea:string,
   hotkeyScreen:string,
-  hotkeyOcr:string,
-  hotkeyClipboard:string,
-  hotkeyPlainPaste:string,
-  hotkeyMic:string,
   hotkeyColor:string,
-  hotkeyQr:string,
   hotkeyRecord:string,
-  hotkeyThrough:string,
-  hotkeyVpn:string
 }
 
 export const DEFAULTS: Partial<Settings> = {
   language: "ar",
   hoverDelayMs: 250,        // مهلة فتح اللمحة (0..800 خطوة 50)
   clockFormat: "auto",
-  aiBaseUrl: "https://api.groq.com/openai/v1",
-  sttBaseUrl: "https://api.groq.com/openai/v1",
-  sttModel: "whisper-large-v3-turbo",
   recordingFps: 30,
   recordFormat: "mp4",
   hotkeyPalette: "Alt+Space", // فارغ = شريط الأوامر معطّل
@@ -180,7 +133,6 @@ export const DEFAULTS: Partial<Settings> = {
   hotkeyRecord: "Ctrl+Alt+R", // تسجيل منطقة (يبدّل بدء/إيقاف)؛ فارغ = معطّل
   hotkeyColor: "Ctrl+Alt+C",  // منتقي الألوان؛ فارغ = معطّل
   recordingQuality: "medium", // low | medium | high
-  checkUpdates: true,
   updateAutoCheck: true,
   attentionTracking: true, // «وقتي»: يعمل افتراضيًا ومحلي فقط؛ false = إيقاف كامل بلا مراقبة ولا كتابة
   breakReminders: false,   // تذكير استراحة بعد استخدام متواصل (صريح من المستخدم)
