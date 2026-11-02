@@ -245,14 +245,15 @@ export function PlayerPeek({ media, s, accent, reduce, visible }: PlayerProps) {
   const pos = usePos(media, visible);
   if (!info.session) return <Empty />;
   const viz = s.visualizer ?? "bars";
+  const narrow = (s.peekWidth ?? 460) < 360; // إطلالة ضيّقة: بلا مصغّرة ولا مؤشر كي لا يتداخل شيء مع الأزرار
   return (
     <div data-testid="player-peek" style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 8, height: "100%", ["--player-accent" as string]: accent }}>
       <div style={{ display: "flex", alignItems: "center", gap: 14, minHeight: 0 }}>
-        {layout !== "minimal" && <Thumb cover={cover} coverW={media.coverW} coverH={media.coverH} session={info.session} trackKey={tkey(info)} source={info.source} sourceName={info.source_name} duration={info.duration} accent={accent} reduce={reduce} h={thumbH(layout)} />}
+        {layout !== "minimal" && !narrow && <Thumb cover={cover} coverW={media.coverW} coverH={media.coverH} session={info.session} trackKey={tkey(info)} source={info.source} sourceName={info.source_name} duration={info.duration} accent={accent} reduce={reduce} h={thumbH(layout)} />}
         <div style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: 3 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
             {(s.showSourceBadge ?? true) ? <SourceBadge aumid={info.source} name={info.source_name} /> : <span />}
-            <Visualizer kind={viz} count={5} playing={info.playing} visible={visible} reduce={reduce} accent={accent} w={3} h={14} />
+            {!narrow && <Visualizer kind={viz} count={5} playing={info.playing} visible={visible} reduce={reduce} accent={accent} w={3} h={14} />}
           </div>
           <div dir="auto" className="truncate" style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.25 }}>{mediaTitle(info)}</div>
           <div dir="auto" className="truncate" style={{ fontSize: 12, opacity: 0.62 }}>{sub(info) || " "}</div>
