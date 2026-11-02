@@ -79,6 +79,9 @@ const TAB_ICONS: Record<string, React.ReactNode> = {
 };
 void BellIcon; void CalendarIcon; void Rocket;
 
+/** تبويب المحادثة مخفي حتى يكتمل محتواه (S4)؛ اقلب القيمة لإعادته (لا يوجد ما يحفظ/يعيد تبويبًا نشطًا غيره، فالمعرّف المجهول يرجع للرئيسية). */
+const CHAT_TAB_ENABLED = false;
+
 /** التبويبات؛ الرفّ يظهر فقط إن كان moduleShelf مفعّلًا (غياب المفتاح = مفعّل) وعدّاده بجانب الاسم. */
 const tabDefs = (shelfOn: boolean, shelfCount: number, launcherOn: boolean, meetingsOn: boolean) => [
   { id: "home", label: i("الرئيسية", "Home") },
@@ -89,7 +92,7 @@ const tabDefs = (shelfOn: boolean, shelfCount: number, launcherOn: boolean, meet
   { id: "tools", label: i("الأدوات", "Tools") },
   ...(meetingsOn ? [{ id: "meetings", label: i("الاجتماعات", "Meetings") }] : []),
   { id: "system", label: i("النظام", "System") },
-  { id: "chat", label: i("المحادثة", "Chat") },
+  ...(CHAT_TAB_ENABLED ? [{ id: "chat", label: i("المحادثة", "Chat") }] : []),
 ];
 
 /**
