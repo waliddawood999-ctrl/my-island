@@ -38,7 +38,7 @@ update_install, news_get, news_told, notifications_access,
 notifications_request, obs_state, obs_password_set,
 obs_password_status, hotkeys_check, list_item
 
-> الأمران set_island_hidden(hidden: bool) وreport_island_rect(width, height بـ CSS px) مُنفَّذان في الجلسة 0.1 (commands.rs).
+> الأمران set_island_hidden(hidden: bool) وreport_island_rect(width, height بـ CSS px؛ مستطيل الإصابة منذ ARCH) مُنفَّذان في الجلسة 0.1 (commands.rs).
 
 ## أحداث (emit/listen)
 ai:chunk, ai:done, ai:error, media:update, media:cover, media:bands,
@@ -298,7 +298,7 @@ settings_set لمفتاح `autostart` يكتب/يحذف قيمة MyIsland في H
 - **وحدة `fullscreen.rs` (لا أوامر جديدة):** `hideInFullscreen` حدثي (SetWinEventHook على الأمامية + LOCATIONCHANGE بخيط الأمامية، SHQueryUserNotificationState + مستطيل يغطي الشاشة بلا شريط عنوان) بلا استطلاع في الخمول؛ أثناء ملء الشاشة يُستطلع المؤشر كل 100ms فقط لإظهار الحبة عند لمس الحافة العليا وإخفائها عند المغادرة. ونافذة مخفية تستقبل `WM_DISPLAYCHANGE/WM_DPICHANGED/تغيّر منطقة العمل` لإعادة التموضع.
 
 ### T03 — حالات الجزيرة (حبة/لمحة/لوحة) والنافذة الثابتة
-- **`report_island_rect(width, height, radius?)`** (تغيّر المعنى، الاسم ثابت): النافذة الأصلية **ثابتة** شفافة 800×500 CSS px (`win::WIN_W/WIN_H`) لا يُعاد حجمها أبدًا؛ هذا الأمر يضبط **منطقة النافذة** (`SetWindowRgn`، مستطيل مستدير بمقاس الجزيرة الهدف) = اختبار الإصابة الحقيقي: خارجها شفاف ويمرّر الماوس، وتتبعها حدود الأكريليك. تُستدعى قبل النمو (حبة→لمحة→لوحة) وبعد الانكماش؛ موضع المنطقة داخل النافذة حسب `pillPosition` (يسار/منتصف/يمين) ويضاف 24px سفلية حين `hoverZone=islandAndBelow`. الحركة تتم داخل الصفحة فقط.
+- **`report_island_rect(width, height, radius?)`** (**معنى «مستطيل الإصابة»** منذ ARCH، الاسم ثابت): النافذة الأصلية **ثابتة** شفافة 800×500 CSS px (`win::WIN_W/WIN_H`) لا يُعاد حجمها ولا **منطقة نافذة** (`SetWindowRgn` حُذف نهائيًا). الأمر يخزّن مستطيل الجزيرة الهدف في `hit.rs`؛ وخيط مركون (~60Hz قرب النافذة، ~20Hz بعيدًا، ضعف المهلة في Eco، يُركن والحبة مخفية بـ`hide()` ويوقظه `set_hidden(false)`) يقارن موضع المؤشر بالمستطيل (مستدير، هامش 3px، +24px سفلية حين `hoverZone=islandAndBelow`، وملتصقة ⇒ يمتد فوق الحافة) ويبدّل `set_ignore_cursor_events` **عند الانتقالات فقط** (ولا يبدّل إلى «تجاهل» أثناء ضغط زر فأرة بدأ داخلًا). النقر خارج الجسم يمرّ للتطبيق تحته؛ العجلة/النقر داخله يصلان للصفحة. تُستدعى قبل النمو (حبة→لمحة→لوحة) وبعد الانكماش؛ الواجهة لا تنتظر ردّها. موضع المستطيل في النافذة حسب `pillPosition`. الحركة داخل الصفحة فقط.
 - **لا أوامر/أحداث جديدة** في المشغّل: يعيد استعمال `media_now`, `media:update`, `media:cover`, `media:bands`, `media_control(prev|toggle|next)`, `media_seek`, `media_pick`. حقول GSMTC المستعملة: title/artist/album/duration/position/playing/can_*/source(AUMID)/source_name + الغلاف (media.rs). التقدّم يُستوفى محليًا بنبضة 1ث (بلا rAF).
 - **شارة المصدر** (`src/mediaSource.ts`): Spotify (#1ed760) إن ذكر AUMID/الاسم Spotify؛ YouTube (#ff3b30) **فقط** إن ذكر المصدر نفسه «YouTube» (تطبيق/PWA/YouTube Music)؛ جلسات المتصفح (Chrome/Edge/Firefox/Brave/Opera) تُعرض باسم المتصفح بلون محايد — GSMTC لا يكشف عنوان التبويب/الرابط فلا إشارة موثوقة أن التبويب YouTube، فلا نخمّن.
 - **مفاتيح جديدة (src/settings.ts + state.rs):** `peekWidth/peekHeight/peekRadius` · `panelWidth/panelHeight/panelRadius` · `hoverZone` · `peekWheelCycle` · `peekCardOrder` · `panelWheelPaging` · `panelTabsStyle` · `backgroundOpacity` · `accentMode` · `motionPreset/motionSpeed/motionBounce` · `reduceMotion` (صار نصًا system|always|never) · `playerLayout/visualizer/showPlaybackTime/showSourceBadge/showProgress/artworkBackdrop`.
@@ -306,3 +306,8 @@ settings_set لمفتاح `autostart` يكتب/يحذف قيمة MyIsland في H
 
 ### T04 (مُلغى) — `island_backdrop` بالأسلوب
 - سُجِّل هنا سابقًا أن `island_backdrop` يأخذ `style` ويحسب ألفا صبغة الأكريليك؛ **أُزيل الأمر كله** (انظر «الزجاج المُحاكى — `system_transparency`» أعلاه). `glassStyle` (crystal|clear) باقٍ ويعني الآن أسلوب الحجاب فقط (`appearance.ts::glassAlpha`).
+
+### ARCH — شفافية WebView2 + بلا منطقة نافذة
+- **أمر جديد `webview_runtime()`** → `{ version: string, major: number, background_clear: bool | null }` (نافذة الإعدادات فقط؛ capability `allow-webview-runtime`). `version` من `tauri::webview_version()` (نسخة WebView2 Runtime الفعلية، تظهر في ▸ حول)، و`background_clear` = نتيجة التحقق من `DefaultBackgroundColor=(0,0,0,0)` لنافذة main بعد الضبط (`null` قبل الفحص/خارج ويندوز). الواجهة تحذّر عند 145–146 (تراجع شفافية معروف، أُصلح في 147) أو `false`.
+- **لا أحداث جديدة.** `mascot:look` يقرأ مستطيل الجزيرة المُبلَّغ (`hit::shape()`) لا منطقة نافذة؛ `island:hidden` بلا تغيير.
+- **بيئة العملية:** `WEBVIEW2_DEFAULT_BACKGROUND_COLOR=00000000` يُضبط في `run()` قبل إنشاء أي ويب فيو (`backdrop::apply_transparency_env`).

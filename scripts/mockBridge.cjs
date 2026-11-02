@@ -35,6 +35,7 @@ module.exports.bridge = (cfg) => `
       if (['reminders_get','shelf_list','launcher_list','launcher_groups_get'].includes(cmd)) return Promise.resolve([]);
       if (cmd === 'launcher_hotkeys_get') return Promise.resolve({});
       if (cmd === 'attention_today') return Promise.resolve({ total: 0, apps: [], enabled: true, day: '2026-11-01' });
+      if (cmd === 'webview_runtime') return Promise.resolve(cfg.webview || { version: '147.0.3912.50', major: 147, background_clear: true });
       if (cmd === 'system_transparency') return Promise.resolve(cfg.transparency !== false);
       if (cmd === 'clip_list' || cmd === 'color_history') return Promise.resolve([]);
       if (cmd === 'note_get') return Promise.resolve({ html: '<p>hello note</p>', folder: '' });

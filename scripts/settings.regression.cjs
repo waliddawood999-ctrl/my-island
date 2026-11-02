@@ -59,6 +59,7 @@ const where = {};
   // About
   await nav("about").click(); await page.waitForTimeout(300);
   ok("About: version + developer + What's new + GitHub", (await page.getByTestId("about-version").count()) === 1 && (await page.getByText("Developed by Walid").count()) === 1 && (await page.getByTestId("about-whatsnew").count()) === 1 && (await page.getByTestId("about-github").count()) === 1);
+  ok("About: WebView2 Runtime version row present (diagnostic)", (await page.getByTestId("about-webview").count()) === 1);
   ok("About is not mixed into other sections (no update/quit controls)", (await page.getByRole("switch").count()) === 0);
   await nav("updates").click(); await page.waitForTimeout(300);
   ok("Updates: auto-check switch + manual check", (await page.getByRole("switch", { name: "Check for updates automatically" }).count()) === 1 && (await page.getByTestId("update-check").count()) === 1);

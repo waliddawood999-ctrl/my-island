@@ -88,7 +88,7 @@ fn sample(app: &AppHandle, was_near: bool) -> Option<Look> {
     // الداخلية (منطقة المحتوى) لا الخارجية: إحداثيات الصفحة تبدأ من محتوى النافذة، وأي إطار/ظلّ خارجي كان يزيح التتبّع.
     let (p, s) = (w.inner_position().ok()?, w.inner_size().ok()?);
     let scale = w.scale_factor().unwrap_or(1.0);
-    let (pw, ph, _) = crate::backdrop::shape();
+    let (pw, ph, _) = crate::hit::shape();
     let align = app.state::<crate::state::AppState>().placement.lock().unwrap().align;
     let island = (island_x0(align, s.width as f64 / scale, pw), pw, ph);
     Some(look(cursor_pos()?, (p.x, p.y, s.width, s.height), island, scale, was_near))

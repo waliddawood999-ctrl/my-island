@@ -42,7 +42,8 @@ pub mod files;      // فهرس شريط الأوامر (ذاكرة فقط) + ت
 pub mod perf;       // الأداء والتوفير: وضع Eco + استهلاك رام التطبيق
 pub mod lazywin;    // نافذتا الإعدادات/المحرّر عند الطلب (تُنشآن عند أول فتح وتُدمَّران عند الإغلاق)
 pub mod accent;     // مصادر أكسنت اختيارية للثيمات: أكسنت ويندوز + لون الخلفية الغالب (محلي)
-pub mod backdrop;   // شكل نافذة main (المنطقة) + system_transparency — الزجاج مُحاكى في الصفحة (لا SWCA)
+pub mod backdrop;   // شفافية ويندوز (system_transparency) + فرض شفافية WebView2 — الزجاج مُحاكى في الصفحة (لا SWCA)
+pub mod hit;        // اختبار الإصابة بلا منطقة نافذة: خيط مركون يستطلع المؤشر ويبدّل set_ignore_cursor_events عند الانتقالات
 pub mod mascot;     // عيون التميمة: موضع المؤشر الحقيقي (mascot:look)، خيط مركون ما لم يُفعَّل
 pub mod rates;      // أسعار العملات الحية لشريط الأوامر (open.er-api.com، كاش 12 ساعة)
 pub mod palette;    // اختصار شريط الأوامر + الأخيرة + run_shell
@@ -61,6 +62,8 @@ pub fn run() {
     // اختصار تبديل الإخفاء الافتراضي (hotkeyToggle يُربط بالإعدادات لاحقًا).
     let toggle = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyI);
 
+    // شفافية WebView2 تُفرض قبل إنشاء أي ويب فيو (backdrop.rs).
+    backdrop::apply_transparency_env();
     tauri::Builder::default()
         .manage(state::AppState::default())
         .manage(watchdog::WatchdogState::default())
@@ -101,8 +104,10 @@ pub fn run() {
             let dir = std::env::var_os("ISLAND_DATA_DIR")
                 .map(std::path::PathBuf::from)
                 .or_else(|| app.path().app_data_dir().ok());
+            backdrop::force_webview_transparent(app.handle());
             watchdog::start(app.handle(), dir.clone());
             win::start_tracker();
+            hit::start(app.handle());
             fullscreen::start(app.handle().clone());
             if let Some(dir) = dir {
                 if let Err(e) = app.state::<state::AppState>().init_db(dir) {
@@ -188,6 +193,7 @@ pub fn run() {
             mascot::mascot_active,
             netspeed::netspeed_active,
             backdrop::system_transparency,
+            backdrop::webview_runtime,
             accent::system_accent,
             accent::wallpaper_color,
             capture::capture_start,

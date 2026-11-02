@@ -1,10 +1,10 @@
-import { flushSync } from "react-dom";
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { LottieIcon, LottieShownProvider } from "../../lottie";
 import { Coffee, Settings as SettingsIcon, Timer as TimerIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { IslandHalo } from "./Halo";
 import { alertShake, dur, ease, islandSpring, paletteVariants, useMotionLevel, sectionVariants, spring, swapVariants, tap } from "../../motion";
 import { i } from "../../i18n";
 import { useResolvedTheme, useSettings } from "../../useSettings";
@@ -254,7 +254,6 @@ export function Pill() {
   const shrinkPending = useRef(false);
   // الحجم المرسوم فعلًا: ينمو بعد تغطية المنطقة له (انظر useLayoutEffect أدناه) ويتبع الهدف فورًا عند الانكماش.
   const [animSize, setAnimSize] = useState<{ w: number; h: number } | null>(null);
-  const growTok = useRef(0);
   // مقياس اللوحة (themeTune.panelScale): ضمن النافذة الثابتة 800×500 (مع هامش المنطقة)
   const aSc = settings.fx?.scale.panel ?? 1;
   const panel = { w: Math.min(760, Math.round(clampN(settings.panelWidth, 420, 720, 520) * aSc)), h: Math.min(470, Math.round(clampN(settings.panelHeight, 220, 420, 290) * aSc)) };
@@ -409,12 +408,12 @@ export function Pill() {
     if (paletteRef.current || !settings.loaded) return; // لا مقاس قبل وصول الإعدادات: الحبة لا تقفز من الافتراضي إلى مقاس المستخدم
     const rep = reported.current;
     const grow = size.w > rep.w || size.h > rep.h;
-    const tok = ++growTok.current;
     if (grow) {
       cancelShrink();
-      // المنطقة قبل الحركة فعلًا: الجسم المرسوم لا ينمو إلا بعد أن يعود الأمر (وإلا قصّت المنطقةُ القديمة الأولى إطارات النمو فتبدو
-      // الجزيرة «تقفز سريعًا» بعد تأخّر الاستدعاء). اتحاد المقاسين كي لا تنكمش المنطقة في بُعد بينما ينمو الآخر.
-      report(Math.max(size.w, rep.w), Math.max(size.h, rep.h), targetR).finally(() => { if (growTok.current === tok) flushSync(() => setAnimSize({ w: size.w, h: size.h })); });
+      // مستطيل الإصابة يتّسع أولًا (اتحاد المقاسين كي لا ينكمش في بُعد بينما ينمو الآخر) ثم تبدأ الحركة فورًا في الصفحة: لا شيء يُنتظر من
+      // الخلفية (لا منطقة نافذة تقصّ الجسم بعد الآن — ARCH)، فلا تسلسل بين إطار Chromium واستدعاء أصلي.
+      report(Math.max(size.w, rep.w), Math.max(size.h, rep.h), targetR);
+      setAnimSize({ w: size.w, h: size.h });
       if (size.w < rep.w || size.h < rep.h) scheduleShrink();
     } else {
       setAnimSize({ w: size.w, h: size.h });
@@ -560,6 +559,14 @@ export function Pill() {
   return (
     <LottieShownProvider shown={!hidden && opacity > 0}>
     <div className={`flex w-full ${settings.pillPosition === "left" ? "justify-start" : settings.pillPosition === "right" ? "justify-end" : "justify-center"}`}>
+      {/* غلاف يتبع مقاس الجسم؛ الهالة (ظل+توهّج) طبقة مُعدّة مسبقًا بمقاس الهدف تتحرّك بالتحويل/العتامة فقط — لا box-shadow ولا blur حيّ (Halo.tsx · GLASS.md). */}
+      <div className="island-wrap">
+      <IslandHalo
+        w={(palette || !animSize ? size : animSize).w} h={(palette || !animSize ? size : animSize).h} opacity={opacity}
+        align={settings.pillPosition === "left" ? "left" : settings.pillPosition === "right" ? "right" : "center"}
+        transition={kind === "close" ? islandSpring.close : kind === "panel" ? islandSpring.panel : islandSpring.open}
+        opacityTransition={{ duration: reduceUI ? 0.15 : dur.base, ease: ease.out }}
+      />
       <motion.div
         onMouseEnter={onEnter}
         onMouseLeave={onLeave}
@@ -827,6 +834,7 @@ export function Pill() {
           </AnimatePresence>
         </motion.div>
       </motion.div>
+      </div>
     </div>
     </LottieShownProvider>
   );

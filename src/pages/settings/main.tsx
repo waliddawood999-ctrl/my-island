@@ -11,6 +11,7 @@ import {
 import "../../index.css";
 import "./settings.css";
 import { i } from "../../i18n";
+import { webviewVerdict, type WebviewRuntime } from "../../webview";
 import { saveSettings, useSettings } from "../../useSettings";
 import { EcoIndicator, RamUsage } from "./Perf";
 import { WorkspacesEditor } from "./Workspaces";
@@ -69,12 +70,20 @@ const RELEASES_REPO = "https://github.com/waliddawood999-ctrl/my-island-releases
 /** «حول»: قسم مستقل بذاته أسفل القائمة — الإصدار من حزمة التطبيق (نفس رقم CI) + المطوّر + ما الجديد + GitHub. عرض فقط. */
 function AboutSection() {
   const [ver, setVer] = useState("");
+  const [wv, setWv] = useState<WebviewRuntime | null>(null);
   useEffect(() => { getVersion().then(setVer).catch(() => {}); }, []);
+  useEffect(() => { invoke<WebviewRuntime>("webview_runtime").then((r) => setWv(r ?? null)).catch(() => {}); }, []);
+  const verdict = webviewVerdict(wv);
   const open = (url: string) => () => { invoke("open_path", { path: url }).catch(() => {}); };
   return (
     <Section title={i("حول", "About")}>
       <Row icon={ic(Info)} label={i("الإصدار الحالي", "Current version")}>
         <span dir="ltr" className="st-val" data-testid="about-version">{ver || "—"}</span>
+      </Row>
+      <Row icon={ic(Cpu)} label={i("نسخة WebView2 Runtime", "WebView2 Runtime version")}
+        hint={verdict === "buggy" ? i("نسخة معروف فيها تعطّل الشفافية (145–146) — قد تظهر حواف بيضاء حول الجزيرة؛ حدّث WebView2 Runtime.", "Known transparency regression (145–146) — white edges may show around the island; update WebView2 Runtime.")
+          : verdict === "opaque" ? i("خلفية العرض ليست شفافة فعليًا — قد تظهر حواف بيضاء.", "Render background is not actually transparent — white edges may show.") : undefined}>
+        <span dir="ltr" className="st-val" data-testid="about-webview" data-verdict={verdict}>{wv?.version || "—"}</span>
       </Row>
       <Row icon={ic(Sparkles)} label={i("طُوِّر بواسطة وليد", "Developed by Walid")} />
       <Row icon={ic(Clapperboard)} label={i("ما الجديد", "What's new")} hint={i("ملاحظات الإصدارات على GitHub", "Release notes on GitHub")}>
