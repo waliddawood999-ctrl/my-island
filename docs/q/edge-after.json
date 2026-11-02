@@ -1,0 +1,18 @@
+{
+  "edge-before-after-100-dark": {
+    "hardenedEdgePx_before": 762,
+    "antialiasedEdgePx_after": 1065
+  },
+  "edge-before-after-100-light": {
+    "hardenedEdgePx_before": 762,
+    "antialiasedEdgePx_after": 1016
+  },
+  "edge-before-after-150-dark": {
+    "hardenedEdgePx_before": 1715,
+    "antialiasedEdgePx_after": 2418
+  },
+  "edge-before-after-150-light": {
+    "hardenedEdgePx_before": 1715,
+    "antialiasedEdgePx_after": 2307
+  }
+}

@@ -18,6 +18,20 @@ pub fn region_radius_px(radius_css: f64, scale: f64, w: u32, h: u32) -> i32 {
 /// أعلى المنطقة (y) داخل النافذة: عائمة ⇒ 0 (زوايا علوية دائرية مرئية)؛ ملتصقة ⇒ -rad: ينزاح مستطيل الزوايا فوق حافة النافذة فتُقصّ
 /// الزاويتان العلويتان خارجها ويبقى الأعلى مربّعًا ملاصقًا للشاشة والأسفل دائريًا (هندسة نوتش) — بلا صور.
 pub fn region_top(attached: bool, rad_px: i32) -> i32 { if attached { -rad_px.max(0) } else { 0 } }
+
+/// هامش المنطقة حول الجزيرة (CSS px). المنطقة أحادية البت (قصّ ثنائي بلا تنعيم) فكانت تقصّ حافة CSS المنعَّمة إلى سلّم بكسلات؛ الآن
+/// تتسع المنطقة بهذا الهامش من اليمين/اليسار/الأسفل (ومن الأعلى حين ملتصقة) فلا تلمس حافة الجزيرة المرسومة (AA في الصفحة) ويتسع
+/// ظلها الناعم. الثمن: حلقة بعرض الهامش حول الجزيرة تلتقط الماوس (شفافة الرسم) — 10px.
+pub const EDGE_PAD_CSS: f64 = 10.0;
+
+/// مستطيل المنطقة (l, t, r, b, قطر الإهليلج) بالبكسل الفيزيائي داخل النافذة: مستطيل الجزيرة (x0, عرض pw, ارتفاع ph، نصف قطر rad) موسَّعًا بـpad،
+/// وزواياه بنصف القطر rad+pad (منحنى إزاحة متوازٍ لزاوية الجزيرة فيحيط بها بالتساوي). عائمة: الأعلى عند 0 (حافة النافذة)؛ ملتصقة: يُزاح
+/// فوق الحافة بمقدار rad+pad فتُقصّ الزاويتان العلويتان خارج النافذة ويبقى أعلى الجزيرة مربّعًا ملاصقًا للشاشة (هندسة نوتش).
+pub fn region_rect(attached: bool, x0: i32, pw: i32, ph: i32, rad: i32, pad: i32) -> (i32, i32, i32, i32, i32) {
+    let (pad, rad) = (pad.max(0), rad.max(0));
+    let top = if attached { -(rad + pad) } else { 0 };
+    (x0 - pad, top, x0 + pw + pad + 1, ph + pad + 1, (rad + pad) * 2)
+}
 // PURE-END
 
 /// شكل الجزيرة الهدف (CSS px): العرض، الارتفاع، نصف القطر. تحدّثه report_island_rect.
@@ -86,7 +100,8 @@ mod imp {
             let (pw, ph) = ((cw * scale).round() as i32, ((ch + below) * scale).round() as i32);
             let x0 = match align { -1 => 0, 1 => (ww - pw).max(0), _ => ((ww - pw) / 2).max(0) };
             let rad = region_radius_px(cr, scale, pw as u32, (ch * scale) as u32);
-            let rgn: HRGN = CreateRoundRectRgn(x0, region_top(attached, rad), x0 + pw + 1, ph + 1, rad * 2, rad * 2);
+            let (l, t, rr, b, e) = region_rect(attached, x0, pw, ph, rad, (EDGE_PAD_CSS * scale).round() as i32);
+            let rgn: HRGN = CreateRoundRectRgn(l, t, rr, b, e, e);
             if rgn.is_invalid() || SetWindowRgn(h, Some(rgn), true) == 0 { return None; }
             Some((pw, ph, rad))
         }
@@ -113,6 +128,21 @@ mod tests {
         assert_eq!(region_top(true, 17), -17, "ملتصقة: الزوايا العلوية فوق الحافة فتُقصّ");
         assert_eq!(region_top(true, 0), 0);
         assert_eq!(region_top(true, -5), 0, "قيمة سالبة لا تُنتج إزاحة معكوسة");
+    }
+
+    #[test]
+    fn region_is_padded_and_concentric() {
+        // عائمة 100%: جزيرة 220×34 عند x0=290، rad=17، pad=10
+        assert_eq!(region_rect(false, 290, 220, 34, 17, 10), (280, 0, 521, 45, 54));
+        // ملتصقة: الأعلى فوق الحافة بـrad+pad
+        assert_eq!(region_rect(true, 290, 220, 34, 17, 10), (280, -27, 521, 45, 54));
+        // pad=0 ⇒ السلوك السابق حرفيًا
+        assert_eq!(region_rect(false, 290, 220, 34, 17, 0), (290, 0, 511, 35, 34));
+        assert_eq!(region_rect(true, 290, 220, 34, 17, 0).1, region_top(true, 17));
+        // قوس زاوية المنطقة (مركزه ينزاح بـpad أفقيًا فقط للسفلية) يحوي قوس الجزيرة: مركز السفلي-الأيسر للمنطقة = (l+rad+pad, b-1-(rad+pad)) = (x0+rad, ph-rad)
+        let (l, _, _, b, e) = region_rect(false, 290, 220, 34, 17, 10);
+        assert_eq!((l + e / 2, b - 1 - e / 2), (290 + 17, 34 - 17));
+        assert_eq!(region_rect(false, 0, 100, 40, -3, -5), (0, 0, 101, 41, 0), "قيم سالبة تُحصر");
     }
 
     #[test]
