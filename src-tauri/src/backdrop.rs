@@ -37,6 +37,9 @@ pub fn region_rect(attached: bool, x0: i32, pw: i32, ph: i32, rad: i32, pad: i32
 /// شكل الجزيرة الهدف (CSS px): العرض، الارتفاع، نصف القطر. تحدّثه report_island_rect.
 static SHAPE: std::sync::Mutex<(f64, f64, f64)> = std::sync::Mutex::new((220.0, 34.0, 17.0));
 
+/// شكل الجزيرة الحالي (عرض، ارتفاع، نصف قطر) بالـCSS px — mascot يحسب عليه «فوق الحبة»/القرب (النافذة ثابتة وأكبر منها).
+pub fn shape() -> (f64, f64, f64) { *SHAPE.lock().unwrap() }
+
 /// يضبط شكل الجزيرة الهدف ويطبّق المنطقة على النافذة الثابتة (ويندوز) — الواجهة تستدعيه قبل النمو وبعد الانكماش فقط.
 pub fn set_shape(app: &AppHandle, w: f64, h: f64, radius: f64) {
     let ok = |v: f64| v.is_finite() && v > 0.0;
