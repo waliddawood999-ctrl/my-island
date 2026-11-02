@@ -394,9 +394,11 @@ export function Pill() {
   const opacity = hidden ? 0 : palette ? 1 : open ? opened : settings.autoHide && !hover ? 0 : rest;
 
   // كبسولة كاملة الاستدارة؛ مرسيّة في شريط المتصفح: زوايا علوية مدوّرة وقاع مسطّح (هيئة تبويب).
-  const rTop = targetR;
+  // ملتصقة بالحافة العليا (islandDocking=attached): زاويتا الأعلى مسطّحتان (هندسة نوتش)، والأسفل دائري؛ العائمة كما هي.
+  const attached = settings.islandDocking === "attached";
+  const rTop = attached ? 0 : targetR;
   const rBot = targetR;
-  const radius = rTop;
+  const radius = targetR;
   // مفتاح الحجم المستهدف؛ أول عرض = مستقر. مؤقّت احتياطي أحادي إن لم يصل رد الاكتمال (كحارس التصغير).
   const sizeKey = `${size.w}x${size.h}`;
   sizeKeyRef.current = sizeKey;
@@ -483,6 +485,7 @@ export function Pill() {
         onAnimationComplete={() => { if (!flushShrink()) settleNow(); }}
         data-open={open || palette ? "true" : "false"}
         data-mode={palette ? "palette" : mode}
+        data-docking={attached ? "attached" : "floating"}
         data-spring={JSON.stringify(kind === "close" ? islandSpring.close : kind === "panel" ? islandSpring.panel : islandSpring.open)}
         onWheel={(e) => {
           if (palette) return;

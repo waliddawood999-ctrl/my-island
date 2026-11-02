@@ -44,6 +44,13 @@ fn show_noactivate(w: &WebviewWindow) {
     let _ = w.show();
 }
 
+// PURE-BEGIN
+/// Y الفيزيائي للنافذة: عائمة ⇒ أعلى منطقة العمل + offsetY (CSS px × DPI)؛ ملتصقة ⇒ أعلى منطقة العمل بصفر هامش (offsetY مُهمَل).
+pub fn placement_y(area_top: i32, offset_y_css: i32, scale: f64, attached: bool) -> i32 {
+    if attached { area_top } else { area_top + (offset_y_css as f64 * scale).round() as i32 }
+}
+// PURE-END
+
 /// يضع النافذة أعلى منتصف الشاشة المختارة، محترمًا monitor وoffsetX/offsetY وpillPosition (منطقة العمل).
 pub fn position_main(app: &AppHandle) {
     let Some(w) = app.get_webview_window(MAIN) else { return };
@@ -70,7 +77,7 @@ pub fn position_main(app: &AppHandle) {
         _ => area.0.x + (area.1.width as i32 - win_w) / 2,
     };
     let x = base + p.offset_x;
-    let y = area.0.y + (p.offset_y as f64 * scale).round() as i32;
+    let y = placement_y(area.0.y, p.offset_y, scale, p.attached);
     let _ = w.set_position(PhysicalPosition::new(x, y));
     crate::backdrop::refresh_shape(app);
 }
@@ -360,4 +367,24 @@ pub fn drop_focus(_app: &AppHandle) {}
 #[cfg(not(windows))]
 pub fn paste_into_previous(_app: &AppHandle) -> bool {
     false
+}
+
+#[cfg(test)]
+mod docking_tests {
+    use super::placement_y;
+
+    #[test]
+    fn floating_applies_offset_scaled() {
+        assert_eq!(placement_y(0, 10, 1.0, false), 10);
+        assert_eq!(placement_y(0, 10, 1.5, false), 15);
+        assert_eq!(placement_y(40, 6, 1.25, false), 48); // 6×1.25=7.5 ⇒ 8
+    }
+    #[test]
+    fn attached_ignores_offset_at_any_dpi() {
+        for scale in [1.0, 1.25, 1.5, 2.0] {
+            assert_eq!(placement_y(0, 60, scale, true), 0, "صفر هامش عند DPI {scale}");
+            assert_eq!(placement_y(-1080, 60, scale, true), -1080, "شاشة ثانوية فوق الأساسية");
+            assert_eq!(placement_y(48, 60, scale, true), 48, "شريط مهام علوي: تحت منطقة العمل لا خلفه");
+        }
+    }
 }

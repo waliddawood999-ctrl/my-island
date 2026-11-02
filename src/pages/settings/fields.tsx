@@ -75,6 +75,8 @@ export function Slider(p: {
   onCommit: (v: number) => void; format?: (v: number) => string; label: string;
   /** معاينة حيّة أثناء السحب (مخنوقة ~80ms)؛ onCommit يثبّت القيمة النهائية عند الإفلات. */
   onLive?: (v: number) => void;
+  /** معطَّل بصريًا ووظيفيًا (مثلًا الإزاحة الرأسية في وضع الالتصاق). */
+  disabled?: boolean;
 }) {
   const [v, setV] = useState(p.value);
   const [drag, setDrag] = useState(false);
@@ -89,12 +91,12 @@ export function Slider(p: {
   return (
     <div className="flex items-center gap-3" dir="ltr">
       <input
-        type="range" aria-label={p.label}
+        type="range" aria-label={p.label} disabled={p.disabled}
         min={p.min} max={p.max} step={p.step} value={v}
         onChange={(e) => { const n = Number(e.target.value); setDrag(true); setV(n); live(n); }}
         onPointerUp={commit} onKeyUp={commit} onBlur={commit}
-        style={{ "--pct": `${p.max > p.min ? ((v - p.min) / (p.max - p.min)) * 100 : 0}%` } as CSSProperties}
         className="st-range"
+        style={{ "--pct": `${p.max > p.min ? ((v - p.min) / (p.max - p.min)) * 100 : 0}%`, ...(p.disabled ? { opacity: 0.4 } : null) } as CSSProperties}
       />
       <span className="st-val">{(p.format ?? String)(v)}</span>
     </div>

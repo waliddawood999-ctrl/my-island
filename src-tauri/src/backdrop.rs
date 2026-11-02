@@ -88,6 +88,10 @@ pub fn region_radius_px(radius_css: f64, scale: f64, w: u32, h: u32) -> i32 {
     r.min(w.min(h) as f64 / 2.0).round() as i32
 }
 
+/// أعلى المنطقة (y) داخل النافذة: عائمة ⇒ 0 (زوايا علوية دائرية مرئية)؛ ملتصقة ⇒ -rad: ينزاح مستطيل الزوايا فوق حافة النافذة فتُقصّ
+/// الزاويتان العلويتان خارجها ويبقى الأعلى مربّعًا ملاصقًا للشاشة والأسفل دائريًا (هندسة نوتش) — بلا صور.
+pub fn region_top(attached: bool, rad_px: i32) -> i32 { if attached { -rad_px.max(0) } else { 0 } }
+
 /// الطلب المطبَّق سابقًا (لتجنّب نداءات مكرّرة): (زجاج، فاتح، عرض، ارتفاع، نصف قطر). الأسلوب وglassTint خارج المفتاح عمدًا: تغيّرهما بنفس الهندسة ⇒ set_accent فقط (بلا مسح فلا وميض).
 pub type Key = (bool, bool, u32, u32, i32);
 // PURE-END
@@ -217,11 +221,11 @@ mod imp {
         let h = HWND(w.hwnd().ok()?.0);
         let scale = w.scale_factor().unwrap_or(1.0);
         let (cw, ch, cr) = *SHAPE.lock().unwrap();
-        let (align, below) = {
+        let (align, attached, below) = {
             let st = app.state::<crate::state::AppState>();
-            let a = st.placement.lock().unwrap().align;
+            let (a, at) = { let p = st.placement.lock().unwrap(); (p.align, p.attached) };
             let z = st.settings.lock().unwrap().get("hoverZone").and_then(|v| v.as_str().map(String::from)).unwrap_or_default();
-            (a, if z == "islandAndBelow" { 24.0 } else { 0.0 })
+            (a, at, if z == "islandAndBelow" { 24.0 } else { 0.0 })
         };
         unsafe {
             let mut r = RECT::default();
@@ -230,7 +234,7 @@ mod imp {
             let (pw, ph) = ((cw * scale).round() as i32, ((ch + below) * scale).round() as i32);
             let x0 = match align { -1 => 0, 1 => (ww - pw).max(0), _ => ((ww - pw) / 2).max(0) };
             let rad = region_radius_px(cr, scale, pw as u32, (ch * scale) as u32);
-            let rgn: HRGN = CreateRoundRectRgn(x0, 0, x0 + pw + 1, ph + 1, rad * 2, rad * 2);
+            let rgn: HRGN = CreateRoundRectRgn(x0, region_top(attached, rad), x0 + pw + 1, ph + 1, rad * 2, rad * 2);
             if rgn.is_invalid() || SetWindowRgn(h, Some(rgn), true) == 0 { return None; }
             Some((pw, ph, rad))
         }
@@ -301,6 +305,14 @@ pub fn island_backdrop(app: AppHandle, glass: bool, light: bool, radius: f64, ti
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn docking_region_top() {
+        assert_eq!(region_top(false, 17), 0, "عائمة: الزوايا العلوية داخل النافذة (مرئية)");
+        assert_eq!(region_top(true, 17), -17, "ملتصقة: الزوايا العلوية فوق الحافة فتُقصّ");
+        assert_eq!(region_top(true, 0), 0);
+        assert_eq!(region_top(true, -5), 0, "قيمة سالبة لا تُنتج إزاحة معكوسة");
+    }
 
     #[test]
     fn mechanism_by_build() {

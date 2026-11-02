@@ -98,6 +98,7 @@ export interface Settings {
   pillRadius:number,              // نصف قطر الحبة 0..22 (0 = كبسولة كاملة تلقائيًا)
   offsetY:number,                 // إزاحة رأسية عن الحافة العليا 0..60
   pillPosition:'center'|'left'|'right',
+  islandDocking:'floating'|'attached', // وضع التموضع: عائمة (هامش offsetY) أو ملتصقة بأعلى الشاشة (صفر هامش، زوايا علوية مسطّحة)
   motionPreset:'calm'|'snappy'|'bouncy'|'boringNotch'|'cultUi', // نوع الحركة (islandMotion.ts) — يحلّ محلّ springStyle
   motionSpeed:number,             // 0.5..2.0 (يحلّ محلّ animSpeed ٪)
   motionBounce:number,            // 0..0.40؛ الإغلاق دائمًا بلا ارتداد
@@ -195,6 +196,7 @@ export const DEFAULTS: Partial<Settings> = {
   pillRadius: 0,           // 0 = كبسولة كاملة (نصف الارتفاع)
   offsetY: 0,
   pillPosition: 'center',
+  islandDocking: 'floating',
   motionPreset: 'calm',
   motionSpeed: 1,
   motionBounce: 0.1,

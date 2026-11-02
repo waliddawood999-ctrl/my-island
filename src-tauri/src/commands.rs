@@ -26,7 +26,7 @@ pub fn settings_get(state: State<AppState>) -> Map<String, Value> {
 #[tauri::command]
 pub fn settings_set(app: AppHandle, state: State<AppState>, patch: Map<String, Value>) -> Result<(), String> {
     let applied = state.apply_patch(patch)?;
-    if applied.keys().any(|k| matches!(k.as_str(), "monitor" | "offsetX" | "offsetY" | "pillPosition" | "hoverZone")) {
+    if applied.keys().any(|k| matches!(k.as_str(), "monitor" | "offsetX" | "offsetY" | "pillPosition" | "islandDocking" | "hoverZone")) {
         win::position_main(&app);
     }
     if applied.contains_key("hideInFullscreen") {
