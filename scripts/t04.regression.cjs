@@ -6,7 +6,7 @@ const { bridge } = require("./mockBridge.cjs");
 const BASE = process.env.BASE || "http://localhost:4173";
 let fails = 0;
 const ok = (n, c, extra = "") => { if (!c) fails++; console.log(`${c ? "✓" : "✗"} ${n} ${c ? "" : extra}`); };
-const parse = (rgba) => { const m = rgba.match(/rgba?\(([^)]+)\)/); if (!m) return null; const p = m[1].split(/[,\s/]+/).filter(Boolean).map(parseFloat); return { rgb: p.slice(0, 3), a: p.length >= 4 ? p[3] : 1 }; };
+const parse = (c) => { const m = c.match(/(rgba?|color)\(([^)]+)\)/); if (!m) return null; const p = m[2].replace(/srgb/, "").split(/[,\s/]+/).filter(Boolean).map(parseFloat); const f = m[1] === "color" ? 255 : 1; return { rgb: p.slice(0, 3).map((v) => v * f), a: p.length >= 4 ? p[3] : 1 }; };
 const mk = async (browser, cfg, settings, theme) => {
   const ctx = await browser.newContext({ viewport: { width: 800, height: 500 }, colorScheme: theme });
   const page = await ctx.newPage();
