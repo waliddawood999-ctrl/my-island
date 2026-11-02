@@ -26,7 +26,7 @@ const EXPECT = { "crystal/dark/45": 0.779, "crystal/light/45": 0.819, "clear/dar
     const { ctx, page, errs } = await mk(browser, {}, { glassStyle: gs, glassTint: tint }, theme);
     const s = await surf(page), p = parse(s.bg);
     ok(`${tag}: surface alpha = glassAlpha (${EXPECT[`${gs}/${theme}/${tint}`]})`, p && Math.abs(p.a - EXPECT[`${gs}/${theme}/${tint}`]) < 0.01, s.bg);
-    ok(`${tag}: base colour ≈ ${theme === "dark" ? "(22,22,27)" : "(245,245,248)"} mixed with 5% accent`, p && (theme === "dark" ? p.rgb[0] < 40 && p.rgb[1] > 22 : p.rgb[0] > 225 && p.rgb[0] < 248), s.bg);
+    ok(`${tag}: base colour = engine OKLCH base (${theme === "dark" ? "L≈16%, never #000" : "L≈96%, never #fff"})`, p && (theme === "dark" ? p.rgb.every((v) => v < 40) && p.rgb.some((v) => v > 8) : p.rgb.every((v) => v > 225 && v < 255)), s.bg);
     ok(`${tag}: 1px border + top highlight + outer soft shadow in box-shadow`, /inset/.test(s.shadow) && /\d+px \d+px \d+px/.test(s.shadow.replace(/inset [^,]+(\([^)]*\))?[^,]*/g, "")) , s.shadow);
     ok(`${tag}: grain tile (SVG data URI) at ~3.5%`, /data:image\/svg\+xml/.test(s.grain) && Math.abs(s.grainOp - 0.035) < 0.002, `${s.grain.slice(0, 40)} ${s.grainOp}`);
     ok(`${tag}: no backdrop-filter on any element`, (await noFilter(page)) === 0);

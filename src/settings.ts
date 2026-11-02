@@ -83,7 +83,11 @@ export interface Settings {
   eyesEnabled:boolean,
   pillWidth:number,
   pillHeight:number,
-  themeMode:'system'|'dark'|'light',
+  themeMode:'system'|'dark'|'light'|'sun', // sun = نهار/ليل تلقائي بدورة الشمس المحلية
+  themePack:string,               // معرّف حزمة الثيم (themePacks.ts) — الافتراضية obsidian
+  themePackLight:string,          // حزمة منفصلة للوضع الفاتح ('' = themePack)
+  themePackDark:string,           // حزمة منفصلة للوضع الداكن ('' = themePack)
+  accentSource:'pack'|'custom'|'windows'|'wallpaper', // مصدر الأكسنت: بذرة الحزمة · accentColor · أكسنت ويندوز · لون الخلفية الغالب (اختياري وصريح)
   themeMaterial:'solid'|'glass',
   glassTint:number,
   glassStyle:'crystal'|'clear',   // أسلوب الحجاب: مثلّج كثيف / شفاف أخفّ — docs/GLASS.md
@@ -180,7 +184,11 @@ export const DEFAULTS: Partial<Settings> = {
   ecoOnBattery: false,     // يفعّل Eco تلقائيًا عند فصل الشاحن ويوقفه عند توصيله (اليدوي يبقى)
   pillWidth: 220,          // عرض الحبة المنكمشة (160..280)
   pillHeight: 34,          // ارتفاعها (28..44)؛ المحتوى (خط/عيون/أيقونات) يتدرج k=ارتفاع/32
-  themeMode: 'system',     // system = يتبع النظام · dark · light (كل النوافذ)
+  themeMode: 'system',     // system = يتبع النظام · dark · light · sun (كل النوافذ)
+  themePack: 'obsidian',   // الحزمة الافتراضية الرائدة (أزرق أردوازي)
+  themePackLight: '',
+  themePackDark: '',
+  accentSource: 'pack',
   themeMaterial: 'glass',  // solid = مصمت · glass = زجاج مُحاكى (سطح ملوّن شبه شفاف مرسوم في الصفحة — docs/GLASS.md)
   glassTint: 45,           // شدة الحجاب 0..80 — لون/عتامة سطح الزجاج المُحاكى (يحدّد --glass-a)؛ لا أثر إلا مع themeMaterial=glass
   glassStyle: 'crystal',   // crystal = زجاج بلوري · clear = زجاج شفاف
@@ -210,7 +218,7 @@ export const DEFAULTS: Partial<Settings> = {
   playerLayout: 'compact',
   visualizer: 'bars',
   showPlaybackTime: true, showSourceBadge: true, showProgress: true, artworkBackdrop: true,
-  settingsVersion: 3,
+  settingsVersion: 4,
   showNetSpeed: false,     // سرعتا الشبكة (تحميل/رفع) في الكبسولة المدمجة؛ القراءة من عدّادات ويندوز فقط أثناء التفعيل (netspeed_active)
   eyesEnabled: true,       // عيون التميمة بجانب الساعة في الحبة المنكمشة (تُخفى تلقائيًا مع الميديا/التوفير/الحركة المتوقفة)
   motionLevel: 'full',     // full = نابضة · reduced = مخففة · off = متوقفة (انظر src/motion.ts)

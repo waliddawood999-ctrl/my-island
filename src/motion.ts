@@ -55,12 +55,14 @@ const flat = (t: Transition): Record<SpringKey, Transition> => ({ island: t, con
 
 export const spring: Record<SpringKey, Transition> = { ...FULL_SPRING };
 
-interface Dur { fast: number; base: number; swap: number; windowShrinkGuard: number; alert: number; tabSwitchGuard: number }
+interface Dur { fast: number; base: number; swap: number; theme: number; windowShrinkGuard: number; alert: number; tabSwitchGuard: number }
 /** مدد (ثوانٍ). */
 const buildFullDur = (): Dur => ({
   fast: 0.12 / speed,
   base: 0.18 / speed,
   swap: 0.2 / speed,
+  /** تلاشٍ متقاطع لتبديل الحزمة/غلاف Living Artwork (ثيمات): 600ms عند السرعة 1. */
+  theme: 0.6 / speed,
   /** احتياط لتأخير تصغير النافذة إن لم يصل رد اكتمال الحركة. */
   windowShrinkGuard: 0.9,
   /** هزّة جرس تنبيه التذكير/المؤقّت (ثوانٍ لكل دورة؛ تتكرر مرتين). */
@@ -188,7 +190,7 @@ export function setMotionLevel(l: MotionLevel) {
     Object.assign(islandSpring, { open: NONE, panel: NONE, close: NONE }); // حجم الجزيرة يقفز؛ المحتوى يتلاشى 150ms
     Object.assign(spring, flat(t));
     const d = l === "off" ? 0 : 0.15;
-    Object.assign(dur, { fast: d * 0.8, base: d, swap: d, windowShrinkGuard: FULL_DUR.windowShrinkGuard, alert: FULL_DUR.alert });
+    Object.assign(dur, { fast: d * 0.8, base: d, swap: d, theme: l === "off" ? 0 : 0.2, windowShrinkGuard: FULL_DUR.windowShrinkGuard, alert: FULL_DUR.alert });
     Object.assign(blur, { swap: 0, section: 0 });
     Object.assign(shift, { swap: l === "off" ? 0 : 2, section: l === "off" ? 0 : 3 });
     Object.assign(stagger, { section: 0, item: 0 });
@@ -202,7 +204,7 @@ export function setMotionLevel(l: MotionLevel) {
   }
   tap.transition = spring.press;
   buildVariants();
-  if (typeof document !== "undefined") document.documentElement.dataset.motion = l;
+  if (typeof document !== "undefined") { document.documentElement.dataset.motion = l; document.documentElement.style.setProperty("--theme-fade", `${Math.round(dur.theme * 1000)}ms`); }
   subs.forEach((f) => f());
 }
 

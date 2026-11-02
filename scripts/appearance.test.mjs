@@ -33,9 +33,10 @@ ok("light accent darkened to ≥3:1 on light surface", (() => { const x = a.acce
 ok("4 presets with expected ids", a.STYLE_PRESETS.map((p) => p.id).join() === "frosted,smoked,clear,minimal");
 ok("presets never set blur/saturation", a.STYLE_PRESETS.every((p) => !("glassBlur" in p.values) && !("glassSaturation" in p.values)));
 // ترحيل
-ok("migrate v0: shrunken pill reset, crystal added, version 2", (() => { const m = a.migrateSettings({ pillWidth: 180, pillHeight: 30 }); return m.pillWidth === 220 && m.pillHeight === 34 && m.glassStyle === "crystal" && m.settingsVersion === 3; })());
+ok("migrate v0: shrunken pill reset, crystal added, version 2", (() => { const m = a.migrateSettings({ pillWidth: 180, pillHeight: 30 }); return m.pillWidth === 220 && m.pillHeight === 34 && m.glassStyle === "crystal" && m.settingsVersion === 4; })());
 ok("migrate keeps larger pill", (() => { const m = a.migrateSettings({ pillWidth: 260, pillHeight: 40, glassStyle: "clear" }); return !("pillWidth" in m) && !("pillHeight" in m) && !("glassStyle" in m); })());
-ok("migrate v3 ⇒ nothing", Object.keys(a.migrateSettings({ settingsVersion: 3, pillWidth: 100 })).length === 0);
+ok("migrate v4 ⇒ nothing", Object.keys(a.migrateSettings({ settingsVersion: 4, pillWidth: 100 })).length === 0);
+ok("migrate v3→4: custom accent kept as accentSource=custom; default teal untouched; explicit source respected", (() => { const m = a.migrateSettings({ settingsVersion: 3, accentColor: "#ff6b5e" }); const d = a.migrateSettings({ settingsVersion: 3, accentColor: "#4fd1c5" }); const x = a.migrateSettings({ settingsVersion: 3, accentColor: "#ff6b5e", accentSource: "windows" }); return m.accentSource === "custom" && m.settingsVersion === 4 && !("accentSource" in d) && !("accentSource" in x); })());
 // تصدير/استيراد
 ok("export→import round-trip", (() => { const s = { pillWidth: 240, language: "en", clipExcludedApps: ["a.exe"] }; const p = a.parseImport(a.exportSettings(s), s); return p.pillWidth === 240 && p.clipExcludedApps[0] === "a.exe"; })());
 ok("import rejects wrong app/garbage", a.parseImport("{}", {}) === null && a.parseImport("nope", {}) === null && a.parseImport('{"app":"x","settings":{}}', {}) === null);
@@ -66,6 +67,11 @@ ok("glassAlpha monotonic in tint, clear < crystal, cap .97, density scales, garb
 })());
 ok("appearanceVars exposes --glass-a (and no --glass-blur/saturate)", (() => { const v = a.appearanceVars({ glassTint: 45 }, a.ENV_DEFAULT).vars; return Math.abs(Number(v["--glass-a"]) - 0.779) < 0.002 && !("--glass-blur" in v) && !("--glass-saturate" in v); })());
 ok("Windows transparency off ⇒ solid fallback (opaque surface)", (() => { const r = a.appearanceVars({}, { ...a.ENV_DEFAULT, transparency: false }); return r.attrs.fallback === "solid" && r.attrs.material === "solid"; })());
-ok("accent tints the veil (5%): teal vs coral differ but stay within 12 levels of the base", (() => { const t = a.glassSurface("crystal", "dark", 45, "#4fd1c5").color, c = a.glassSurface("crystal", "dark", 45, "#ff6b5e").color; return t.join() !== c.join() && t.every((v, i) => Math.abs(v - a.GLASS_BASE.dark[i]) <= 12); })());
+ok("veil base is accent-independent (the accent enters only as the wash layer)", (() => { const t = a.glassSurface("crystal", "dark", 45, "#4fd1c5"), c = a.glassSurface("crystal", "dark", 45, "#ff6b5e"); return t.color.join() === c.color.join(); })());
+ok("pack selection: per-mode pack wins, else global, else default", a.chosenPackId({ themePackDark: "x", themePack: "y" }, "dark") === "x" && a.chosenPackId({ themePackDark: "x", themePack: "y" }, "light") === "y" && a.chosenPackId({}, "dark") === "obsidian");
+ok("accent source: pack ⇒ none, custom ⇒ accentColor, windows/wallpaper use fetched value and fall back silently", (() => { const e = { ...a.ENV_DEFAULT, winAccent: "#0078d4", wallpaperAccent: null }; return a.accentOverride({}, e) === undefined && a.accentOverride({ accentSource: "custom", accentColor: "#ff6b5e" }, e) === "#ff6b5e" && a.accentOverride({ accentSource: "windows" }, e) === "#0078d4" && a.accentOverride({ accentSource: "wallpaper" }, e) === undefined; })());
+ok("theme mode sun: 06–18 light, else dark; system ignores hour", a.resolveTheme("sun", true, 12) === "light" && a.resolveTheme("sun", false, 22) === "dark" && a.resolveTheme("sun", true, 5.9) === "dark" && a.resolveTheme("system", true, 12) === "dark");
+ok("appearanceVars carries the derived palette (accent, --t-wash-img, --glass-base) and data-pack", (() => { const r = a.appearanceVars({}, a.ENV_DEFAULT); return r.attrs.pack === "obsidian" && /^#[0-9a-f]{6}$/.test(r.vars["--accent"]) && r.vars["--t-wash-img"].includes("gradient") && r.vars["--glass-base"].startsWith("rgb("); })());
+ok("Eco kills the glow", Number(a.appearanceVars({}, { ...a.ENV_DEFAULT, eco: true }).vars["--t-glow-a"]) === 0 && Number(a.appearanceVars({}, a.ENV_DEFAULT).vars["--t-glow-a"]) > 0);
 console.log(fail ? `FAILED ${fail}` : "ALL PASSED");
 process.exit(fail ? 1 : 0);
