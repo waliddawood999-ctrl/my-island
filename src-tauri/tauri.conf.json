@@ -9,7 +9,19 @@
       { "label": "main", "url": "index.html", "width": 760, "height": 560, "decorations": false, "transparent": true, "alwaysOnTop": true, "skipTaskbar": true, "shadow": false, "focus": false, "x": 0, "y": 0 },
       { "label": "overlay", "url": "overlay.html", "decorations": false, "shadow": false, "resizable": false, "transparent": true, "alwaysOnTop": true, "skipTaskbar": true, "visible": false }
     ],
-    "security": { "csp": null }
+    "security": {
+      "csp": {
+        "default-src": "'self'",
+        "script-src": ["'self'", "'wasm-unsafe-eval'", "'sha256-nL/3wi/Y/abgAvqY9BJKnf/9+zEn81H5RNEpR4AWxvE='"],
+        "style-src": ["'self'", "'unsafe-inline'"],
+        "connect-src": ["ipc:", "http://ipc.localhost", "'self'"],
+        "img-src": ["'self'", "data:"],
+        "font-src": ["'self'", "data:"],
+        "object-src": "'none'",
+        "base-uri": "'self'"
+      },
+      "dangerousDisableAssetCspModification": ["style-src"]
+    }
   },
   "bundle": { "active": true, "targets": ["nsis"], "category": "Productivity", "createUpdaterArtifacts": true },
   "plugins": {

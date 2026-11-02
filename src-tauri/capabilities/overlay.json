@@ -1,0 +1,12 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "overlay",
+  "description": "طبقة الالتقاط ملء الشاشة",
+  "windows": ["overlay"],
+  "permissions": [
+    "core:default",
+    "allow-settings-get", "allow-settings-set", "allow-perf-status",
+    "allow-capture-frame", "allow-capture-ready", "allow-capture-region", "allow-capture-cancel",
+    "allow-record-start", "allow-color-pick"
+  ]
+}
