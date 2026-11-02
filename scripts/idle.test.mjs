@@ -1,0 +1,24 @@
+// منطق الرئيسية بلا ميديا (IdleHome): تحية الوقت، مقتطف الملاحظة، وقت التركيز، ترتيب الاقتراحات. node scripts/idle.test.mjs
+import { build } from "esbuild";
+import { pathToFileURL } from "node:url";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+const out = join(mkdtempSync(join(tmpdir(), "idle-")), "m.mjs");
+await build({ entryPoints: ["src/pages/island/IdleHome.tsx"], bundle: true, format: "esm", outfile: out, logLevel: "silent", platform: "node", jsx: "automatic" });
+const m = await import(pathToFileURL(out).href);
+let fail = 0, n = 0;
+const eq = (name, got, want) => { n++; if (JSON.stringify(got) !== JSON.stringify(want)) { fail++; console.log(`✗ ${name}\n  got:  ${JSON.stringify(got)}\n  want: ${JSON.stringify(want)}`); } };
+eq("greeting ar morning/day/evening", [m.greetingFor(6, "ar"), m.greetingFor(13, "ar"), m.greetingFor(21, "ar")], ["صباح الخير", "طاب يومك", "مساء الخير"]);
+eq("greeting en", [m.greetingFor(0, "en"), m.greetingFor(11, "en"), m.greetingFor(12, "en"), m.greetingFor(16, "en"), m.greetingFor(17, "en")], ["Good morning", "Good morning", "Good afternoon", "Good afternoon", "Good evening"]);
+eq("greeting clamps bad hours", [m.greetingFor(-5, "en"), m.greetingFor(99, "en")], ["Good morning", "Good evening"]);
+eq("snippet strips html and collapses spaces", m.snippet("<p>مراجعة  <b>المشروع</b></p>&nbsp;غدًا"), "مراجعة المشروع غدًا");
+eq("snippet truncates with ellipsis at max", m.snippet("abcdefghij", 5), "abcd…");
+eq("snippet handles null/empty", [m.snippet(null), m.snippet(undefined), m.snippet("<p></p>")], ["", "", ""]);
+eq("focus formatting ar/en", [m.fmtFocus(3 * 3600 + 12 * 60 + 40, "ar"), m.fmtFocus(45 * 60, "en"), m.fmtFocus(0, "en"), m.fmtFocus(-9, "ar")], ["3س 12د", "45m", "0m", "0د"]);
+const full = m.buildSuggestions({ note: "اجتماع", clip: "github", workspace: "my-island", workspaceItems: 4, lang: "ar" });
+eq("suggestions: order note · clip · workspace · captures", full.map((s) => s.id), ["note", "clip", "workspace", "captures"]);
+eq("suggestions: empty sources vanish, captures always present", m.buildSuggestions({ note: "", clip: "", workspace: "", workspaceItems: 0, lang: "en" }).map((s) => s.id), ["captures"]);
+eq("suggestions: max four", m.buildSuggestions({ note: "a", clip: "b", workspace: "c", workspaceItems: 1, lang: "en" }).length, 4);
+eq("suggestions: workspace subtitle carries the item count", full[2].sub, "مساحة عمل · 4 عناصر");
+console.log(fail ? `FAIL (${fail}/${n})` : `OK idle (${n})`); process.exit(fail ? 1 : 0);

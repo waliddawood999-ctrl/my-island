@@ -5,11 +5,11 @@ const { bridge } = require("./mockBridge.cjs");
 const BASE = process.env.BASE || "http://localhost:4173";
 let fails = 0;
 const ok = (n, c, extra = "") => { if (!c) fails++; console.log(`${c ? "✓" : "✗"} ${n} ${c ? "" : extra}`); };
-const open = async (browser, settings) => {
+const open = async (browser, settings, media) => {
   const ctx = await browser.newContext({ viewport: { width: 800, height: 500 } });
   const page = await ctx.newPage();
   const errs = []; page.on("pageerror", (e) => errs.push(String(e)));
-  await page.addInitScript(bridge({ settings: { language: "en", eyesEnabled: false, settingsVersion: 3, hoverDelayMs: 0, ...settings } }));
+  await page.addInitScript(bridge({ settings: { language: "en", eyesEnabled: false, settingsVersion: 3, hoverDelayMs: 0, ...settings }, media }));
   await page.goto(`${BASE}/index.html`); await page.waitForTimeout(800);
   await page.mouse.move(400, 10); await page.waitForTimeout(500); await page.click(".island-body"); await page.waitForTimeout(1600);
   return { ctx, page, errs };
@@ -31,6 +31,10 @@ const open = async (browser, settings) => {
   await page.click('[data-testid="dock-work"]'); await page.waitForTimeout(600);
   ok("returning to Tools restores the last sub-tab", (await page.locator('[data-testid="sub-tabs"] [aria-selected="true"]').innerText()) === lastSub, lastSub);
   ok("settings button lives on the dock row", (await page.locator('button[aria-label="Settings"]').count()) >= 1);
+  await page.click('[data-testid="dock-home"]'); await page.waitForTimeout(700);
+  ok("no media ⇒ merged idle home (greeting + suggestions) instead of the empty player", (await page.getByTestId("idle-home").count()) === 1 && (await page.getByTestId("idle-greeting").innerText()).length > 3);
+  await page.getByTestId("idle-captures").click(); await page.waitForTimeout(200);
+  ok("'Recent captures' opens the captures folder", await page.evaluate(() => window.__calls.some((c) => c[0] === "open_captures")));
   ok("no page errors", errs.length === 0, errs.join("|"));
   await page.screenshot({ path: process.env.SHOT || "/tmp/dock.png" });
   await ctx.close();
@@ -44,6 +48,10 @@ const open = async (browser, settings) => {
     ok(`legacy style "${style}": no dock, tab bar present`, (await page.locator('[data-testid="page-dock"]').count()) === 0 && (await page.locator('[role="tablist"]').count()) >= 1);
     await ctx.close();
   }
+  // ميديا شغّالة ⇒ المشغّل لا الرئيسية الخاملة
+  ({ ctx, page } = await open(browser, { panelTabsStyle: "dock" }, { session: true, source: "Spotify.exe", source_name: "Spotify", title: "Song A", artist: "B", album: "C", duration: 200, position: 10, playing: true, can_prev: true, can_next: true, can_seek: true, can_play: true, can_pause: true }));
+  ok("media session ⇒ player shown, idle home hidden", (await page.getByTestId("idle-home").count()) === 0 && (await page.getByText("Song A").count()) >= 1);
+  await ctx.close();
   await browser.close();
   console.log(fails ? `${fails} FAILED` : "all passed"); process.exit(fails ? 1 : 0);
 })();

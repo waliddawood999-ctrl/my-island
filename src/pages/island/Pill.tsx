@@ -46,6 +46,7 @@ import { TabBoundary } from "./TabBoundary";
 import { rowReversed } from "../../eyes";
 import { Palette } from "./Palette";
 import { TabBar } from "./TabBar";
+import { IdleHome } from "./IdleHome";
 import { Dock, SubTabs, groupIndexOf, pageGroups, targetTab } from "./Dock";
 import { AttentionSection } from "./AttentionSection";
 import { BatteryChip, BatterySection, hasBatteryContent } from "./BatterySection";
@@ -514,6 +515,8 @@ export function Pill() {
           <motion.div custom={0} variants={sectionVariants} initial="initial" animate="animate" className="min-w-0 flex-1 shrink-0 [min-height:min-content]">
             {shownPanel ? (
               <ActivityStack kinds={panelKinds} shown={shownPanel} onPin={setPinPanel} data={liveData} />
+            ) : dockStyle && !media.info.session ? (
+              <IdleHome settings={settings} attention={attention} onOpenTab={setTabId} />
             ) : (
               <PlayerPanel media={media} s={settings} accent={accent} reduce={reduceUI} visible={open} />
             )}
