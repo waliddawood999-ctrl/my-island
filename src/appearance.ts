@@ -4,7 +4,8 @@ import { DEFAULTS, type Settings } from "./settings";
 import { PILL } from "./tokens";
 import { migratePreset, migrateReduce, migrateSpeed, normSpeed, resolveReduce } from "./islandMotion";
 import { contrast, deriveTheme, hex6, hexToRgb, luminance, over, type Derived } from "./themeEngine";
-import { DEFAULT_PACK, getPack, packInput } from "./themePacks";
+import { DEFAULT_PACK, effectivePack, getPack, packInput } from "./themePacks";
+import type { ArtSwatches } from "./artwork";
 export { contrast, luminance, over };
 
 export type ResolvedTheme = "dark" | "light";
@@ -40,6 +41,8 @@ export interface Env {
   systemDark: boolean; eco: boolean; reducedTransparency: boolean; osReducedMotion: boolean; transparency: boolean;
   /** مصادر أكسنت اختيارية (تُجلب فقط عند اختيارها صراحةً): أكسنت ويندوز · لون الخلفية الغالب. */
   winAccent?: string | null; wallpaperAccent?: string | null;
+  /** سواتش غلاف الوسائط الجارية (لحزمة Living Artwork فقط) — null بلا وسائط. */
+  artwork?: ArtSwatches | null;
   /** الساعة المحلية العشرية — لحزم/وضع «واعية بالوقت». */
   hour?: number;
 }
@@ -63,8 +66,10 @@ export function deriveFor(s: Partial<Settings>, env: Env): { derived: Derived; p
   const theme = resolveTheme(s.themeMode, env.systemDark, env.hour);
   const packId = chosenPackId(s, theme);
   const pack = getPack(packId);
-  const derived = deriveTheme(packInput(pack, theme === "dark", { accent: accentOverride(s, env), eco: env.eco, borderStrength: num(s.borderStrength, 0, 100, 50) }));
-  return { derived, packId: pack.id, theme };
+  const live = { winAccent: env.winAccent, art: env.artwork, bloom: num(s.artBloom, 0, 200, 60) / 100 };
+  const eff = effectivePack(pack, live);
+  const derived = deriveTheme(packInput(pack, theme === "dark", { accent: accentOverride(s, env), eco: env.eco, borderStrength: num(s.borderStrength, 0, 100, 50), live }));
+  return { derived, packId: eff.id, theme };
 }
 
 /** هل الزجاج المُحاكى مسموح؟ لا (Eco / تقليل الشفافية / «تأثيرات الشفافية» مطفأة في ويندوز) ⇒ السطح نفسه لكن معتم بالكامل. */
@@ -132,7 +137,7 @@ export function glassAlpha(style: "crystal" | "clear", light: boolean, tint: num
 export const SECTION_KEYS: Record<string, (keyof Settings)[]> = {
   general: ["autostart", "language", "monitor"],
   island: ["pillWidth", "pillHeight", "pillRadius", "peekWidth", "peekHeight", "peekRadius", "panelWidth", "panelHeight", "panelRadius", "hoverDelayMs", "hoverZone", "peekWheelCycle", "peekCardOrder", "panelWheelPaging", "panelTabsStyle", "offsetX", "offsetY", "pillPosition", "islandDocking", "autoHide", "hideInFullscreen", "opacityRest", "opacityOpen", "showClock", "clockFormat", "eyesEnabled", "captureVisible"],
-  appearance: ["themeMode", "themePack", "themePackLight", "themePackDark", "accentSource", "themeMaterial", "glassStyle", "glassTint", "backgroundOpacity", "accentMode", "accentColor", "borderStrength", "shadowStrength", "cornerStyle", "fontScale", "density"],
+  appearance: ["themeMode", "themePack", "artBloom", "themePackLight", "themePackDark", "accentSource", "themeMaterial", "glassStyle", "glassTint", "backgroundOpacity", "accentMode", "accentColor", "borderStrength", "shadowStrength", "cornerStyle", "fontScale", "density"],
   motion: ["motionLevel", "motionPreset", "motionSpeed", "motionBounce", "reduceMotion"],
   modules: ["showToday", "prayerCity", "showWeather", "weatherCity", "weatherUnits", "showCountdowns", "showWorldClock", "showBattery", "batteryTip", "btBatteries", "showNetSpeed", "clipLimit", "pasteOnClick", "clipExcludedApps", "privacyIndicator", "showVolume", "showMeetings", "screenshotDir", "recordFormat", "recordingFps", "recordingQuality", "recordingDir", "liveRates", "liquidSpectrum", "playerLayout", "visualizer", "showPlaybackTime", "showSourceBadge", "showProgress", "artworkBackdrop", "attentionTracking"],
   notifications: ["soundChoice", "soundVolume", "prayerAlerts", "loadAlert", "meetingLeadMin", "breakReminders", "breakMinutes"],

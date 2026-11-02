@@ -57,6 +57,7 @@ pub fn defaults() -> Map<String, Value> {
         "themePackLight": "",
         "themePackDark": "",
         "accentSource": "pack",
+        "artBloom": 60,
         "themeMaterial": "glass",
         "glassStyle": "crystal",
         "accentColor": "#4fd1c5",

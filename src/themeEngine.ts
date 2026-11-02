@@ -84,6 +84,8 @@ export interface DeriveInput {
   dark?: boolean;
   /** شدة الغسلة 0..1 (من السقف)؛ bloom يضرب فوقها (Living Artwork حتى 2). */
   wash?: number; washDir?: WashDir; washMesh?: string | null;
+  /** ألوان صريحة للغسلة/التوهّج (Living Artwork: DarkMuted للغسلة وVibrant للتوهّج)؛ الافتراضي لون الأكسنت. */
+  washColor?: string; glowColor?: string;
   /** شدة التوهّج 0..1 (من السقف 20٪). */
   glow?: number;
   grain?: number; decor?: DecorId; decorAmount?: number;
@@ -167,7 +169,7 @@ export function deriveTheme(inp: DeriveInput): Derived {
   const strength = clamp(inp.wash ?? 1, 0, 1);
   let washAlpha = cap * strength * bloom;
   const glowAlpha = CAPS.glow * clamp(inp.glow ?? 0.6, 0, 1) * bloom;
-  const washColor = accent0;
+  const washColor = inp.washColor ? hexToRgb(hex6(inp.washColor)) : accent0;
 
   // ── أسطح القياس: القاعدة · قمة الغسلة · بطاقة مرفوعة فوق قمة الغسلة (أسوأ حالة للنص)
   const surfacesFor = (wa: number): RGB[] => {
@@ -225,7 +227,7 @@ export function deriveTheme(inp: DeriveInput): Derived {
 
   // ── CSS: الغسلة تتلاشى إلى صفر عند 60٪
   const fade = CAPS.washFadeStop;
-  const wc = hexOf(accent0);
+  const wc = hexOf(washColor);
   const mesh = inp.washMesh ? hexToRgb(inp.washMesh) : null;
   const dir = inp.washDir ?? "top";
   // الألوان تُمرَّر عبر متغيرات مسجّلة (@property في tokens.css) لتتلاشى عند تبديل الحزمة بدل القفز.
@@ -259,7 +261,7 @@ export function deriveTheme(inp: DeriveInput): Derived {
     "--glass-spec": rgba(spec, A.spec),
     "--t-border-a": a3(border), "--t-edge-a": a3(A.spec),
     "--t-wash-c": wc, "--t-wash-c2": mesh ? hexOf(mesh) : wc, "--t-wash-a": a3(washAlpha), "--t-wash-img": washImg,
-    "--t-glow-c": hexOf(mesh ?? washColor), "--t-glow-a": a3(glowAlpha), "--t-glow-blur": `${glowBlur}px`, "--t-glow": glowShadow,
+    "--t-glow-c": hexOf(inp.glowColor ? hexToRgb(hex6(inp.glowColor)) : mesh ?? washColor), "--t-glow-a": a3(glowAlpha), "--t-glow-blur": `${glowBlur}px`, "--t-glow": glowShadow,
     "--t-decor-a": a3(decorA), "--t-grain-a": a3(grainA),
     "--t-fg": hexOf(fgRgb),
   };

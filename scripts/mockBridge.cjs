@@ -27,7 +27,7 @@ module.exports.bridge = (cfg) => `
       if (cmd === 'today_cities') return Promise.resolve([]);
       if (cmd === 'meetings_key_status') return Promise.resolve({ set: false });
       if (cmd === 'perf_status') return Promise.resolve({ eco: !!cfg.eco, reason: cfg.eco ? 'manual' : null, onBattery: null });
-      if (cmd === 'media_now') return Promise.resolve({ info: cfg.media || { session: false, source: '', source_name: '', title: '', artist: '', album: '', duration: 0, position: 0, playing: false, can_prev: false, can_next: false, can_seek: false }, cover: null });
+      if (cmd === 'media_now') return Promise.resolve({ info: cfg.media || { session: false, source: '', source_name: '', title: '', artist: '', album: '', duration: 0, position: 0, playing: false, can_prev: false, can_next: false, can_seek: false }, cover: cfg.cover || null });
       if (cmd === 'record_status') return Promise.resolve(cfg.rec || { recording: false, startedAt: 0, format: 'mp4' });
       if (cmd === 'island_dock_get') return Promise.resolve(cfg.dock || { active: false, browser: '', strip: 0, inset: 0 });
       if (cmd === 'timer_get') return Promise.resolve(cfg.timer || null);

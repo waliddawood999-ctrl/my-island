@@ -17,6 +17,7 @@ import { WorkspacesEditor } from "./Workspaces";
 import { CountdownsEditor, WorldClockEditor } from "./TodayExtras";
 import { manualCheck } from "../../useUpdater";
 import type { ManualStatus } from "../../updater";
+import { PACKS } from "../../themePacks";
 import { GLASS_STYLE_VALUES, SECTION_KEYS, STYLE_PRESETS, exportSettings, parseImport, resetPatch } from "../../appearance";
 import { spring } from "../../motion";
 import { MOTION_PRESETS, MOTION_PRESET_KEYS, migrateReduce, normBounce, normPreset, normSpeed } from "../../islandMotion";
@@ -329,6 +330,15 @@ function App() {
             <div className="st-chips" data-testid="presets">
               {STYLE_PRESETS.map((p) => <button key={p.id} className="st-chip" data-preset={p.id} onClick={() => set(p.values)}>{i(p.ar, p.en)}</button>)}
             </div>
+          </Row>
+        </Section>
+        <Section title={i("حزمة الثيم", "Theme pack")}>
+          <Row icon={ic(Palette)} label={i("الحزمة", "Pack")} hint={i("ثلاث بذور لونية تُشتق منها كل الأسطح فوق مادة الزجاج", "Three colour seeds from which every surface is derived, over the glass material")}>
+            <Select label={i("الحزمة", "Pack")} value={s.themePack ?? "obsidian"} onChange={(v) => set({ themePack: v })} options={PACKS.map((p) => ({ value: p.id, label: i(p.ar, p.en) }))} />
+          </Row>
+          <Row icon={ic(Brush)} label={i("مصدر لون الأكسنت", "Accent colour source")} hint={i("اختياري ومحلي بالكامل: لا يُرفع شيء خارج جهازك", "Optional and fully local: nothing leaves your device")}>
+            <Select label={i("مصدر لون الأكسنت", "Accent colour source")} value={s.accentSource ?? "pack"} onChange={(v) => set({ accentSource: v })}
+              options={[{ value: "pack", label: i("من الحزمة", "From the pack") }, { value: "custom", label: i("لون مخصص", "Custom colour") }, { value: "windows", label: i("أكسنت ويندوز", "Windows accent") }, { value: "wallpaper", label: i("لون الخلفية الغالب", "Wallpaper's dominant colour") }]} />
           </Row>
         </Section>
         <Section title={i("النمط والمادة", "Theme & material")}>

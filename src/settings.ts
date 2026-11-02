@@ -87,6 +87,7 @@ export interface Settings {
   themePack:string,               // معرّف حزمة الثيم (themePacks.ts) — الافتراضية obsidian
   themePackLight:string,          // حزمة منفصلة للوضع الفاتح ('' = themePack)
   themePackDark:string,           // حزمة منفصلة للوضع الداكن ('' = themePack)
+  artBloom:number,                // مقياس إزهار Living Artwork 0..200 (٪؛ 100 = سقوف الرصّة)
   accentSource:'pack'|'custom'|'windows'|'wallpaper', // مصدر الأكسنت: بذرة الحزمة · accentColor · أكسنت ويندوز · لون الخلفية الغالب (اختياري وصريح)
   themeMaterial:'solid'|'glass',
   glassTint:number,
@@ -189,6 +190,7 @@ export const DEFAULTS: Partial<Settings> = {
   themePackLight: '',
   themePackDark: '',
   accentSource: 'pack',
+  artBloom: 60,
   themeMaterial: 'glass',  // solid = مصمت · glass = زجاج مُحاكى (سطح ملوّن شبه شفاف مرسوم في الصفحة — docs/GLASS.md)
   glassTint: 45,           // شدة الحجاب 0..80 — لون/عتامة سطح الزجاج المُحاكى (يحدّد --glass-a)؛ لا أثر إلا مع themeMaterial=glass
   glassStyle: 'crystal',   // crystal = زجاج بلوري · clear = زجاج شفاف
