@@ -7,6 +7,9 @@ import { join } from "node:path";
 const out = join(mkdtempSync(join(tmpdir(), "idle-")), "m.mjs");
 await build({ entryPoints: ["src/pages/island/IdleHome.tsx"], bundle: true, format: "esm", outfile: out, logLevel: "silent", platform: "node", jsx: "automatic" });
 const m = await import(pathToFileURL(out).href);
+const out2 = join(mkdtempSync(join(tmpdir(), "layout-")), "m.mjs");
+await build({ entryPoints: ["src/pages/island/layoutMode.ts"], bundle: true, format: "esm", outfile: out2, logLevel: "silent", platform: "node" });
+const lm = await import(pathToFileURL(out2).href);
 let fail = 0, n = 0;
 const eq = (name, got, want) => { n++; if (JSON.stringify(got) !== JSON.stringify(want)) { fail++; console.log(`✗ ${name}\n  got:  ${JSON.stringify(got)}\n  want: ${JSON.stringify(want)}`); } };
 eq("greeting ar morning/day/evening", [m.greetingFor(6, "ar"), m.greetingFor(13, "ar"), m.greetingFor(21, "ar")], ["صباح الخير", "طاب يومك", "مساء الخير"]);
@@ -21,4 +24,7 @@ eq("suggestions: order note · clip · workspace · captures", full.map((s) => s
 eq("suggestions: empty sources vanish, captures always present", m.buildSuggestions({ note: "", clip: "", workspace: "", workspaceItems: 0, lang: "en" }).map((s) => s.id), ["captures"]);
 eq("suggestions: max four", m.buildSuggestions({ note: "a", clip: "b", workspace: "c", workspaceItems: 1, lang: "en" }).length, 4);
 eq("suggestions: workspace subtitle carries the item count", full[2].sub, "مساحة عمل · 4 عناصر");
+eq("wide layout: short+wide panels yes, default/tall no", [lm.isWideLayout(720, 300), lm.isWideLayout(720, 260), lm.isWideLayout(520, 290), lm.isWideLayout(720, 420), lm.isWideLayout(480, 220)], [true, true, false, false, true]);
+eq("wide layout boundary: height 320 and ratio 2.1", [lm.isWideLayout(672, 320), lm.isWideLayout(671, 320), lm.isWideLayout(800, 321)], [true, false, false]);
+eq("wide layout: invalid input is never wide", [lm.isWideLayout(NaN, 300), lm.isWideLayout(720, 0), lm.isWideLayout(-1, -1)], [false, false, false]);
 console.log(fail ? `FAIL (${fail}/${n})` : `OK idle (${n})`); process.exit(fail ? 1 : 0);

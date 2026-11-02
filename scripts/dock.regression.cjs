@@ -48,6 +48,15 @@ const open = async (browser, settings, media) => {
     ok(`legacy style "${style}": no dock, tab bar present`, (await page.locator('[data-testid="page-dock"]').count()) === 0 && (await page.locator('[role="tablist"]').count()) >= 1);
     await ctx.close();
   }
+  // تخطيط عريض تلقائي من مقاس المستخدم (المقاس نفسه لا يتغيّر)
+  ({ ctx, page } = await open(browser, { panelTabsStyle: "dock", panelWidth: 720, panelHeight: 260 }));
+  ok("short+wide panel ⇒ Home switches to the wide row layout", (await page.locator('[data-layout="wide"]').count()) === 1);
+  const rects = await page.evaluate(() => window.__calls.filter((c) => c[0] === "report_island_rect").map((c) => c[1]));
+  ok("the panel size itself is exactly the user's (hit-rect 720×260)", rects.some((r) => r.width === 720 && r.height === 260), JSON.stringify(rects.slice(-2)));
+  await ctx.close();
+  ({ ctx, page } = await open(browser, { panelTabsStyle: "dock" }));
+  ok("default panel size ⇒ tall layout", (await page.locator('[data-layout="tall"]').count()) === 1);
+  await ctx.close();
   // ميديا شغّالة ⇒ المشغّل لا الرئيسية الخاملة
   ({ ctx, page } = await open(browser, { panelTabsStyle: "dock" }, { session: true, source: "Spotify.exe", source_name: "Spotify", title: "Song A", artist: "B", album: "C", duration: 200, position: 10, playing: true, can_prev: true, can_next: true, can_seek: true, can_play: true, can_pause: true }));
   ok("media session ⇒ player shown, idle home hidden", (await page.getByTestId("idle-home").count()) === 0 && (await page.getByText("Song A").count()) >= 1);
