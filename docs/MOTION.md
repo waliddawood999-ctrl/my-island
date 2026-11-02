@@ -53,6 +53,7 @@
 | `blur.swap/section` | 6 / 4 px | تمويه التبديل |
 | `shift.swap/section` | 6 / 8 px | إزاحة الدخول |
 | `stagger.section` | 0.05 s | تتابع الأقسام |
+| `dur.theme` | 0.6 s (reduced 0.2 · off 0) | تلاشي تبديل حزمة الثيم/غلاف Living Artwork عبر متغيرات `@property` (`--theme-fade`) — docs/THEMES.md |
 | `dur.alert` | 0.6 s × 3 دورات | هزّة جرس تنبيه التذكير/المؤقّت في الحبة (`Pill.tsx`)؛ تنتهي وحدها ثم لا حركة |
 | `stagger.item` / `MAX_STAGGER_ITEMS` | 0.03 s / 8 | تتابع عناصر القوائم (يسقط في reduced/off)؛ التأخير مسقَّف كي لا يطول التتابع |
 | `swapVariants` `sectionVariants` `itemVariants` `paletteVariants` `tap` | — | متغيرات جاهزة (`tap`: hover 1.05 / press 0.97) |
@@ -223,3 +224,8 @@
 - **التبدّل:** تلاشٍ متقاطع (`dur.swap`، `ease.out`): الجديدة فوق القديمة ثم تُزال (بلا وميض). **التحميل:** وميض هيكلي (CSS `transform` مركّب) بين تغيّر المسار ووصول الصورة بحدّ أقصى 2.5ث ثم يتوقف — مؤقّت واحد لكل تبدّل لا غير.
 - **التمرير:** `thumbHover` (motion.ts) = scale 1.03.
 - **Eco/تقليل الحركة/off (`reduce`):** بلا هالة ولا تمويه خلفي ولا وميض ولا تكبير تمرير (`thumbHover.scale = 1`)، والتلاشي المتقاطع 150ms. لا rAF في أي جزء (تحويلات/CSS فقط) ⇒ «خمول صفر rAF» محفوظ (اختبار).
+
+
+## الثيمات: ضغط وغسلة متحرّكة (T)
+- **تغذية الضغط الراجعة** `themeTune.press`: `setPressTap` تضبط `tap.whileTap` (بلا 1 · عادي .97 · قوي .92؛ في reduced لا تقلّ عن .97 وفي off =1) و`--press-btn` لأزرار المشغّل (1 · .86 · .78).
+- **الغسلة المتحرّكة** (حزم التدرّج): استثناء CSS موثّق كالمارکي: `@keyframes t-wash-drift` 90ث `ease-in-out alternate` على `transform` فقط لطبقة `::after`، تعمل **والجزيرة مفتوحة/لمحة فقط** (`data-open`/`data-mode=peek`)، وتُطفأ بـ`data-wash-anim=""` في Eco وreduced/off وعند `themeAnim=false`؛ لا rAF ولا مؤقّتات.

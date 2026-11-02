@@ -15,7 +15,7 @@ const where = {};
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 880, height: 620 } });
   const page = await ctx.newPage();
-  await page.addInitScript(bridge({ settings: { language: "en", themeMaterial: "glass", glassStyle: "crystal" }, extra: { app_quit: null } }));
+  await page.addInitScript(bridge({ settings: { language: "en", themeMaterial: "glass", glassStyle: "crystal", themeDisclosure: "expert" }, extra: { app_quit: null } })); // خبير: كل المقابض المتقدمة موجودة في DOM (اختبار الوصول)
   const errs = []; page.on("pageerror", (e) => errs.push((e.message || "").slice(0, 120)));
   await page.goto(`${BASE}/settings.html`); await page.waitForTimeout(800);
   const nav = (g) => page.locator(`[data-nav="${g}"]`);

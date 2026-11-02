@@ -27,7 +27,7 @@ html, body, #root {
   --island-ring-open: inset 0 0 0 1px rgb(255 255 255 / calc(0.10 * var(--border-k))), inset 0 1px 0 rgb(255 255 255 / 0.06);
   --island-blur: 14px;
   /* جسم الحبة/اللوحة: الداكن أسود كالمرجع، والزجاجي نصف شفاف. */
-  --island-bg: color-mix(in srgb, #000 calc(var(--bg-k, 1) * 100%), transparent);
+  --island-bg: color-mix(in srgb, var(--glass-base, rgb(22 22 27)) calc(var(--bg-k, 1) * 100%), transparent);
   --island-fg: #fff;
 
   --island-gap: var(--space-3);
@@ -39,12 +39,12 @@ html, body, #root {
 .i-card { background: var(--island-surface); border-radius: var(--radius-card); box-shadow: inset 0 0 0 1px var(--c-border); }
 .i-card-hover:hover { background: var(--island-surface-hover); }
 .i-btn { border-radius: var(--island-radius-control); color: var(--island-text-dim); }
-.i-btn:hover:not(:disabled) { background: var(--island-surface-hover); color: #fff; }
-.i-btn:active:not(:disabled) { background: var(--island-surface-active); color: #fff; }
+.i-btn:hover:not(:disabled) { background: var(--island-surface-hover); color: var(--island-fg); }
+.i-btn:active:not(:disabled) { background: var(--island-surface-active); color: var(--island-fg); }
 .i-btn:disabled { opacity: 0.3; }
 .i-btn:focus-visible { outline: 2px solid rgb(255 255 255 / 0.6); outline-offset: 1px; }
 /* سطح القوائم المنبثقة: مسطّح كالبطاقة (لا backdrop-filter: WebView2 الشفاف لا يرى سطح المكتب — docs/GLASS.md). */
-.i-glass { background: rgb(255 255 255 / 0.07); }
+.i-glass { background: var(--island-surface); }
 
 /* عنوان الأغنية المتحرك في الحبة المنكمشة — حركة خطية مستمرة تُترك لـCSS (مركّب GPU، بلا JS)،
    وتعمل فقط حين يطول العنوان عن العرض. استثناء موثّق في docs/MOTION.md. */
@@ -74,7 +74,7 @@ html, body, #root {
 .island-note-doc ul, .island-note-doc ol { margin: 0 0 0.35em; padding-inline-start: 1.4em; }
 .island-note-doc ul { list-style: disc; }
 .island-note-doc ol { list-style: decimal; }
-.island-note-doc a { color: var(--app-accent); text-decoration: underline; cursor: text; }
+.island-note-doc a { color: inherit; text-decoration: underline; text-decoration-color: var(--app-accent); text-decoration-thickness: 2px; text-underline-offset: 2px; cursor: text; } /* لا نص جسم بلون الأكسنت: الأكسنت للخطّ تحت الرابط فقط */
 .island-note-doc blockquote { border-inline-start: 3px solid rgb(255 255 255 / 0.25); padding-inline-start: 0.7em; margin: 0.3em 0; color: var(--island-text-dim); }
 .island-note-doc code { background: rgb(255 255 255 / 0.1); border-radius: 4px; padding: 0 0.3em; }
 .island-note-doc ul[data-type="taskList"] { list-style: none; padding-inline-start: 0; }
@@ -86,7 +86,6 @@ html, body, #root {
 
 /* ثيم فاتح كالمرجع: حبة رمادية فاتحة بنص داكن؛ الأسطح/الحلقات مشتقة من الحبر الداكن. */
 :root[data-theme="light"] {
-  --island-bg: color-mix(in srgb, #eceff3 calc(var(--bg-k, 1) * 100%), transparent);
   --island-fg: #0d1017;
   --island-surface: rgb(13 16 23 / 0.06);
   --island-surface-hover: rgb(13 16 23 / 0.10);
@@ -104,39 +103,51 @@ html, body, #root {
 :root[data-theme="light"] .i-glass { background: rgb(13 16 23 / 0.05); }
 /* ───────── المادة (docs/GLASS.md · Tier A) ─────────
    «الزجاج» = سطح ملوّن شبه شفاف مرسوم في الصفحة (لا تمويه حقيقي لما خلفه: لا SWCA ولا backdrop-filter — WebView2 الشفاف لا يرى سطح المكتب،
-   WebView2Feedback #4945): قاعدة الثيم (--glass-base) ممزوجة بـ5٪ أكسنت، بعتمة --glass-a (يحسبها appearance.ts::glassAlpha من الأسلوب وglassTint
-   والكثافة) + حدّ 1px أبيض .14 + لمعة علوية inset + حبيبات SVG ~3.5٪ (::before) + ظل ناعم خارجي ضمن هامش المنطقة (backdrop.rs).
+   WebView2Feedback #4945): قاعدة OKLCH من محرك الاشتقاق (--glass-base) بلا أكسنت (الأكسنت غسلة اتجاهية + توهّج مرساة)، بعتمة --glass-a (يحسبها appearance.ts::glassAlpha من الأسلوب وglassTint
+   والكثافة) + حدّ 1px (6–10٪) + لمعة علوية inset + حبيبات SVG ~3.5٪ (::before) + ظل ناعم خارجي ضمن هامش المنطقة (backdrop.rs).
    data-fallback="solid" (Eco / تقليل الشفافية / «تأثيرات الشفافية» مطفأة في ويندوز) ⇒ اللون نفسه معتم بالكامل (بلا حبيبات/ظل). */
-.island-body { background-color: var(--island-bg); transition: background-color 160ms var(--ease); color: var(--island-fg); box-shadow: var(--island-ring); }
-.island-body[data-open="true"] { box-shadow: var(--island-ring-open); }
+.island-body { background-color: var(--island-bg); background-image: var(--t-wash-img, none); transition: background-color 160ms var(--ease); color: var(--island-fg); box-shadow: var(--island-ring), var(--t-glow, 0 0 0 0 transparent); }
+.island-body[data-open="true"] { box-shadow: var(--island-ring-open), var(--t-glow, 0 0 0 0 transparent); }
+/* طبقة ::after: الزخرفة المقصوصة 4–8٪ (معدن/ورق/كربون/كتّان) أو الغسلة المتحرّكة. تحت المحتوى فوق خلفية الجسم (isolation + z-index:-1) ومقصوصة بشكل الجزيرة. */
+.island-body { isolation: isolate; --veil-k: var(--sf-pill-veil, 1); --edge-k: var(--sf-pill-edge, 1); --c-edge: color-mix(in srgb, var(--c-border) clamp(0%, calc(var(--edge-k) * 100%), 100%), transparent); }
+/* تجاوزات لكل سطح (themeTune): لوحة/لمحة تأخذ قيم «اللوحة»، الحبة المنكمشة قيم «الحبة». */
+.island-body:is([data-open="true"], [data-mode="peek"]) { --veil-k: var(--sf-panel-veil, 1); --edge-k: var(--sf-panel-edge, 1); }
+:root[data-material="glass"] .island-body { --island-bg: color-mix(in srgb, var(--glass-solid) clamp(0%, calc(var(--glass-a, 0.78) * var(--veil-k) * 100%), 100%), transparent); }
+.island-body::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1; background-image: var(--t-after-img, none); opacity: var(--t-after-a, 0); }
+:root[data-decor="paper"] .island-body::after { background-size: 200px 200px; }
+:root[data-decor="metal"] .island-body::after { background-size: 3px 100%, 100% 100%; }
+/* الغسلة المتحرّكة (حزم التدرّج): طبقة أكبر تنجرف ببطء شديد (90ث) — تعمل فقط والجزيرة مفتوحة (لا كلفة في الخمول)، وتُطفأ في Eco/reduced/off (attr يُحسب في appearance.ts). */
+:root[data-wash-anim="on"] .island-body::after { inset: -25%; border-radius: 0; }
+:root[data-wash-anim="on"] .island-body:is([data-open="true"], [data-mode="peek"])::after { animation: t-wash-drift 90s ease-in-out infinite alternate; }
+@keyframes t-wash-drift { from { transform: translate3d(-3%, -2%, 0) rotate(0deg); } to { transform: translate3d(3%, 3%, 0) rotate(5deg); } }
 :root[data-reduce-transparency] .island-body { transition: none; }
 
+/* الألوان من محرك الاشتقاق (themeEngine.ts → متغيرات على <html>): --glass-base قاعدة OKLCH بلا #000، والأكسنت يدخل بغسلة اتجاهية (--t-wash-img)
+   وتوهّج مرساة (--t-glow) لا بخلط في القاعدة. هنا فقط العتامة والحدّ والظل. */
 :root[data-material="glass"], :root[data-fallback="solid"] {
-  --glass-base: rgb(22 22 27); --glass-accent-mix: 5%;
-  --glass-solid: color-mix(in srgb, var(--accent) var(--glass-accent-mix), var(--glass-base));
+  --glass-solid: var(--glass-base, rgb(22 22 27));
   --island-bg: color-mix(in srgb, var(--glass-solid) calc(var(--glass-a, 0.78) * 100%), transparent);
-  --app-bg: rgb(18 19 26 / 0.80);
+  --app-bg: color-mix(in srgb, var(--glass-solid) 82%, transparent);
 }
-:root[data-material="glass"][data-theme="light"], :root[data-fallback="solid"][data-theme="light"] { --glass-base: rgb(245 245 248); --app-bg: rgb(236 239 244 / 0.82); }
 :root[data-fallback="solid"] { --island-bg: var(--glass-solid); }
 
-/* الحدّ 1px + اللمعة العلوية + الظل الناعم (الظل داخل هامش المنطقة حول الحبة فلا يُقصّ — backdrop.rs::EDGE_PAD_CSS) */
+/* الحدّ 1px (6–10٪ من لون المقدمة) + اللمعة العلوية + التوهّج + الظل الناعم (داخل هامش المنطقة حول الحبة فلا يُقصّ — backdrop.rs::EDGE_PAD_CSS) */
 :root[data-material="glass"] .island-body, :root[data-fallback="solid"] .island-body {
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / calc(0.14 * var(--border-k))), inset 0 1px 0 var(--glass-spec), 0 5px 12px rgb(0 0 0 / calc(0.34 * var(--shadow-k)));
+  box-shadow: inset 0 0 0 1px var(--c-edge, var(--c-border)), inset 0 1px 0 var(--glass-spec), var(--t-glow, 0 0 0 0 transparent), 0 5px 12px rgb(0 0 0 / calc(0.34 * var(--shadow-k)));
   text-shadow: 0 1px 2px rgb(0 0 0 / 0.30);
 }
-:root[data-fallback="solid"] .island-body { box-shadow: inset 0 0 0 1px rgb(255 255 255 / calc(0.14 * var(--border-k))), inset 0 1px 0 var(--glass-spec); }
+:root[data-fallback="solid"] .island-body { box-shadow: inset 0 0 0 1px var(--c-edge, var(--c-border)), inset 0 1px 0 var(--glass-spec), var(--t-glow, 0 0 0 0 transparent); }
 :root:is([data-material="glass"], [data-fallback="solid"])[data-theme="light"] .island-body {
-  box-shadow: inset 0 0 0 1px rgb(13 16 23 / calc(0.12 * var(--border-k))), inset 0 1px 0 rgb(255 255 255 / 0.85), 0 5px 12px rgb(13 16 23 / calc(0.22 * var(--shadow-k)));
+  box-shadow: inset 0 0 0 1px var(--c-edge, var(--c-border)), inset 0 1px 0 var(--glass-spec), var(--t-glow, 0 0 0 0 transparent), 0 5px 12px rgb(13 16 23 / calc(0.22 * var(--shadow-k)));
   text-shadow: 0 1px 0 rgb(255 255 255 / 0.40);
 }
-:root[data-fallback="solid"][data-theme="light"] .island-body { box-shadow: inset 0 0 0 1px rgb(13 16 23 / calc(0.12 * var(--border-k))), inset 0 1px 0 rgb(255 255 255 / 0.85); }
+:root[data-fallback="solid"][data-theme="light"] .island-body { box-shadow: inset 0 0 0 1px var(--c-edge, var(--c-border)), inset 0 1px 0 var(--glass-spec), var(--t-glow, 0 0 0 0 transparent); }
 :root[data-material="glass"][data-glass="clear"] .island-body { text-shadow: 0 1px 3px rgb(0 0 0 / 0.45); }
 :root[data-material="glass"][data-glass="clear"][data-theme="light"] .island-body { text-shadow: 0 1px 0 rgb(255 255 255 / 0.55); }
 
 /* حبيبات ~3.5٪: بلاطة SVG feTurbulence ثابتة (لا حركة) فوق السطح؛ تُطفأ في الاحتياط المعتم. */
 :root[data-material="glass"] .island-body::before {
-  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 40; opacity: 0.035;
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 40; opacity: var(--t-grain-a, 0.035);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1.4 -.2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
   background-size: 160px 160px;
 }
@@ -145,8 +156,20 @@ html, body, #root {
 }
 
 /* بطاقات اللوحة والقوائم المنبثقة: سطح مسطّح خفيف + حلقة (بلا تدرّج ولا backdrop-filter) */
-:root[data-material="glass"] .i-card, :root[data-material="glass"] .i-glass { background: rgb(255 255 255 / 0.07); box-shadow: inset 0 0 0 1px rgb(255 255 255 / calc(0.14 * var(--border-k))); }
-:root[data-material="glass"][data-theme="light"] .i-card, :root[data-material="glass"][data-theme="light"] .i-glass { background: rgb(13 16 23 / 0.05); box-shadow: inset 0 0 0 1px rgb(13 16 23 / calc(0.10 * var(--border-k))); }
+/* البطاقات والمنبثقات: درجة إضاءة من لون المقدمة (--t-card-a) × تجاوز السطح، وحدّ مخفَّض بتجاوز السطح. */
+:root[data-material="glass"] .i-card { background: rgb(from var(--t-fg, #fff) r g b / calc(var(--t-card-a, .05) * var(--sf-cards-veil, 1))); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c-border) clamp(0%, calc(var(--sf-cards-edge, 1) * 100%), 100%), transparent); }
+:root[data-material="glass"] .i-glass { background: rgb(from var(--t-fg, #fff) r g b / calc(var(--t-card-a, .05) * var(--sf-pop-veil, 1))); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c-border) clamp(0%, calc(var(--sf-pop-edge, 1) * 100%), 100%), transparent); }
+/* hover: تأكيد التمرير × hoverK (themeTune). */
+.i-btn:hover:not(:disabled), .i-card-hover:hover { background: rgb(from var(--t-fg, #fff) r g b / calc((var(--t-card-a, .05) + var(--t-hover-a, .08)) * var(--hover-k, 1))); }
+.act-btn:hover:not(:disabled) { background: rgb(from var(--t-fg, #fff) r g b / calc((var(--t-card-a, .05) + var(--t-hover-a, .08)) * var(--hover-k, 1))); }
+
+/* أيقونات: مقياس وصبغة أكسنت اختيارية (themeTune.iconScale/iconTint) — الأكسنت للأيقونات لا لنص الجسم. */
+svg.lucide { scale: var(--icon-k, 1); }
+:root[data-icon-tint] svg.lucide { color: color-mix(in srgb, var(--accent) var(--icon-tint, 0%), currentColor); }
+/* وزن النص، سلوك التمرير، حلقة التركيز عالية التباين، تباين عالٍ */
+:root[data-weight="bold"] .island-body { font-weight: 700; }
+:root[data-scroll="smooth"] * { scroll-behavior: smooth; }
+:root[data-focus="contrast"] :focus-visible { outline: 2px solid var(--island-fg, #fff) !important; outline-offset: 2px; }
 
 /* ───────── النشاط الحي (docs/MOTION.md §النشاط الحي) ─────────
    لمسة واحدة لكل نوع نشاط، تُستعمل بالاتساق في الكبسولة المدمجة والبطاقة معًا. ألوان مصمتة (بلا تدرّجات ولا توهّج)،
@@ -195,7 +218,7 @@ html, body, #root {
 .pl-play { width: 44px; height: 44px; background: var(--island-fg); color: #111; }
 :root[data-theme="light"] .pl-play { color: #fff; }
 .pl-play:hover { transform: scale(1.06); }
-.pl-btn:active:not(:disabled) { transform: scale(0.86); }
+.pl-btn:active:not(:disabled) { transform: scale(var(--press-btn, 0.86)); } /* themeTune.press */
 .pl-btn:disabled { opacity: 0.35; }
 .pl-btn:focus-visible { box-shadow: 0 0 0 2px var(--player-accent, #fff); }
 :root[data-motion="off"] .pl-btn, :root[data-motion="reduced"] .pl-btn { transition: none !important; }

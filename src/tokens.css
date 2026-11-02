@@ -3,6 +3,16 @@
  * (الحبة، اللوحة، البطاقات، الإعدادات، المحرّر، التقاط الشاشة، التنبيهات). المرآة في TS: src/tokens.ts.
  * المتغيرات الحيّة (accent، pill-*، border-k، shadow-k، font-scale، speed، corner-scale، density) تضبطها src/appearance.ts على <html>.
  */
+/* متغيرات الرصّة المسجّلة: تُتيح تلاشي الغسلة/التوهّج عند تبديل الحزمة أو غلاف Living Artwork بمدة --theme-fade (من dur.theme في motion.ts). */
+@property --t-wash-c { syntax: "<color>"; inherits: true; initial-value: #6d8dff; }
+@property --t-wash-c2 { syntax: "<color>"; inherits: true; initial-value: #6d8dff; }
+@property --glass-base { syntax: "<color>"; inherits: true; initial-value: rgb(22 22 27); }
+@property --t-wash-a { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --t-glow-c { syntax: "<color>"; inherits: true; initial-value: #6d8dff; }
+@property --t-glow-a { syntax: "<number>"; inherits: true; initial-value: 0; }
+:root { --theme-fade: 600ms; transition: --glass-base var(--theme-fade), --t-wash-c var(--theme-fade), --t-wash-c2 var(--theme-fade), --t-wash-a var(--theme-fade), --t-glow-c var(--theme-fade), --t-glow-a var(--theme-fade); }
+:root[data-motion="off"] { transition: none; }
+
 :root {
   /* الزوايا */
   --corner-scale: 1;

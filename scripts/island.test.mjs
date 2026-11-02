@@ -32,8 +32,8 @@ ok("reduce: always/never/system", M.resolveReduce("always", false) === true && M
 ok("migrate reduceMotion bool", M.migrateReduce(true) === "always" && M.migrateReduce(false) === "system" && M.migrateReduce("never") === "never" && M.migrateReduce(undefined) === "system");
 ok("migrate springStyle", M.migratePreset("smooth") === "calm" && M.migratePreset("gentle") === "calm" && M.migratePreset("snappy") === "snappy" && M.migratePreset(undefined) === "calm");
 ok("migrate animSpeed 50..150 ⇒ 0.5..1.5", M.migrateSpeed(100) === 1 && M.migrateSpeed(150) === 1.5 && M.migrateSpeed(50) === 0.5 && M.migrateSpeed("x") === 1);
-ok("settings migration v3 converts legacy keys", (() => { const m = A.migrateSettings({ settingsVersion: 2, reduceMotion: true, springStyle: "gentle", animSpeed: 80 }); return m.reduceMotion === "always" && m.motionPreset === "calm" && m.motionSpeed === 0.8 && m.settingsVersion === 3; })());
-ok("settings migration is idempotent at v3", Object.keys(A.migrateSettings({ settingsVersion: 3 })).length === 0);
+ok("settings migration v3 converts legacy keys", (() => { const m = A.migrateSettings({ settingsVersion: 2, reduceMotion: true, springStyle: "gentle", animSpeed: 80 }); return m.reduceMotion === "always" && m.motionPreset === "calm" && m.motionSpeed === 0.8 && m.settingsVersion === 4; })());
+ok("settings migration is idempotent at v4", Object.keys(A.migrateSettings({ settingsVersion: 4 })).length === 0);
 // ── crossfade/peek variants (مدد وتحويلات حسب المواصفة)
 const cf = M.crossfade(1, false);
 ok("crossfade exit 120ms ease-in blur6 y4 scale.98", cf.hidden.transition.duration === 0.12 && cf.hidden.filter === "blur(6px)" && cf.hidden.y === 4 && cf.hidden.scale === 0.98);

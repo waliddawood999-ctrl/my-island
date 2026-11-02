@@ -1,4 +1,4 @@
-#![recursion_limit = "256"]
+#![recursion_limit = "512"]
 // هيكل الوحدات — يعكس شجرة الأصل المستعادة من الباينري (27 وحدة)
 // فعّل الوحدات مرحلةً مرحلة حسب خطة المخطط (BLUEPRINT.md §11)
 pub mod migrate;    // ترحيلات island.db المرقّمة
@@ -41,6 +41,7 @@ pub mod note;       // الملاحظة + التذكيرات + المؤقّت (k
 pub mod files;      // فهرس شريط الأوامر (ذاكرة فقط) + تطبيقات + أيقونات
 pub mod perf;       // الأداء والتوفير: وضع Eco + استهلاك رام التطبيق
 pub mod lazywin;    // نافذتا الإعدادات/المحرّر عند الطلب (تُنشآن عند أول فتح وتُدمَّران عند الإغلاق)
+pub mod accent;     // مصادر أكسنت اختيارية للثيمات: أكسنت ويندوز + لون الخلفية الغالب (محلي)
 pub mod backdrop;   // شكل نافذة main (المنطقة) + system_transparency — الزجاج مُحاكى في الصفحة (لا SWCA)
 pub mod mascot;     // عيون التميمة: موضع المؤشر الحقيقي (mascot:look)، خيط مركون ما لم يُفعَّل
 pub mod rates;      // أسعار العملات الحية لشريط الأوامر (open.er-api.com، كاش 12 ساعة)
@@ -187,6 +188,8 @@ pub fn run() {
             mascot::mascot_active,
             netspeed::netspeed_active,
             backdrop::system_transparency,
+            accent::system_accent,
+            accent::wallpaper_color,
             capture::capture_start,
             capture::capture_frame,
             capture::capture_ready,

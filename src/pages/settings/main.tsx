@@ -17,7 +17,8 @@ import { WorkspacesEditor } from "./Workspaces";
 import { CountdownsEditor, WorldClockEditor } from "./TodayExtras";
 import { manualCheck } from "../../useUpdater";
 import type { ManualStatus } from "../../updater";
-import { GLASS_STYLE_VALUES, SECTION_KEYS, STYLE_PRESETS, exportSettings, parseImport, resetPatch } from "../../appearance";
+import { AppearanceBody } from "./Appearance";
+import { SECTION_KEYS, exportSettings, parseImport, resetPatch } from "../../appearance";
 import { spring } from "../../motion";
 import { MOTION_PRESETS, MOTION_PRESET_KEYS, migrateReduce, normBounce, normPreset, normSpeed } from "../../islandMotion";
 import { normCardOrder } from "../../islandMachine";
@@ -323,74 +324,7 @@ function App() {
     },
     {
       id: "appearance", icon: <Palette size={16} />, label: i("المظهر", "Appearance"), desc: i("النمط والزجاج واللون والزوايا والخط والكثافة — تُطبَّق فورًا.", "Theme, glass, color, corners, font and density — applied instantly."),
-      body: (<>
-        <Section title={i("إعدادات مسبقة", "Presets")}>
-          <Row icon={ic(Sparkles)} label={i("أنماط جاهزة", "Style presets")} hint={i("نقرة واحدة تطبّق مجموعة كاملة من القيم", "One click applies a full set of values")} col>
-            <div className="st-chips" data-testid="presets">
-              {STYLE_PRESETS.map((p) => <button key={p.id} className="st-chip" data-preset={p.id} onClick={() => set(p.values)}>{i(p.ar, p.en)}</button>)}
-            </div>
-          </Row>
-        </Section>
-        <Section title={i("النمط والمادة", "Theme & material")}>
-          <Row icon={ic(SunMoon)} label={i("النمط", "Theme")} hint={i("فاتح أو داكن، أو يتّبع النظام تلقائيًا", "Light or dark, or follow the system automatically")}>
-            <Segmented label={i("النمط", "Theme")} value={s.themeMode ?? "system"} onChange={(v) => set({ themeMode: v })}
-              options={[{ value: "system", label: i("النظام", "System") }, { value: "light", label: i("فاتح", "Light") }, { value: "dark", label: i("داكن", "Dark") }]} />
-          </Row>
-          <Row icon={ic(Layers)} label={i("الخلفية", "Background")} hint={i("الزجاج سطح ملوّن شبه شفاف مرسوم في الجزيرة (ليس تمويهًا حقيقيًا لما خلفها)، ويصير معتمًا تلقائيًا إذا أطفأت «تأثيرات الشفافية» في ويندوز", "Glass is a tinted semi-transparent surface drawn by the island (not a real blur of what is behind it); it turns fully opaque automatically if Windows “Transparency effects” is off")} col>
-            <div className="st-gstyles st-gstyles3" role="radiogroup" aria-label={i("الخلفية", "Background")}>
-              {([
-                { id: "solid", ar: "مصمت", en: "Solid", dar: "سطح معتم بلا شفافية", den: "An opaque surface, no see-through" },
-                { id: "crystal", ar: "زجاج مُحاكى — مثلّج", en: "Simulated frosted glass", dar: "حجاب ملوّن كثيف بحدّ ولمعة وحبيبات — الموصى به", den: "A dense tinted veil with border, highlight and grain — recommended" },
-                { id: "clear", ar: "زجاج مُحاكى — شفاف", en: "Simulated clear glass", dar: "حجاب أخفّ يُظهر ما خلفه أكثر (بلا تمويه)", den: "A lighter veil that shows more of what is behind (no blur)" },
-              ] as const).map((g) => (
-                <button key={g.id} role="radio" aria-label={i(g.ar, g.en)} aria-checked={(!glassOn ? "solid" : (s.glassStyle ?? "crystal")) === g.id} data-bg={g.id} className="st-gstyle"
-                  onClick={() => set(g.id === "solid" ? { themeMaterial: "solid" } : GLASS_STYLE_VALUES[g.id])}>
-                  <span className={`st-gprev ${g.id}`} />
-                  <span className="st-row-title">{i(g.ar, g.en)}</span>
-                  <span className="st-row-hint">{i(g.dar, g.den)}</span>
-                </button>
-              ))}
-            </div>
-          </Row>
-          <Row icon={ic(Percent)} label={i("الكثافة", "Density of background")} hint={i("العتامة الكلية للحجاب — الأقل يُظهر ما خلف الجزيرة أكثر", "Overall opacity of the veil — lower shows more of what is behind the island")}>
-            <Slider label={i("الكثافة", "Density of background")} value={s.backgroundOpacity ?? 1} min={0.3} max={1} step={0.05} format={(v) => `${Math.round(v * 100)}%`} onLive={(v) => set({ backgroundOpacity: v })} onCommit={(v) => set({ backgroundOpacity: v })} />
-          </Row>
-          <Row icon={ic(Brush)} label={i("لون التمييز", "Accent source")} hint={i("تلقائي من غلاف الأغنية أو لون ثابت", "Automatic from the album art, or a fixed color")}>
-            <Segmented label={i("لون التمييز", "Accent source")} value={s.accentMode ?? "auto"} onChange={(v) => set({ accentMode: v })}
-              options={[{ value: "auto", label: i("تلقائي", "Auto") }, { value: "fixed", label: i("ثابت", "Fixed") }]} />
-          </Row>
-          
-          {glassOn && (
-            <Row icon={ic(Moon)} label={i("شدة الحجاب", "Veil strength")} hint={i("لون الحجاب وعتامته فوق سطح المكتب — الأعلى أوضح للنص", "Colour and opacity of the veil over the desktop — higher is easier to read")}>
-              <Slider label={i("شدة الحجاب", "Veil strength")} value={s.glassTint ?? 45} min={0} max={80} step={1} format={pct} onLive={(v) => set({ glassTint: v })} onCommit={(v) => set({ glassTint: v })} />
-            </Row>
-          )}
-          
-          
-        </Section>
-        <Section title={i("اللون والتفاصيل", "Color & details")}>
-          <Row icon={ic(Brush)} label={i("لون ثابت", "Fixed color")} hint={i("للموجة وشريط التقدم والأيقونات", "For the waveform, progress bar and icons")}>
-            <ColorField label={i("لون ثابت", "Fixed color")} value={s.accentColor ?? "#4fd1c5"} onChange={(v) => set({ accentColor: v })} />
-          </Row>
-          <Row icon={ic(Square)} label={i("قوة الحدود", "Border strength")} hint={i("وضوح الخط الرفيع حول العناصر", "How visible the thin outline around things is")}>
-            <Slider label={i("قوة الحدود", "Border strength")} value={s.borderStrength ?? 50} min={0} max={100} step={5} format={pct} onLive={(v) => set({ borderStrength: v })} onCommit={(v) => set({ borderStrength: v })} />
-          </Row>
-          <Row icon={ic(Layers)} label={i("قوة الظلال", "Shadow strength")} hint={i("عمق الظل تحت العناصر", "How deep the shadows under things are")}>
-            <Slider label={i("قوة الظلال", "Shadow strength")} value={s.shadowStrength ?? 50} min={0} max={100} step={5} format={pct} onLive={(v) => set({ shadowStrength: v })} onCommit={(v) => set({ shadowStrength: v })} />
-          </Row>
-          <Row icon={ic(Square)} label={i("نمط الزوايا", "Corner style")} hint={i("استدارة زوايا البطاقات والأزرار", "How round the corners of cards and buttons are")}>
-            <Segmented label={i("نمط الزوايا", "Corner style")} value={s.cornerStyle ?? "rounded"} onChange={(v) => set({ cornerStyle: v })}
-              options={[{ value: "rounded", label: i("مستدير", "Rounded") }, { value: "extra", label: i("مستدير جدًا", "Extra rounded") }]} />
-          </Row>
-          <Row icon={ic(Type)} label={i("حجم الخط", "Font size")} hint={i("حجم الخط في كل الواجهة", "Text size across the whole interface")}>
-            <Slider label={i("حجم الخط", "Font size")} value={s.fontScale ?? 100} min={90} max={120} step={5} format={pct} onLive={(v) => set({ fontScale: v })} onCommit={(v) => set({ fontScale: v })} />
-          </Row>
-          <Row icon={ic(SlidersHorizontal)} label={i("الكثافة", "Density")} hint={i("المسافات داخل الصفوف: مريحة أو مدمجة", "Spacing inside rows: comfortable or compact")}>
-            <Segmented label={i("الكثافة", "Density")} value={s.density ?? "comfortable"} onChange={(v) => set({ density: v })}
-              options={[{ value: "comfortable", label: i("مريحة", "Comfortable") }, { value: "compact", label: i("مدمجة", "Compact") }]} />
-          </Row>
-        </Section>
-      </>),
+      body: <AppearanceBody s={s} set={set} />,
     },
     {
       id: "motion", icon: <Zap size={16} />, label: i("الحركة", "Motion"), desc: i("سرعة الحركة ونمط النوابض وتقليلها.", "Animation speed, spring style and reducing motion."),
