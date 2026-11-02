@@ -1,5 +1,18 @@
 # حالة المشروع
 
+## المرحلة G — إزالة SWCA والزجاج المُحاكى (Tier A) + حافة الحبة المنعَّمة (2026-11-02)
+
+**ما بُني (ملفات):**
+- **(أ)** `src-tauri/src/backdrop.rs` بلا `SetWindowCompositionAttribute`/`ACCENT_*`/`island_backdrop` (يبقى `SetWindowRgn` + أمر جديد `system_transparency`) · `src/appearance.ts` (`glassAlpha` · `glassSurface` · `Env.transparency`) · `src/pages/island/island.css` (سطح Tier A: قاعدة 22/22/27 و245/245/248 + 5٪ أكسنت، حدّ 1px .14، لمعة علوية، حبيبات SVG 3.5٪، ظل ناعم؛ احتياط معتم) · حذف `useBackdrop.ts` و`src/glass.ts` · `useSettings.ts` (سؤال شفافية ويندوز عند الحدث، بلا مؤقّتات) · اختبارات `glass.test.mjs` `appearance.test.mjs` `t04.regression.cjs` (صار `test:glass-ui`).
+- **(ب) المادة الأصلية Win11: لم تُطبَّق — قرار موثَّق** في `docs/GLASS.md`: (1) المنطقة/نصف القطر يتغيّران وقت التشغيل عند كل `resize_to_island` (يخالف «لا تبديل نصف قطر على الأصلية»)، (2) الإخفاء `hide()` حقيقي ويعتمد عليه ملء الشاشة وحارس S5 ولا يمكن تحويله لوقوف خارج الشاشة واختباره بلا ويندوز، (3) النافذة `NOACTIVATE` دائمًا ووثائق مواد DWM تسقط إلى مصمت عند عدم النشاط. وكذلك `noRedirectionBitmap`: قُيِّم ولم يُفعَّل (بند مالك).
+- **(ج)** حذف `glassBlur/glassSaturation` (settings.ts، state.rs، kv عبر `OBSOLETE_KEYS`)، إعادة تعريف `glassTint` = «شدة الحجاب»، بطاقات المادة: مُحاكى مثلّج (موصى به) / مُحاكى شفاف / مصمت، إعادة كتابة `docs/GLASS.md` وتحديث IPC.md/MOTION.md.
+- **الحافة (د):** `backdrop.rs::region_rect` + `EDGE_PAD_CSS=10` (المنطقة أوسع من الجزيرة بهامش متوازي المنحنى فلا تقصّ الحافة المرسومة)، مع احترام الالتصاق (الزاويتان العلويتان مسطّحتان مقصوصتان فوق الحافة). لقطات قبل/بعد مكبّرة 10×: `docs/screenshots/edge-before-after-{100,150}-{dark,light}.png` + `docs/q/edge-after.json` (بكسلات حافة كانت تُصلَّب: 762 @100% و1715 @150%). **محاكاة بمتصفح لا لقطة ويندوز.** الثمن: حلقة 10px شفافة تلتقط الماوس.
+- لقطات المادتين: `docs/screenshots/glass-{sim-frosted,sim-clear,solid,opaque-fallback}-{dark,light}[-open].png` (`scripts/glass.shots.cjs`، متصفح بجسر وهمي).
+
+**التحقق (Linux):** `npm run build` ✓ · `npm test` ✓ · `cargo check --target x86_64-pc-windows-gnu` ✓ (بعد `rustup target add` + `gcc-mingw-w64-x86-64`) · اختبار الدوال النقية في backdrop.rs بـrustc ✓ (3) · `npm run test:ui` — انظر الرد النهائي. **لم يُتحقق:** سلوك ويندوز الفعلي (الحافة، التقاط الحلقة، `system_transparency`)، `cargo test`.
+
+**بنود قبول المالك:** [ ] حافة الحبة 800٪ على 100/125/150٪ بالوضعين · [ ] أطفئ «تأثيرات الشفافية» ⇒ السطح معتم · [ ] لا تعطّل النقر على ما حول الحبة بمشكلة الحلقة 10px · [ ] `noRedirectionBitmap` تجربة.
+
 ## المرحلة P — تحكم كامل من الإطلالة + بحث الوسائط + مصغّرة احترافية (2026-11-02)
 
 **ما بُني (ملفات):**
