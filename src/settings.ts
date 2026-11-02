@@ -118,7 +118,7 @@ export interface Settings {
   peekWheelCycle:boolean,
   peekCardOrder:string[],         // ترتيب لمحات: تبديل مرتّب من player|today|weather|timer
   panelWheelPaging:boolean,
-  panelTabsStyle:'labels'|'icons'|'dots'|'hidden',
+  panelTabsStyle:'dock'|'labels'|'icons'|'dots'|'hidden',
   backgroundOpacity:number,       // 0.3..1.0
   accentMode:'auto'|'fixed',      // auto = من غلاف الأغنية
   playerLayout:'compact'|'large'|'minimal',
@@ -224,7 +224,7 @@ export const DEFAULTS: Partial<Settings> = {
   peekWheelCycle: true,
   peekCardOrder: ['player', 'today', 'weather', 'timer'],
   panelWheelPaging: true,
-  panelTabsStyle: 'icons',
+  panelTabsStyle: 'dock',
   backgroundOpacity: 1,
   accentMode: 'auto',
   playerLayout: 'compact',

@@ -89,7 +89,7 @@ pub fn defaults() -> Map<String, Value> {
         "peekWheelCycle": true,
         "peekCardOrder": ["player", "today", "weather", "timer"],
         "panelWheelPaging": true,
-        "panelTabsStyle": "icons",
+        "panelTabsStyle": "dock",
         "backgroundOpacity": 1.0,
         "accentMode": "auto",
         "playerLayout": "compact",
