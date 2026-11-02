@@ -89,8 +89,6 @@ pub fn defaults() -> Map<String, Value> {
         "showProgress": true,
         "artworkBackdrop": true,
         "glassTint": 45,
-        "glassBlur": 24,
-        "glassSaturation": 180,
         "browserTabMode": false,
         "showNetSpeed": false,
         "meetingLeadMin": 15,
@@ -112,7 +110,8 @@ pub fn defaults() -> Map<String, Value> {
 }
 
 /// مفاتيح إعدادات أُزيلت ميزاتها؛ تُحذف عند فتح القاعدة ولا تعود للواجهة.
-pub const OBSOLETE_KEYS: &[&str] = &["browserTabMode", "underTaskbar", "lyricsInHome", "lyricsInPlayer", "collapseDelayMs", "animSpeed", "springStyle"];
+pub const OBSOLETE_KEYS: &[&str] = &["browserTabMode", "underTaskbar", "lyricsInHome", "lyricsInPlayer", "collapseDelayMs", "animSpeed", "springStyle", "glassBlur", "glassSaturation"];
+// glassBlur/glassSaturation: منزلقا تمويه/تشبّع وهميان (لا أثر على ويندوز) — حُذفا نهائيًا مع إزالة SWCA؛ يُنظَّف kv القديم عند الفتح (docs/GLASS.md).
 
 /// ترحيل T03 في kv (idempotent): springStyle ⇒ motionPreset (snappy⇒snappy وغيره⇒calm مع ارتداد النمط) · animSpeed(50..150) ⇒ motionSpeed(0.5..2)
 /// · reduceMotion من bool إلى "always"|"system". المفاتيح القديمة تُحذف بعده (OBSOLETE_KEYS). يطابق منطق src/islandMotion.ts.

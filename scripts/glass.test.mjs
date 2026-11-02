@@ -37,6 +37,10 @@ eq("presets: veil styles/tints", A.STYLE_PRESETS.slice(0, 3).map((p) => [p.value
 eq("presets give distinct veil alphas (dark): frosted < smoked, clear < frosted", (() => { const [f, s, c] = A.STYLE_PRESETS.slice(0, 3).map((p) => A.glassAlpha(p.values.glassStyle, false, p.values.glassTint)); return f < s && c < f; })(), true);
 eq("minimal is solid dark", [A.STYLE_PRESETS[3].values.themeMaterial, A.STYLE_PRESETS[3].values.themeMode], ["solid", "dark"]);
 eq("GLASS_STYLE_VALUES = veil only", A.GLASS_STYLE_VALUES, { crystal: { glassStyle: "crystal", themeMaterial: "glass", glassTint: 45 }, clear: { glassStyle: "clear", themeMaterial: "glass", glassTint: 25 } });
+// ── مفاتيح وهمية محذوفة
+const settingsSrc = readFileSync("src/settings.ts", "utf8"), rs = readFileSync("src-tauri/src/state.rs", "utf8");
+eq("glassBlur / glassSaturation gone from settings.ts, glass.ts and appearance sections", [/glassBlur|glassSaturation/.test(settingsSrc), existsSync("src/glass.ts"), A.SECTION_KEYS.appearance.some((k) => /glassBlur|glassSaturation/.test(k))], [false, false, false]);
+eq("state.rs: defaults no longer carry them, OBSOLETE_KEYS purge them from kv", [/"glassBlur": \d|"glassSaturation": \d/.test(rs), /OBSOLETE_KEYS[^;]*"glassBlur"[^;]*"glassSaturation"/s.test(rs)], [false, true]);
 // ترحيل v3 (glassStyle) باقٍ
 eq("migration: glassStyle missing ⇒ crystal, glassTint untouched, idempotent", [A.migrateSettings({ settingsVersion: 2, glassTint: 70 }).glassStyle, "glassTint" in A.migrateSettings({ settingsVersion: 2, glassTint: 70 }), Object.keys(A.migrateSettings({ settingsVersion: 3 })).length], ["crystal", false, 0]);
 console.log(fail ? `FAIL (${fail})` : "OK glass");

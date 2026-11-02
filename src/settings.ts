@@ -86,9 +86,7 @@ export interface Settings {
   themeMode:'system'|'dark'|'light',
   themeMaterial:'solid'|'glass',
   glassTint:number,
-  glassBlur:number,               // مهجور (T04): بلا أثر على ويندوز (CSS backdrop-filter لا يرى سطح المكتب)؛ يبقى للتوافق مع kv/الاستيراد
-  glassSaturation:number,         // مهجور (T04): كـglassBlur
-  glassStyle:'crystal'|'clear',   // أسلوب الزجاج: بلوري (Liquid Glass) / شفاف — docs/GLASS.md
+  glassStyle:'crystal'|'clear',   // أسلوب الحجاب: مثلّج كثيف / شفاف أخفّ — docs/GLASS.md
   accentColor:string,             // لون التمييز #rrggbb
   borderStrength:number,          // قوة الحدود 0..100 (50 = افتراضي)
   shadowStrength:number,          // قوة الظلال 0..100 (50 = افتراضي)
@@ -183,9 +181,8 @@ export const DEFAULTS: Partial<Settings> = {
   pillWidth: 220,          // عرض الحبة المنكمشة (160..280)
   pillHeight: 34,          // ارتفاعها (28..44)؛ المحتوى (خط/عيون/أيقونات) يتدرج k=ارتفاع/32
   themeMode: 'system',     // system = يتبع النظام · dark · light (كل النوافذ)
-  themeMaterial: 'glass',  // solid = مصمت · glass = شفافية مع blur (الافتراضي زجاجي)
-  glassTint: 45,           // قوة تظليل الزجاج 0..80 (٪) — لا أثر إلا مع themeMaterial=glass؛ ويندوز 11: صبغة الصفحة · ويندوز 10: ألفا الأكريليك
-  glassBlur: 24,           // تمويه طبقة الزجاج CSS بالبكسل 0..40 (css.glass من المرجع) — مستقل عن الزجاج الأصلي؛ لا أثر إلا مع themeMaterial=glass؛ Eco يحدّه بـ8
+  themeMaterial: 'glass',  // solid = مصمت · glass = زجاج مُحاكى (سطح ملوّن شبه شفاف مرسوم في الصفحة — docs/GLASS.md)
+  glassTint: 45,           // شدة الحجاب 0..80 — لون/عتامة سطح الزجاج المُحاكى (يحدّد --glass-a)؛ لا أثر إلا مع themeMaterial=glass
   glassStyle: 'crystal',   // crystal = زجاج بلوري · clear = زجاج شفاف
   accentColor: '#4fd1c5',
   borderStrength: 50,
@@ -214,7 +211,6 @@ export const DEFAULTS: Partial<Settings> = {
   visualizer: 'bars',
   showPlaybackTime: true, showSourceBadge: true, showProgress: true, artworkBackdrop: true,
   settingsVersion: 3,
-  glassSaturation: 180,    // تشبّع طبقة الزجاج CSS 100..200 (٪)؛ Eco يجعله 100
   showNetSpeed: false,     // سرعتا الشبكة (تحميل/رفع) في الكبسولة المدمجة؛ القراءة من عدّادات ويندوز فقط أثناء التفعيل (netspeed_active)
   eyesEnabled: true,       // عيون التميمة بجانب الساعة في الحبة المنكمشة (تُخفى تلقائيًا مع الميديا/التوفير/الحركة المتوقفة)
   motionLevel: 'full',     // full = نابضة · reduced = مخففة · off = متوقفة (انظر src/motion.ts)
