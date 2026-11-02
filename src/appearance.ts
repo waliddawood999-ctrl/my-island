@@ -4,7 +4,7 @@ import { DEFAULTS, type Settings } from "./settings";
 import { PILL } from "./tokens";
 import { migratePreset, migrateReduce, migrateSpeed, normSpeed, resolveReduce } from "./islandMotion";
 import { contrast, deriveTheme, hex6, hexToRgb, luminance, over, type Derived } from "./themeEngine";
-import { DEFAULT_PACK, effectivePack, getPack, packInput } from "./themePacks";
+import { DEFAULT_PACK, effectivePack, getPack, packInput, resolvePack, SHAPES, timeHueShift, type Pack, type ShapeTune } from "./themePacks";
 import type { ArtSwatches } from "./artwork";
 export { contrast, luminance, over };
 
@@ -62,14 +62,28 @@ export function accentOverride(s: Partial<Settings>, env: Env): string | undefin
   return undefined;
 }
 /** الاشتقاق الكامل للمظهر الحالي (الحزمة ← المحرك). المصدر الوحيد لرموز اللون في كل النوافذ. */
-export function deriveFor(s: Partial<Settings>, env: Env): { derived: Derived; packId: string; theme: ResolvedTheme } {
+export function deriveFor(s: Partial<Settings>, env: Env): { derived: Derived; packId: string; theme: ResolvedTheme; pack: Pack } {
   const theme = resolveTheme(s.themeMode, env.systemDark, env.hour);
-  const packId = chosenPackId(s, theme);
-  const pack = getPack(packId);
+  const pack = resolvePack(chosenPackId(s, theme), s.themeCustom, s.myThemes);
   const live = { winAccent: env.winAccent, art: env.artwork, bloom: num(s.artBloom, 0, 200, 60) / 100 };
   const eff = effectivePack(pack, live);
-  const derived = deriveTheme(packInput(pack, theme === "dark", { accent: accentOverride(s, env), eco: env.eco, borderStrength: num(s.borderStrength, 0, 100, 50), live }));
-  return { derived, packId: eff.id, theme };
+  // الغسلة المتحرّكة: اختيارية، وتُطفأ في Eco وعند تقليل الحركة/إيقافها
+  const anim = !!eff.anim && s.themeAnim !== false && !env.eco && effectiveMotion(s, env) === "full";
+  const hueShift = eff.source === "time" && typeof env.hour === "number" ? timeHueShift(env.hour) : 0;
+  const derived = deriveTheme(packInput(pack, theme === "dark", { accent: accentOverride(s, env), eco: env.eco, borderStrength: num(s.borderStrength, 0, 100, 50), live, anim, hueShift }));
+  return { derived, packId: eff.id, theme, pack: eff };
+}
+
+/** تأثيرات الحزمة غير اللونية: الشكل (زوايا/أنصاف أقطار) ومنطقة بطل الغلاف. تُرفق بكائن الإعدادات (useSettings) وتستهلكها الحبة. */
+export interface Fx { shape: ShapeTune; hero: boolean }
+export function fxFor(s: Partial<Settings>, env: Env): Fx {
+  const { pack } = deriveFor(s, env);
+  return { shape: SHAPES[pack.shape ?? "default"], hero: !!pack.hero };
+}
+/** نصف القطر الفعلي: إعداد المستخدم الصريح (≠ الافتراضي) يغلب نمط الشكل؛ الافتراضي ⇒ نمط الحزمة إن وُجد. */
+export function shapeRadius(setting: unknown, def: number, fromShape: number | null): number | null {
+  const explicit = typeof setting === "number" && Number.isFinite(setting) && setting !== def;
+  return explicit || fromShape === null ? null : fromShape;
 }
 
 /** هل الزجاج المُحاكى مسموح؟ لا (Eco / تقليل الشفافية / «تأثيرات الشفافية» مطفأة في ويندوز) ⇒ السطح نفسه لكن معتم بالكامل. */
@@ -77,22 +91,23 @@ export const glassAllowed = (s: Partial<Settings>, env: Env) => (s.themeMaterial
 
 /** كل خصائص <html>: data-* ومتغيرات CSS الحيّة. */
 export function appearanceVars(s: Partial<Settings>, env: Env): { attrs: Record<string, string>; vars: Record<string, string> } {
-  const { derived, packId, theme } = deriveFor(s, env);
+  const { derived, packId, theme, pack } = deriveFor(s, env);
   const glass = glassAllowed(s, env);
   const style = s.glassStyle === "clear" ? "clear" : "crystal";
   const pw = num(s.pillWidth, PILL.minW, PILL.maxW, PILL.w), ph = num(s.pillHeight, PILL.minH, PILL.maxH, PILL.h);
-  const pr = num(s.pillRadius, 0, 22, 0);
+  const sp = shapeRadius(s.pillRadius ?? 0, 0, SHAPES[pack.shape ?? "default"].pillR);
+  const pr = sp !== null ? sp : num(s.pillRadius, 0, 22, 0);
   const radius = pr === 0 ? ph / 2 : Math.min(pr, ph / 2);
   const speed = normSpeed(s.motionSpeed);
   return {
     attrs: {
-      theme, pack: packId, material: glass ? "glass" : "solid", glass: style, density: s.density === "compact" ? "compact" : "comfortable",
+      theme, pack: packId, washAnim: derived.washAnim ? "on" : "", decor: pack.decor && pack.decor !== "none" ? pack.decor : "", shape: pack.shape && pack.shape !== "default" ? pack.shape : "", hero: pack.hero ? "on" : "", material: glass ? "glass" : "solid", glass: style, density: s.density === "compact" ? "compact" : "comfortable",
       fallback: (s.themeMaterial ?? "glass") === "glass" && !glass ? "solid" : "",
     },
     vars: {
       ...derived.vars,
       "--border-k": String(num(s.borderStrength, 0, 100, 50) / 50), "--shadow-k": String(num(s.shadowStrength, 0, 100, 50) / 50),
-      "--corner-scale": s.cornerStyle === "extra" ? "1.3" : "1", "--font-scale": String(num(s.fontScale, 90, 120, 100) / 100),
+      "--corner-scale": String(Math.round((s.cornerStyle === "extra" ? 1.3 : 1) * SHAPES[pack.shape ?? "default"].corner * 1000) / 1000), "--font-scale": String(num(s.fontScale, 90, 120, 100) / 100),
       "--speed": String(speed), "--pill-width": `${pw}px`, "--pill-height": `${ph}px`, "--pill-radius": `${radius}px`,
       "--glass-tint": String(num(s.glassTint, 0, 80, 45)),
       "--glass-a": String(glassAlpha(style, theme === "light", num(s.glassTint, 0, 80, 45), s.backgroundOpacity)),

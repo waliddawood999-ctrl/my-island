@@ -1,11 +1,11 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { DEFAULTS, type Settings } from "./settings";
 import { setLang } from "./i18n";
 import { setMotionTuning, useMotionSync, useEco } from "./motion";
-import { appearanceVars, effectiveMotion, glassAllowed, migrateSettings, resolveTheme, type Env } from "./appearance";
-import { getPack } from "./themePacks";
+import { appearanceVars, effectiveMotion, fxFor, glassAllowed, migrateSettings, resolveTheme, type Env, type Fx } from "./appearance";
+import { resolvePack } from "./themePacks";
 import { extractSwatches, type ArtSwatches } from "./artwork";
 
 /** glassTint صالح 0..80 (غير ذلك ⇒ الافتراضي 45). */
@@ -44,7 +44,7 @@ function useSystemTransparency(): boolean {
 
 /** ما تحتاجه الإعدادات من مصادر حيّة (لا نجلب شيئًا غير مطلوب): الحزم المختارة + accentSource + themeMode. */
 function liveNeeds(s: Partial<Settings>) {
-  const packs = [s.themePack, s.themePackLight, s.themePackDark].map(getPack);
+  const packs = [s.themePack, s.themePackLight, s.themePackDark].map((id) => resolvePack(id, s.themeCustom, s.myThemes));
   return {
     art: packs.some((p) => p.source === "artwork"),
     win: s.accentSource === "windows" || packs.some((p) => p.source === "windows"),
@@ -151,7 +151,7 @@ export function useResolvedTheme(s: Partial<Settings>): { theme: "dark" | "light
 let migrated = false;
 /** يعكس إعدادات الخلفية (settings_get) ويتحدّث عند settings:changed. الخلفية مصدر الحقيقة.
  *  اللغة: تُطبَّق على i18n أثناء الرسم نفسه، فكل نافذة تعيد رسم نفسها عند تغيّر language عبر الحدث. */
-export function useSettings(): Partial<Settings> & { loaded?: boolean } {
+export function useSettings(): Partial<Settings> & { loaded?: boolean; /** تأثيرات الحزمة غير اللونية (شكل/بطل غلاف) */ fx?: Fx } {
   const [s, setS] = useState<Partial<Settings> & { loaded?: boolean }>(DEFAULTS);
   useEffect(() => {
     let alive = true;
@@ -176,7 +176,9 @@ export function useSettings(): Partial<Settings> & { loaded?: boolean } {
   useAppearance(s, env);
   useEffect(() => { setMotionTuning(s.motionSpeed, s.motionPreset, s.motionBounce); }, [s.motionSpeed, s.motionPreset, s.motionBounce]);
   useMotionSync(effectiveMotion(s, env));
-  return s;
+  const fx = fxFor(s, env);
+  const fxKey = `${fx.hero}|${fx.shape.corner}|${fx.shape.pillR}|${fx.shape.peekR}|${fx.shape.panelR}`;
+  return useMemo(() => ({ ...s, fx }), [s, fxKey]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
 /** يحفظ مقطعًا عبر settings_set (الحدث settings:changed يعيد الرسم في كل النوافذ). */

@@ -103,6 +103,47 @@ const img = (fills) => { const px = []; for (const [n, rgb] of fills) for (let k
 // ── مخزون الحزم المنفَّذ حتى الآن
 ok("pack ids are unique and every pack has the 3 seeds", new Set(P.PACKS.map((p) => p.id)).size === P.PACKS.length && P.PACKS.every((p) => p.seeds.surface && p.seeds.fg && p.seeds.accent));
 ok("Porcelain is light-first (surface detected light) and the dark variant is derived", E.detectDark(P.getPack("porcelain").seeds.surface) === false && E.deriveTheme(P.packInput(P.getPack("porcelain"), true)).dark === true);
+// ── عوائل الآليات (ج)
+{
+  const get = (id) => P.PACKS.find((p) => p.id === id);
+  const fam = (f) => P.PACKS.filter((p) => p.family === f).map((p) => p.id);
+  ok("≈18+ packs: nine seed packs + mechanism families (gradient 2, craft 4, editorial 1, shape 3, time 1, art 2)", P.PACKS.length >= 18 && fam("gradient").length === 2 && fam("craft").length === 4 && fam("editorial").length === 1 && fam("shape").length === 3 && fam("time").length === 1 && fam("art").length === 2, `${P.PACKS.length}`);
+  // ب) تدرّج قائد: الحركة اختيارية وتنتقل الغسلة إلى طبقة ::after
+  const nb = get("nebula-mesh");
+  const on = E.deriveTheme(P.packInput(nb, true, { anim: true })), off = E.deriveTheme(P.packInput(nb, true, { anim: false }));
+  ok("gradient-led: anim on ⇒ wash moves to the ::after layer (body wash none); off ⇒ static wash on the body", on.washAnim && on.vars["--t-wash-img"] === "none" && on.vars["--t-after-img"].includes("gradient") && Number(on.vars["--t-after-a"]) === 1 && !off.washAnim && off.vars["--t-wash-img"].includes("gradient") && off.vars["--t-after-img"] === "none");
+  ok("gradient-led: Mesh uses two wash colours and both fade to transparent", on.vars["--t-wash-c"] !== on.vars["--t-wash-c2"] && /transparent 57%/.test(on.vars["--t-after-img"]) && /transparent 60%/.test(off.vars["--t-wash-img"]));
+  // ج) حرفة: كل ملمس 4–8٪ ومحصور بطبقة ::after (ليس صورة كاملة التغطية)
+  for (const id of ["brushed-titanium", "frosted-paper", "carbon-fibre", "linen-sand"]) for (const dk of [true, false]) {
+    const d = E.deriveTheme(P.packInput(get(id), dk));
+    ok(`craft ${id}/${dk ? "dark" : "light"}: decor layer present at ${d.vars["--t-decor-a"]} (4–8%), no full-bleed image url besides the paper SVG tile`, Number(d.vars["--t-after-a"]) >= 0.04 && Number(d.vars["--t-after-a"]) <= 0.08 && d.vars["--t-after-img"] !== "none" && (id === "frosted-paper" || !d.vars["--t-after-img"].includes("url(")) && !d.washAnim);
+  }
+  ok("decor beats anim when both are requested (one ::after role)", !E.deriveTheme({ ...P.packInput(get("carbon-fibre"), true), anim: true }).washAnim);
+  // د) تحريرية
+  const ink = (dk) => E.deriveTheme(P.packInput(get("ink-vermilion"), dk));
+  ok("editorial: no wash, no glow, higher-contrast secondary/tertiary text than Obsidian", [true, false].every((dk) => ink(dk).washAlpha === 0 && ink(dk).glowAlpha === 0 && ink(dk).measures.find((m) => m.role === "text.tertiary").ratio > E.deriveTheme(P.packInput(P.OBSIDIAN, dk)).measures.find((m) => m.role === "text.tertiary").ratio));
+  ok("editorial: single accent vermilion survives on light (≥3:1) and is logged if adjusted", ink(false).measures.find((m) => m.role === "accent").ok);
+  // هـ) الشكل
+  const sh = (id) => P.SHAPES[get(id).shape];
+  ok("shape-led: sharp < default < squircle < arena corner scales; radii ordered", sh("edge").corner < 1 && sh("squircle-max").corner > 1 && sh("arena").corner > sh("squircle-max").corner && sh("edge").panelR < 34 && sh("squircle-max").panelR > 34);
+  // و) الوقت
+  ok("time-aware: hue shift ±24° on the sun cycle (peak noon, trough midnight), 0 at 06:00/18:00", P.timeHueShift(12) === 24 && P.timeHueShift(0) === -24 && P.timeHueShift(6) === 0 && P.timeHueShift(18) === 0);
+  { const sd = get("solar-drift"); const noon = E.deriveTheme(P.packInput(sd, true, { hueShift: P.timeHueShift(12) })), night = E.deriveTheme(P.packInput(sd, true, { hueShift: P.timeHueShift(0) }));
+    ok("time-aware: noon and midnight accents differ in hue and both pass WCAG", Math.abs(E.rgbToOklch(noon.accent).h - E.rgbToOklch(night.accent).h) > 20 && noon.measures.every((m) => m.ok) && night.measures.every((m) => m.ok)); }
+  // ز) فن: متغير البطل
+  ok("art-led: the hero variant exists, is an artwork source and flags hero; the plain one does not", get("living-artwork-hero").hero === true && get("living-artwork-hero").source === "artwork" && !get("living-artwork").hero);
+}
+// ── حزمة المستخدم: نطاقات مصمَّمة فقط
+{
+  const bad = P.sanitizeUserTheme({ id: "u:abc", name: "  x  ".repeat(30), base: "nope", accent: "red", wash: 99, glow: -5, grain: 5, washDir: "diagonal", evil: 1 });
+  ok("user theme: out-of-range / wrong-type inputs are clamped or dropped", bad && bad.base === undefined && bad.accent === undefined && bad.wash === 1 && bad.glow === 0 && bad.grain === 0.08 && bad.washDir === undefined && bad.name.length <= 40 && !("evil" in bad));
+  ok("user theme: id must be custom or u:xxxx (no path-like ids)", P.sanitizeUserTheme({ id: "obsidian" }) === null && P.sanitizeUserTheme({ id: "u:../x" }) === null && P.sanitizeUserTheme(null) === null && P.sanitizeUserTheme({ id: "custom" }) !== null);
+  // أسوأ مجموعة مسموحة: كل المقابض في أقصاها مع أكسنت أبيض/أصفر
+  const worst = [{ accent: "#ffffff" }, { accent: "#ffee00" }, { accent: "#000000" }, { accent: "#00ff66" }].flatMap((a) => ["obsidian", "porcelain", "carbon-fibre", "frosted-paper"].flatMap((base) => [true, false].map((dk) => E.deriveTheme(P.packInput(P.userPack(P.sanitizeUserTheme({ id: "custom", base, wash: 1, glow: 1, grain: 0.08, washDir: "radial", ...a })), dk)))));
+  ok(`user theme: every allowed extreme (${worst.length} combos) still passes every WCAG role — cannot produce an unreadable theme`, worst.every((d) => d.measures.every((m) => m.ok)));
+  ok("factory packs are never mutated by customisation (userPack copies)", (() => { const before = J(P.getPack("obsidian")); P.userPack({ id: "u:z", name: "z", accent: "#ff0000", wash: 0 }); return J(P.getPack("obsidian")) === before; })());
+  ok("resolvePack: custom slot and u:ids resolve; unknown ⇒ Obsidian", P.resolvePack("custom", { accent: "#ff6b5e" }).seeds.accent === "#ff6b5e" && P.resolvePack("u:a1", null, [{ id: "u:a1", name: "Mine", base: "ember" }]).ar === "Mine" && P.resolvePack("u:zz", null, []).id === "obsidian" && P.resolvePack("???").id === "obsidian");
+}
 // ── تقرير
 for (const dark of [true, false]) { const d = E.deriveTheme(P.packInput(obs, dark)); console.log(`  [report] obsidian/${dark ? "dark" : "light"} base ${E.rgbToHex(d.base)} accent ${E.rgbToHex(d.accent)} onAccent ${E.rgbToHex(d.onAccent)} wash ${d.washAlpha.toFixed(3)} adj ${d.adjustments.length}: ${d.measures.map((m) => `${m.role}=${m.ratio}`).join(" ")}`); }
 console.log(fail ? `FAILED ${fail}` : "ALL PASSED");

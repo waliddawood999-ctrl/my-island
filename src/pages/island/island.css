@@ -108,6 +108,15 @@ html, body, #root {
    data-fallback="solid" (Eco / تقليل الشفافية / «تأثيرات الشفافية» مطفأة في ويندوز) ⇒ اللون نفسه معتم بالكامل (بلا حبيبات/ظل). */
 .island-body { background-color: var(--island-bg); background-image: var(--t-wash-img, none); transition: background-color 160ms var(--ease); color: var(--island-fg); box-shadow: var(--island-ring), var(--t-glow, 0 0 0 0 transparent); }
 .island-body[data-open="true"] { box-shadow: var(--island-ring-open), var(--t-glow, 0 0 0 0 transparent); }
+/* طبقة ::after: الزخرفة المقصوصة 4–8٪ (معدن/ورق/كربون/كتّان) أو الغسلة المتحرّكة. تحت المحتوى فوق خلفية الجسم (isolation + z-index:-1) ومقصوصة بشكل الجزيرة. */
+.island-body { isolation: isolate; }
+.island-body::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1; background-image: var(--t-after-img, none); opacity: var(--t-after-a, 0); }
+:root[data-decor="paper"] .island-body::after { background-size: 200px 200px; }
+:root[data-decor="metal"] .island-body::after { background-size: 3px 100%, 100% 100%; }
+/* الغسلة المتحرّكة (حزم التدرّج): طبقة أكبر تنجرف ببطء شديد (90ث) — تعمل فقط والجزيرة مفتوحة (لا كلفة في الخمول)، وتُطفأ في Eco/reduced/off (attr يُحسب في appearance.ts). */
+:root[data-wash-anim="on"] .island-body::after { inset: -25%; border-radius: 0; }
+:root[data-wash-anim="on"] .island-body:is([data-open="true"], [data-mode="peek"])::after { animation: t-wash-drift 90s ease-in-out infinite alternate; }
+@keyframes t-wash-drift { from { transform: translate3d(-3%, -2%, 0) rotate(0deg); } to { transform: translate3d(3%, 3%, 0) rotate(5deg); } }
 :root[data-reduce-transparency] .island-body { transition: none; }
 
 /* الألوان من محرك الاشتقاق (themeEngine.ts → متغيرات على <html>): --glass-base قاعدة OKLCH بلا #000، والأكسنت يدخل بغسلة اتجاهية (--t-wash-img)

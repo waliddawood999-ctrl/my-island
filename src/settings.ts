@@ -88,6 +88,9 @@ export interface Settings {
   themePackLight:string,          // حزمة منفصلة للوضع الفاتح ('' = themePack)
   themePackDark:string,           // حزمة منفصلة للوضع الداكن ('' = themePack)
   artBloom:number,                // مقياس إزهار Living Artwork 0..200 (٪؛ 100 = سقوف الرصّة)
+  themeAnim:boolean,              // حركة الغسلة البطيئة (حزم التدرّج) — تعمل فقط والجزيرة مفتوحة وتُطفأ في Eco/تقليل الحركة
+  themeCustom:Record<string, unknown>, // خانة الحزمة المخصصة الحيّة (بذور المستخدم ضمن نطاقات مصمَّمة)
+  myThemes:Array<Record<string, unknown>>, // رفّ «ثيماتي»: نسخ المستخدم من حزم المصنع (id يبدأ بـ u:)
   accentSource:'pack'|'custom'|'windows'|'wallpaper', // مصدر الأكسنت: بذرة الحزمة · accentColor · أكسنت ويندوز · لون الخلفية الغالب (اختياري وصريح)
   themeMaterial:'solid'|'glass',
   glassTint:number,
@@ -190,6 +193,9 @@ export const DEFAULTS: Partial<Settings> = {
   themePackLight: '',
   themePackDark: '',
   accentSource: 'pack',
+  themeAnim: true,
+  themeCustom: {},
+  myThemes: [],
   artBloom: 60,
   themeMaterial: 'glass',  // solid = مصمت · glass = زجاج مُحاكى (سطح ملوّن شبه شفاف مرسوم في الصفحة — docs/GLASS.md)
   glassTint: 45,           // شدة الحجاب 0..80 — لون/عتامة سطح الزجاج المُحاكى (يحدّد --glass-a)؛ لا أثر إلا مع themeMaterial=glass

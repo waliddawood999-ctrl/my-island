@@ -92,6 +92,10 @@ export interface DeriveInput {
   /** انحراف الدرجة بالدرجات (واعية بالوقت). */
   hueShift?: number;
   bloom?: number;
+  /** حركة الغسلة البطيئة: الغسلة تنتقل إلى طبقة ::after متحرّكة (CSS، تعمل فقط والجزيرة مفتوحة وتُطفأ في Eco/reduced/off). */
+  anim?: boolean;
+  /** ثنائية تحريرية: رفع ألفا النص الثانوي/الثالثي (طابع مطبوع عالي التباين) وحدّ أقوى. */
+  ink?: boolean;
   /** أرضية المقروئية: تقليل الغسلة (لا رفع الألفا) حتى يجتاز النص بألفاته المثبّتة. */
   lumaFloor?: boolean;
   /** نسبة قوة الحدّ 0..100 (50 = افتراضي) — تُعيَّن إلى 6–10٪ (0 = بلا حدّ). */
@@ -101,7 +105,7 @@ export interface DeriveInput {
 export interface Derived {
   dark: boolean;
   base: RGB; accent: RGB; onAccent: RGB;
-  washAlpha: number; glowAlpha: number;
+  washAlpha: number; glowAlpha: number; washAnim: boolean;
   vars: Record<string, string>;
   adjustments: Adjustment[];
   measures: Measure[];
@@ -161,7 +165,8 @@ export function deriveTheme(inp: DeriveInput): Derived {
   if (hueShift) { const k = rgbToOklch(accent0); accent0 = oklchToRgb({ ...k, h: k.h + hueShift }); }
   const fgRgb = hexToRgb(seeds.fg);
   const base = deriveBase(seeds.surface, dark, hueShift, rgbToOklch(accent0).h);
-  const A = FG_ALPHA[mode];
+  const A: FgAlpha = { ...FG_ALPHA[mode] };
+  if (inp.ink) { A.secondary = Math.min(1, A.secondary + 0.12); A.tertiary = Math.min(1, A.tertiary + 0.12); }
 
   // ── الغسلة: سقف × شدة × إزهار. الألفا النهائية لا تتجاوز السقف إلا بالإزهار (Living Artwork فقط، حتى 2×).
   const cap = CAPS.wash[mode];
@@ -244,6 +249,28 @@ export function deriveTheme(inp: DeriveInput): Derived {
   const gc = "color-mix(in srgb, var(--t-glow-c) calc(var(--t-glow-a) * 100%), transparent)";
   const gc2 = "color-mix(in srgb, var(--t-glow-c) calc(var(--t-glow-a) * 50%), transparent)";
   const glowShadow = `0 0 ${glowBlur}px ${gc}, inset 0 0 ${glowBlur}px ${gc2}`;
+  // طبقة ::after: الزخرفة المقصوصة (4–8٪ بعتمة الطبقة) أو الغسلة المتحرّكة. لون المقدمة مخبوز في النمط؛ الزخرفة تغلب الحركة إن اجتمعتا.
+  const washAnim = !!inp.anim && washAlpha > 0 && decorId === "none";
+  const F = fgRgb.map((v) => Math.round(v)).join(" ");
+  const f01 = fgRgb.map((v) => a3(v / 255)).join(" ");
+  const DECOR: Record<DecorId, string> = {
+    none: "none",
+    metal: `repeating-linear-gradient(90deg, rgb(${F} / .55) 0 1px, transparent 1px 3px), linear-gradient(100deg, transparent 18%, rgb(${F} / .9) 46%, transparent 74%)`,
+    paper: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.035' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 ${f01.split(" ")[0]} 0 0 0 0 ${f01.split(" ")[1]} 0 0 0 0 ${f01.split(" ")[2]} 0 0 0 1.8 -.35'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23p)'/%3E%3C/svg%3E")`,
+    carbon: `repeating-linear-gradient(45deg, rgb(${F} / .8) 0 2px, transparent 2px 4px), repeating-linear-gradient(-45deg, rgb(${F} / .5) 0 2px, transparent 2px 4px)`,
+    linen: `repeating-linear-gradient(0deg, rgb(${F} / .7) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgb(${F} / .7) 0 1px, transparent 1px 4px)`,
+  };
+  // الغسلة المتحرّكة على طبقة أكبر (inset:-25٪ ⇒ ارتفاع 150٪ من الجسم): خط الـ60٪ من الجسم يقع عند ≈57٪ من الطبقة.
+  const animFade = 57;
+  let washAnimImg = "none";
+  if (washAnim) {
+    washAnimImg = mesh
+      ? `radial-gradient(90% 80% at 15% 20%, ${stop("--t-wash-c")} 0%, transparent ${animFade}%), radial-gradient(90% 80% at 85% 25%, ${stop("--t-wash-c2")} 0%, transparent ${animFade}%)`
+      : `radial-gradient(100% 90% at 50% 25%, ${stop("--t-wash-c")} 0%, transparent ${animFade}%)`;
+  }
+  const afterImg = washAnim ? washAnimImg : DECOR[decorId];
+  const afterA = washAnim ? 1 : decorA;
+  if (washAnim) washImg = "none";
 
   const vars: Record<string, string> = {
     "--accent": hexOf(accent), "--accent-fg": hexOf(onAccent), "--app-accent": hexOf(accent),
@@ -262,10 +289,10 @@ export function deriveTheme(inp: DeriveInput): Derived {
     "--t-border-a": a3(border), "--t-edge-a": a3(A.spec),
     "--t-wash-c": wc, "--t-wash-c2": mesh ? hexOf(mesh) : wc, "--t-wash-a": a3(washAlpha), "--t-wash-img": washImg,
     "--t-glow-c": hexOf(inp.glowColor ? hexToRgb(hex6(inp.glowColor)) : mesh ?? washColor), "--t-glow-a": a3(glowAlpha), "--t-glow-blur": `${glowBlur}px`, "--t-glow": glowShadow,
-    "--t-decor-a": a3(decorA), "--t-grain-a": a3(grainA),
+    "--t-decor-a": a3(decorA), "--t-grain-a": a3(grainA), "--t-after-img": afterImg, "--t-after-a": a3(afterA),
     "--t-fg": hexOf(fgRgb),
   };
-  return { dark, base, accent, onAccent, washAlpha, glowAlpha, vars, adjustments, measures, surfaces };
+  return { dark, base, accent, onAccent, washAlpha, glowAlpha, washAnim, vars, adjustments, measures, surfaces };
 }
 
 /** قراءة سطر لكل تعديل آلي (للعرض الشفاف في الإعدادات). */

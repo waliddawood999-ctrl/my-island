@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { alertShake, dur, ease, islandSpring, paletteVariants, useMotionLevel, sectionVariants, spring, swapVariants, tap } from "../../motion";
 import { i } from "../../i18n";
 import { useResolvedTheme, useSettings } from "../../useSettings";
+import { shapeRadius } from "../../appearance";
 import { PANEL as PANEL_TOKEN, PANEL_PALETTE, PEEK, PILL as PILL_TOKEN } from "../../tokens";
 import { useMedia, mediaTitle } from "../../useMedia";
 import { useBattery } from "../../useBattery";
@@ -142,7 +143,9 @@ export function Pill() {
   // مقاس الحبة المنكمشة من الإعدادات؛ k = الارتفاع/32 يقيس الخط والعيون والأيقونات معًا (بلا تشوّه).
   const pill = { w: clampN(settings.pillWidth, PILL_TOKEN.minW, PILL_TOKEN.maxW, PILL_DEFAULT.w), h: clampN(settings.pillHeight, PILL_TOKEN.minH, PILL_TOKEN.maxH, PILL_DEFAULT.h) };
   // نصف قطر الحبة: pillRadius=0 ⇒ كبسولة كاملة (نصف الارتفاع)، وإلا مقيّد بنصف الارتفاع.
-  const pillR = settings.pillRadius && settings.pillRadius > 0 ? Math.min(settings.pillRadius, pill.h / 2) : pill.h / 2;
+  // الشكل قائد (docs/THEMES.md): حزمة شكل تفرض نصف القطر ما لم يضبطه المستخدم صراحةً.
+  const shapePill = shapeRadius(settings.pillRadius ?? 0, 0, settings.fx?.shape.pillR ?? null);
+  const pillR = shapePill !== null ? Math.min(shapePill, pill.h / 2) : settings.pillRadius && settings.pillRadius > 0 ? Math.min(settings.pillRadius, pill.h / 2) : pill.h / 2;
   const k = pill.h / 32;
   const ic = (n: number) => Math.round(n * k);
   const [time, setTime] = useState(() => fmtTime(fmt));
@@ -255,7 +258,8 @@ export function Pill() {
   // الإطلالة التفاعلية: جسم الرئيسية = peekHeight + شريط التبويبات؛ أي تبويب آخر ⇒ جسم أطول قابل للتمرير. سقف مطلق PEEK.maxW×maxH (docs/MOTION.md §الإطلالة).
   const peekBase = { w: clampN(settings.peekWidth, 240, PEEK.maxW, 460), h: clampN(settings.peekHeight, 72, 200, 148) };
   const peekSz = { w: peekBase.w, h: Math.min(PEEK.maxH, peekTabId === "home" ? peekBase.h + PEEK.tabsH : Math.max(peekBase.h + PEEK.tabsH, PEEK.tabBodyH)) };
-  const peekR = clampN(settings.peekRadius, 12, 60, 30), panelR = clampN(settings.panelRadius, 16, 60, 34);
+  const peekR = shapeRadius(settings.peekRadius, 30, settings.fx?.shape.peekR ?? null) ?? clampN(settings.peekRadius, 12, 60, 30);
+  const panelR = shapeRadius(settings.panelRadius, 34, settings.fx?.shape.panelR ?? null) ?? clampN(settings.panelRadius, 16, 60, 34);
   const speed = normSpeed(settings.motionSpeed);
   const hoverZoneKey = settings.hoverZone ?? "island";
 
@@ -591,7 +595,8 @@ export function Pill() {
         {media.cover && (settings.artworkBackdrop ?? true) && (settings.playerLayout ?? "compact") !== "minimal" && (
           <>
             <div aria-hidden data-testid="artwork-backdrop" style={{
-              position: "absolute", inset: -40, backgroundImage: `url(${media.cover})`, backgroundSize: "cover", backgroundPosition: "center", filter: "blur(30px) saturate(1.5)", pointerEvents: "none",
+              position: "absolute", inset: settings.fx?.hero ? "-24px -24px auto -24px" : -40, height: settings.fx?.hero ? "58%" : undefined, backgroundImage: `url(${media.cover})`, backgroundSize: "cover", backgroundPosition: "center", filter: `blur(${settings.fx?.hero ? 18 : 30}px) saturate(1.5)`, pointerEvents: "none",
+              ...(settings.fx?.hero ? { WebkitMaskImage: "linear-gradient(180deg, #000 0%, transparent 100%)", maskImage: "linear-gradient(180deg, #000 0%, transparent 100%)" } : {}),
               opacity: (peek && M.currentCard === "player") || (open && curTab === "home") ? ((settings.themeMaterial ?? "glass") === "solid" ? 0.45 : 0.35) : 0,
               transition: `opacity ${reduceUI ? 150 : 360}ms ease`,
             }} />
