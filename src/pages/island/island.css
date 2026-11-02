@@ -197,3 +197,37 @@ html, body, #root {
 .pk-dot[data-on="false"] { width: 4px; }
 :root[data-theme="light"] .pk-dot { background: rgba(13, 16, 23, 0.25); }
 :root[data-theme="light"] .pk-dot[data-on="true"] { background: #0d1017; }
+
+/* أزرار المشغّل المدمجة داخل الإطلالة (P) */
+.pl-ghost.pl-sm { width: 30px; height: 30px; }
+.pl-play.pl-sm { width: 38px; height: 38px; }
+
+/* ───────── شريط التقديم (P · docs/MOTION.md §المصغّرة والتقديم) ───────── */
+.sk { position: relative; display: flex; align-items: center; outline: none; }
+.sk-track { width: 100%; background: rgb(255 255 255 / .16); overflow: hidden; transform-origin: center; transition: transform 140ms var(--ease); }
+:root[data-theme="light"] .sk-track { background: rgb(13 16 23 / .14); }
+.sk-fill { width: 100%; height: 100%; transform-origin: left; border-radius: inherit; }
+.sk-knob { position: absolute; top: 50%; width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px; border-radius: 999px; opacity: 0; transition: opacity 140ms var(--ease); pointer-events: none; }
+.sk:hover .sk-knob, .sk[data-drag="true"] .sk-knob, .sk:focus-visible .sk-knob { opacity: 1; }
+.sk:hover .sk-track, .sk[data-drag="true"] .sk-track { transform: scaleY(1.5); }
+.sk:focus-visible { box-shadow: 0 0 0 2px var(--player-accent, #fff); border-radius: 6px; }
+:root[data-motion="reduced"] .sk-track, :root[data-motion="off"] .sk-track, :root[data-motion="reduced"] .sk-knob, :root[data-motion="off"] .sk-knob { transition: none; }
+:root[data-motion="reduced"] .sk:hover .sk-track, :root[data-motion="off"] .sk:hover .sk-track { transform: none; }
+
+/* ───────── المصغّرة الاحترافية (P) — الأبعاد من THUMB في tokens.ts؛ التفاصيل في Thumb.tsx ───────── */
+.th { position: relative; flex: none; }
+.th-frame { position: absolute; inset: 0; z-index: 1; overflow: hidden; border-radius: var(--thumb-r, 14px); background: rgb(255 255 255 / .08);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / .14), 0 8px 22px -10px rgb(0 0 0 / .65); }
+:root[data-theme="light"] .th-frame { background: rgb(13 16 23 / .06); box-shadow: inset 0 0 0 1px rgb(13 16 23 / .12), 0 8px 22px -10px rgb(13 16 23 / .35); }
+.th-img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.th-halo { position: absolute; inset: -34%; border-radius: 50%; pointer-events: none; z-index: 0; }
+.th-blur { position: absolute; inset: -8px; width: calc(100% + 16px); height: calc(100% + 16px); object-fit: cover; border-radius: calc(var(--thumb-r, 14px) + 8px);
+  filter: blur(16px) saturate(1.4); transform: scale(1.25); opacity: .55; pointer-events: none; z-index: 0; }
+.th-ph { position: absolute; inset: 0; display: grid; place-items: center; color: rgb(255 255 255 / .45); overflow: hidden; }
+:root[data-theme="light"] .th-ph { color: rgb(13 16 23 / .4); }
+.th-shimmer { position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / .18) 50%, transparent 70%); transform: translateX(-100%); animation: th-sheen 1.2s ease-in-out infinite; }
+@keyframes th-sheen { to { transform: translateX(100%); } }
+:root[data-motion="reduced"] .th-shimmer, :root[data-motion="off"] .th-shimmer, :root[data-fallback="solid"] .th-shimmer { animation: none; display: none; }
+/* شارة المدّة: سطح داكن شبه شفاف + حلقة ولمعة علوية (بلا backdrop-filter كبقية الجزيرة) */
+.th-badge { position: absolute; right: 5px; bottom: 5px; z-index: 2; padding: 1px 7px; border-radius: 999px; font-size: 10px; font-weight: 700; line-height: 1.5; color: #fff;
+  font-variant-numeric: tabular-nums; background: rgb(12 13 18 / .58); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .16), inset 0 1px 0 rgb(255 255 255 / .2); text-shadow: none; }

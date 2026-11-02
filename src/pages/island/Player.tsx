@@ -8,6 +8,9 @@ import { i } from "../../i18n";
 import type { Settings } from "../../settings";
 import { mediaTitle, type MediaView } from "../../useMedia";
 import { classifySource, vibrant } from "../../mediaSource";
+import { THUMB } from "../../tokens";
+import { canSeekNow, clampFrac, fmtTime, fracFromPointer, keySeek, secondsFromFrac } from "../../seek";
+import { Thumb } from "./Thumb";
 
 // المشغّل (T03): عناصر مشتركة بين اللمحة واللوحة والحبة — غلاف، شارة مصدر، شريط تقدّم، أزرار، مؤشر صوتي، لون إبراز من الغلاف.
 // البيانات من GSMTC عبر media.rs (media_now/media:update/media:cover/media_control/media_seek) — لا أوامر جديدة.
@@ -60,10 +63,7 @@ export function usePos(m: MediaView, active: boolean): number {
   return m.info.duration > 0 ? Math.min(Math.max(0, base), m.info.duration) : Math.max(0, base);
 }
 
-const fmt = (s: number) => {
-  const t = Math.max(0, Math.floor(s));
-  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
-};
+const fmt = fmtTime;
 
 /** مستويات الطيف الحقيقية (media:bands) إن وصلت حديثًا؛ وإلا null فيُستعمل التحريك الاصطناعي. */
 function useBands(on: boolean) {
@@ -154,51 +154,72 @@ export function SourceBadge({ aumid, name }: { aumid: string; name: string }) {
   );
 }
 
-/** الغلاف: نصف قطر 24٪ (لمحة) / 18٪ (لوحة) من حجمه، وظل بلون الإبراز. */
-export function Artwork({ cover, size, radiusPct, accent }: { cover: string | null; size: number; radiusPct: number; accent: string }) {
+/**
+ * شريط التقديم/التأخير (P): نقر + سحب (معاينة حيّة أثناء السحب والتثبيت عند الإفلات) + لوحة مفاتيح، مع الزمنين (الحالي/المتبقي) تحته.
+ * يستعمل خط زمن GSMTC عبر media_seek (الموضع يُقرأ من usePos). المصدر الذي لا يدعم البحث ⇒ الشريط معطَّل بصريًا (لا مؤشر ولا استجابة ولا وعد كاذب).
+ * لا rAF ولا مؤقّت دائم: المؤقّت الوحيد = تثبيت 1.5ث بعد الإفلات كي لا يرتدّ الشريط قبل وصول الموضع الجديد.
+ */
+export function SeekBar({ pos, info, accent, h, reduce, showBar = true, showTimes = true }: { pos: number; info: MediaView["info"]; accent: string; h: number; reduce: boolean; showBar?: boolean; showTimes?: boolean }) {
+  const dur = info.duration;
+  const can = canSeekNow(info);
+  const [drag, setDrag] = useState<number | null>(null);
+  const dragRef = useRef<number | null>(null);
+  const [held, setHeld] = useState<number | null>(null);
+  const holdT = useRef<number | undefined>(undefined);
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => () => window.clearTimeout(holdT.current), []);
+  const commit = (sec: number | null) => {
+    if (sec == null) return;
+    setHeld(sec);
+    window.clearTimeout(holdT.current);
+    holdT.current = window.setTimeout(() => setHeld(null), 1500);
+    invoke("media_seek", { seconds: sec }).catch(() => {});
+  };
+  const fracAt = (e: React.PointerEvent) => { const r = box.current?.getBoundingClientRect(); return r ? fracFromPointer(e.clientX, r.left, r.width) : 0; };
+  const shown = drag !== null ? drag * dur : held ?? pos;
+  const p = dur > 0 ? clampFrac(shown / dur) : 0;
+  const stop = (e: React.SyntheticEvent) => e.stopPropagation();
+  const title = can ? undefined : i("هذا المصدر لا يدعم التقديم والتأخير", "This source doesn't support seeking");
   return (
-    <div data-testid="artwork" style={{ width: size, height: size, flex: "none", borderRadius: size * radiusPct, overflow: "hidden", background: "rgba(255,255,255,.1)", boxShadow: `0 10px 30px -6px ${accent}bb, 0 0 0 1px rgba(255,255,255,.08)` }}>
-      {cover ? <img src={cover} alt="" draggable={false} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-        : <div style={{ width: "100%", height: "100%", display: "grid", placeItems: "center", color: "rgba(255,255,255,.4)" }}><Music size={Math.round(size * 0.4)} /></div>}
-    </div>
-  );
-}
-
-/** شريط التقدّم: LTR دائمًا، مسار rgba(255,255,255,.16) + تعبئة بلون الإبراز بـscaleX ينتقل 1ث خطيًا (بلا rAF). */
-export function Progress({ pos, dur, playing, accent, h, reduce, onSeek }: { pos: number; dur: number; playing: boolean; accent: string; h: number; reduce: boolean; onSeek?: (frac: number) => void }) {
-  const p = dur > 0 ? Math.min(1, Math.max(0, pos / dur)) : 0;
-  return (
-    <div dir="ltr" data-testid="progress" onClick={(e) => {
-      if (!onSeek) return; e.stopPropagation();
-      const r = e.currentTarget.getBoundingClientRect(); onSeek(Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)));
-    }} style={{ height: Math.max(h, 12), display: "flex", alignItems: "center", cursor: onSeek ? "pointer" : "default" }}>
-      <div style={{ width: "100%", height: h, borderRadius: h, background: "rgba(255,255,255,.16)", overflow: "hidden" }}>
-        <div style={{ width: "100%", height: "100%", borderRadius: h, background: accent, transformOrigin: "left", transform: `scaleX(${p})`, transition: playing && !reduce ? "transform 1s linear" : "none" }} />
-      </div>
-    </div>
-  );
-}
-
-export function Times({ pos, dur }: { pos: number; dur: number }) {
-  return (
-    <div dir="ltr" data-testid="times" style={{ display: "flex", justifyContent: "space-between", fontSize: 10.5, opacity: 0.6, fontVariantNumeric: "tabular-nums" }}>
-      <span>{fmt(pos)}</span><span>{dur > 0 ? `-${fmt(dur - pos)}` : "--:--"}</span>
+    <div data-testid="seekbar" data-can-seek={can ? "true" : "false"} title={title} dir="ltr" onClick={stop} onMouseDown={stop} style={{ display: "flex", flexDirection: "column", gap: 0, opacity: can ? 1 : 0.55 }}>
+      {showBar && (
+        <div
+          ref={box} className="sk" data-drag={drag !== null ? "true" : "false"}
+          role="slider" aria-label={i("موضع التشغيل", "Playback position")} aria-valuemin={0} aria-valuemax={Math.round(dur)} aria-valuenow={Math.round(shown)} aria-disabled={!can} tabIndex={can ? 0 : -1}
+          style={{ height: Math.max(h + 14, 20), cursor: can ? "pointer" : "default", touchAction: "none" }}
+          onPointerDown={(e) => { if (!can || e.button !== 0) return; e.stopPropagation(); e.currentTarget.setPointerCapture(e.pointerId); const f = fracAt(e); dragRef.current = f; setDrag(f); }}
+          onPointerMove={(e) => { if (dragRef.current === null) return; const f = fracAt(e); dragRef.current = f; setDrag(f); }}
+          onPointerUp={(e) => { const f = dragRef.current; if (f === null) return; dragRef.current = null; setDrag(null); e.currentTarget.releasePointerCapture?.(e.pointerId); commit(secondsFromFrac(fracAt(e), dur)); }}
+          onPointerCancel={() => { dragRef.current = null; setDrag(null); }}
+          onKeyDown={(e) => { if (!can) return; const t = keySeek(e.key, shown, dur); if (t != null) { e.preventDefault(); e.stopPropagation(); commit(t); } }}
+        >
+          <div className="sk-track" style={{ height: h, borderRadius: h }}>
+            <div className="sk-fill" style={{ background: accent, transform: `scaleX(${p})`, transition: can && info.playing && !reduce && drag === null && held === null ? "transform 1s linear" : "none" }} />
+          </div>
+          {can && <span aria-hidden className="sk-knob" style={{ left: `${p * 100}%`, background: "#fff", boxShadow: `0 0 0 3px color-mix(in srgb, ${accent} 45%, transparent)` }} />}
+        </div>
+      )}
+      {showTimes && (
+        <div data-testid="times" style={{ display: "flex", justifyContent: "space-between", fontSize: 10.5, opacity: 0.62, fontVariantNumeric: "tabular-nums" }}>
+          <span data-testid="time-now">{fmt(shown)}</span><span data-testid="time-total">{dur > 0 ? fmt(dur) : "--:--"}</span>
+        </div>
+      )}
     </div>
   );
 }
 
 /** أزرار التحكم (LTR، gap 14): سابق/تشغيل-إيقاف/تالٍ — الضغط لا يفتح الجزيرة ولا يغلقها. */
-export function Controls({ info, accent }: { info: MediaView["info"]; accent?: string }) {
+export function Controls({ info, accent, compact = false }: { info: MediaView["info"]; accent?: string; compact?: boolean }) {
   const ctl = (e: React.MouseEvent, action: string) => { e.stopPropagation(); invoke("media_control", { action }).catch(() => {}); };
   void accent;
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
   return (
-    <div dir="ltr" data-testid="player-controls" onClick={stop} onMouseDown={stop} style={{ display: "flex", alignItems: "center", gap: 14 }}>
-      <button className="pl-btn pl-ghost" disabled={!info.can_prev} onClick={(e) => ctl(e, "prev")} aria-label={i("السابق", "Previous")} title={i("السابق", "Previous")}><SkipBack size={16} fill="currentColor" /></button>
-      <button className="pl-btn pl-play" disabled={info.kind === "audio"} onClick={(e) => ctl(e, "toggle")} aria-label={info.playing ? i("إيقاف مؤقت", "Pause") : i("تشغيل", "Play")} title={info.playing ? i("إيقاف مؤقت", "Pause") : i("تشغيل", "Play")}>
+    <div dir="ltr" data-testid="player-controls" onClick={stop} onMouseDown={stop} style={{ display: "flex", alignItems: "center", gap: compact ? 6 : 14 }}>
+      <button className={`pl-btn pl-ghost${compact ? " pl-sm" : ""}`} disabled={!info.can_prev} onClick={(e) => ctl(e, "prev")} aria-label={i("السابق", "Previous")} title={i("السابق", "Previous")}><SkipBack size={16} fill="currentColor" /></button>
+      <button className={`pl-btn pl-play${compact ? " pl-sm" : ""}`} disabled={info.kind === "audio"} onClick={(e) => ctl(e, "toggle")} aria-label={info.playing ? i("إيقاف مؤقت", "Pause") : i("تشغيل", "Play")} title={info.playing ? i("إيقاف مؤقت", "Pause") : i("تشغيل", "Play")}>
         {info.playing ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" style={{ marginInlineStart: 2 }} />}
       </button>
-      <button className="pl-btn pl-ghost" disabled={!info.can_next} onClick={(e) => ctl(e, "next")} aria-label={i("التالي", "Next")} title={i("التالي", "Next")}><SkipForward size={16} fill="currentColor" /></button>
+      <button className={`pl-btn pl-ghost${compact ? " pl-sm" : ""}`} disabled={!info.can_next} onClick={(e) => ctl(e, "next")} aria-label={i("التالي", "Next")} title={i("التالي", "Next")}><SkipForward size={16} fill="currentColor" /></button>
     </div>
   );
 }
@@ -214,57 +235,55 @@ const Empty = ({ icon }: { icon?: ReactNode }) => (
 
 const sub = (info: MediaView["info"]) => [info.artist, info.album].filter(Boolean).join(" · ");
 
-/** بطاقة المشغّل في اللمحة: غلاف (50/64/مخفي) + عنوان 14/600 + فنان 12 + تقدّم 3px + وقت + مؤشر. */
+const tkey = (info: MediaView["info"]) => `${info.source}|${info.title}|${info.artist}|${info.album}`;
+const thumbH = (layout: string) => (layout === "large" ? THUMB.hLarge : THUMB.h);
+
+/** بطاقة المشغّل في اللمحة (تفاعلية كاملة): مصغّرة (THUMB) + عنوان/فنان + أزرار التحكم + شريط تقديم بالزمنين. */
 export function PlayerPeek({ media, s, accent, reduce, visible }: PlayerProps) {
   const { info, cover } = media;
   const layout = s.playerLayout ?? "compact";
   const pos = usePos(media, visible);
   if (!info.session) return <Empty />;
-  const art = layout === "minimal" ? 0 : layout === "large" ? 64 : 50;
   const viz = s.visualizer ?? "bars";
   return (
-    <div data-testid="player-peek" style={{ display: "flex", alignItems: "center", gap: 14, height: "100%", ["--player-accent" as string]: accent }}>
-      {art > 0 && <Artwork cover={cover} size={art} radiusPct={0.24} accent={accent} />}
-      <div style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: 3 }}>
-        {(s.showSourceBadge ?? true) && <div><SourceBadge aumid={info.source} name={info.source_name} /></div>}
-        <div dir="auto" className="truncate" style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.25 }}>{mediaTitle(info)}</div>
-        <div dir="auto" className="truncate" style={{ fontSize: 12, opacity: 0.62 }}>{sub(info) || " "}</div>
-        {(s.showProgress ?? true) && <Progress pos={pos} dur={info.duration} playing={info.playing} accent={accent} h={3} reduce={reduce} />}
-        {(s.showPlaybackTime ?? true) && (s.showProgress ?? true) && <Times pos={pos} dur={info.duration} />}
+    <div data-testid="player-peek" style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 8, height: "100%", ["--player-accent" as string]: accent }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 14, minHeight: 0 }}>
+        {layout !== "minimal" && <Thumb cover={cover} coverW={media.coverW} coverH={media.coverH} session={info.session} trackKey={tkey(info)} source={info.source} sourceName={info.source_name} duration={info.duration} accent={accent} reduce={reduce} h={thumbH(layout)} />}
+        <div style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: 3 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+            {(s.showSourceBadge ?? true) ? <SourceBadge aumid={info.source} name={info.source_name} /> : <span />}
+            <Visualizer kind={viz} count={5} playing={info.playing} visible={visible} reduce={reduce} accent={accent} w={3} h={14} />
+          </div>
+          <div dir="auto" className="truncate" style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.25 }}>{mediaTitle(info)}</div>
+          <div dir="auto" className="truncate" style={{ fontSize: 12, opacity: 0.62 }}>{sub(info) || " "}</div>
+        </div>
+        <Controls info={info} compact />
       </div>
-      <Visualizer kind={viz} count={5} playing={info.playing} visible={visible} reduce={reduce} accent={accent} w={4} h={26} />
+      {(s.showProgress ?? true) && <SeekBar pos={pos} info={info} accent={accent} h={4} reduce={reduce} showTimes={s.showPlaybackTime ?? true} />}
     </div>
   );
 }
 
-/** المشغّل في اللوحة (تبويب الرئيسية): غلاف 112/150/مخفي + عنوان 20/650 + «فنان · ألبوم» 13 + تقدّم 5px + أزرار. */
+/** المشغّل في اللوحة (تبويب الرئيسية): نفس المصغّرة (THUMB) + عنوان 20/650 + «فنان · ألبوم» + شريط تقديم + أزرار. */
 export function PlayerPanel({ media, s, accent, reduce, visible }: PlayerProps) {
   const { info, cover, sources } = media;
   const layout = s.playerLayout ?? "compact";
   const pos = usePos(media, visible);
-  const [seek, setSeek] = useState<number | null>(null);
   if (!info.session) return <Empty />;
-  const art = layout === "minimal" ? 0 : layout === "large" ? 150 : 112;
-  const shown = seek ?? pos;
-  const onSeek = info.can_seek && info.duration > 0 ? (f: number) => {
-    const t = f * info.duration; setSeek(t); window.setTimeout(() => setSeek(null), 1200);
-    invoke("media_seek", { seconds: t }).catch(() => {});
-  } : undefined;
   return (
     <div data-testid="player-panel" style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 10, height: "100%", ["--player-accent" as string]: accent }}>
       <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-        {art > 0 && <Artwork cover={cover} size={art} radiusPct={0.18} accent={accent} />}
+        {layout !== "minimal" && <Thumb cover={cover} coverW={media.coverW} coverH={media.coverH} session={info.session} trackKey={tkey(info)} source={info.source} sourceName={info.source_name} duration={info.duration} accent={accent} reduce={reduce} h={thumbH(layout)} />}
         <div style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
             {(s.showSourceBadge ?? true) ? <SourceBadge aumid={info.source} name={info.source_name} /> : <span />}
             <Visualizer kind={s.visualizer ?? "bars"} count={7} playing={info.playing} visible={visible} reduce={reduce} accent={accent} w={4} h={20} />
           </div>
           <div dir="auto" className="truncate" style={{ fontSize: 20, fontWeight: 650, lineHeight: 1.2 }}>{mediaTitle(info)}</div>
-          <div dir="auto" className="truncate" style={{ fontSize: 13, opacity: 0.65 }}>{sub(info) || " "}</div>
-          {(s.showProgress ?? true) && <div style={{ marginTop: 4 }}><Progress pos={shown} dur={info.duration} playing={info.playing && seek === null} accent={accent} h={5} reduce={reduce} onSeek={onSeek} /></div>}
-          {(s.showPlaybackTime ?? true) && (s.showProgress ?? true) && <Times pos={shown} dur={info.duration} />}
+          <div dir="auto" className="truncate" style={{ fontSize: 13, opacity: 0.65 }}>{sub(info) || " "}</div>
         </div>
       </div>
+      {(s.showProgress ?? true) && <SeekBar pos={pos} info={info} accent={accent} h={5} reduce={reduce} showTimes={s.showPlaybackTime ?? true} />}
       <div style={{ display: "flex", justifyContent: "center" }}><Controls info={info} /></div>
       {sources.length > 1 && (
         <div className="flex flex-wrap items-center justify-center gap-1.5" style={{ fontSize: 11 }}>

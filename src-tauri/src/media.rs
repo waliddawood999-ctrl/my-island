@@ -260,7 +260,9 @@ mod win_impl {
 
     pub fn seek(picked: Option<String>, alt: bool, seconds: f64) -> Result<bool, String> {
         let s = pick_session(&manager()?, &picked, alt).ok_or("no media session")?;
-        s.TryChangePlaybackPositionAsync((seconds * TICKS) as i64)
+        // الموضع المعروض نسبي لبداية الخط الزمني (pos − start)؛ GSMTC يريد الموضع المطلق ⇒ نُضيف StartTime (صفر لمعظم المصادر، لا صفر لبعض البثوث).
+        let start = s.GetTimelineProperties().ok().and_then(|t| t.StartTime().ok()).map(|t| t.Duration).unwrap_or(0);
+        s.TryChangePlaybackPositionAsync(start + (seconds * TICKS) as i64)
             .and_then(|o| o.get())
             .map_err(|e| e.to_string())
     }

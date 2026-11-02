@@ -16,5 +16,9 @@ export const springPresets: Record<SpringStyle, { stiffness: number; damping: nu
 export const PILL = { w: 220, h: 34, minW: 160, maxW: 280, minH: 28, maxH: 44 } as const;
 /** اللوحة: مقاس ثابت لكل عرض (لا قفزات بين التبويبات؛ المحتوى الأطول يمرّر داخليًا). */
 export const PANEL = { w: 720, h: 320 } as const;
+/** مصغّرة الوسائط (P): ارتفاع واحد في الإطلالة واللوحة معًا (docs/MOTION.md §المصغّرة). فيديو 16:9 ⇒ العرض = ارتفاع×16/9 · صوت مربّع. hLarge لتخطيط large. */
+export const THUMB = { h: 72, hLarge: 90, radius: 14, videoRatio: 16 / 9, ambientMax: 0.5 } as const;
+/** الإطلالة التفاعلية (P): شريط تبويبات داخلها (tabsH) + جسم الرئيسية = peekHeight؛ تبويب آخر ⇒ جسم أطول قابل للتمرير (tabBodyH). سقف مطلق maxW×maxH أصغر من اللوحة الافتراضية. */
+export const PEEK = { tabsH: 40, tabBodyH: 232, maxW: 560, maxH: 240 } as const;
 export const PANEL_PALETTE = { w: 640, h: 440 } as const;
 export const elevation = [1, 2, 3] as const;
