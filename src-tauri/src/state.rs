@@ -97,7 +97,13 @@ pub fn defaults() -> Map<String, Value> {
         "weatherCity": "madinah",
         "soundChoice": "chime",
         "soundVolume": 70,
-        "prayerAlerts": true
+        "prayerAlerts": true,
+        "updateAutoCheck": true,
+        "settingsVersion": 3,
+        "showCountdowns": true,
+        "countdowns": [],
+        "showWorldClock": false,
+        "worldClocks": []
     }) else { unreachable!() };
     m
 }
@@ -129,6 +135,66 @@ pub fn migrate_t03(conn: &Connection) {
     if let Some(Value::Bool(b)) = get("reduceMotion") {
         put("reduceMotion", json!(if b { "always" } else { "system" }));
     }
+}
+
+/// مفاتيح واجهة Settings في src/settings.ts التي لا افتراضي لها في DEFAULTS — (المفتاح، نوع JSON). uploadKey مستثنى عمدًا (الأسرار لا تدخل الإعدادات).
+const EXTRA_KEYS: &[(&str, &str)] = &[
+    ("autostart", "bool"), ("monitor", "number"), ("offsetX", "number"), ("style", "string"),
+    ("opacityRest", "number"), ("opacityOpen", "number"), ("opacityThrough", "number"),
+    ("gpuAcceleration", "bool"), ("autoHide", "bool"), ("showOnDesktop", "bool"), ("hideInFullscreen", "bool"),
+    ("hideForApps", "array"), ("keepForApps", "array"), ("hideForAppsMode", "string"), ("through", "bool"),
+    ("captureVisible", "bool"), ("showClock", "bool"), ("showBattery", "bool"), ("mediaPill", "string"),
+    ("homePlayer", "string"), ("liquidSpectrum", "bool"), ("mascot", "string"), ("character", "string"),
+    ("characterMusic", "string"), ("screenshotDir", "string"), ("recordingDir", "string"), ("uploadService", "string"),
+    ("clipLimit", "number"), ("clipExcludedApps", "array"), ("pasteOnClick", "bool"),
+    ("moduleMedia", "bool"), ("moduleShelf", "bool"), ("moduleLauncher", "bool"), ("moduleControls", "bool"), ("moduleWeather", "bool"),
+    ("controlsNet", "string"), ("showVolume", "bool"), ("showLayout", "bool"), ("showCaps", "bool"),
+    ("obsStatus", "bool"), ("obsPort", "number"), ("agentsStatus", "bool"), ("agentsAsk", "bool"),
+    ("showPrivacy", "bool"), ("privacyIndicator", "bool"), ("showMeetings", "bool"),
+    ("showVpn", "bool"), ("vpnLookupIp", "bool"), ("showNotifications", "bool"), ("notifyMuted", "array"),
+    ("paletteFiles", "bool"), ("paletteFolders", "bool"), ("searchEngine", "string"), ("searchUrl", "string"),
+    ("workspaces", "array"), ("weatherLat", "number"), ("weatherLon", "number"), ("weatherUnits", "string"),
+    ("showWeather", "bool"), ("weatherAlerts", "bool"), ("aiModels", "array"), ("sttLanguage", "string"), ("dictatePaste", "bool"),
+    ("hotkeyToggle", "string"), ("hotkeyChat", "string"), ("hotkeyDictate", "string"), ("hotkeyOcr", "string"),
+    ("hotkeyClipboard", "string"), ("hotkeyPlainPaste", "string"), ("hotkeyMic", "string"), ("hotkeyQr", "string"),
+    ("hotkeyThrough", "string"), ("hotkeyVpn", "string"),
+];
+
+fn json_kind(v: &Value) -> &'static str {
+    match v {
+        Value::Null => "null",
+        Value::Bool(_) => "bool",
+        Value::Number(_) => "number",
+        Value::String(_) => "string",
+        Value::Array(_) => "array",
+        Value::Object(_) => "object",
+    }
+}
+
+/// يرشّح مقطع إعدادات مفتاحًا مفتاحًا: يُبقي المعروف (DEFAULTS + EXTRA_KEYS) بنفس نوع JSON فقط.
+/// ما فيه ':' (kv مشترك مع بيانات أخرى) أو المجهول أو سيّئ النوع يُسقَط ويُسجَّل بـ eprintln! دون رفض بقية المقطع.
+pub fn filter_patch(patch: Map<String, Value>) -> Map<String, Value> {
+    let defs = defaults();
+    let mut ok = Map::new();
+    for (k, v) in patch {
+        let want = if k.contains(':') {
+            eprintln!("settings: مفتاح مرفوض (يحوي ':'): {k}");
+            continue;
+        } else if let Some(d) = defs.get(&k) {
+            json_kind(d)
+        } else if let Some((_, t)) = EXTRA_KEYS.iter().find(|(n, _)| *n == k) {
+            *t
+        } else {
+            eprintln!("settings: مفتاح غير معروف أُسقط: {k}");
+            continue;
+        };
+        if want != json_kind(&v) {
+            eprintln!("settings: {k} أُسقط (النوع {} بدل {want})", json_kind(&v));
+            continue;
+        }
+        ok.insert(k, v);
+    }
+    ok
 }
 
 pub struct AppState {
@@ -208,6 +274,8 @@ impl AppState {
 
     /// يحفظ كل مفتاح في kv كـ JSON ويدمجه في الذاكرة؛ يعيد المقطع المطبّق.
     pub fn apply_patch(&self, patch: Map<String, Value>) -> Result<Map<String, Value>, String> {
+        let patch = filter_patch(patch);
+        if patch.is_empty() { return Ok(patch); }
         if let Some(conn) = self.db.lock().unwrap().as_mut() {
             let tx = conn.transaction().map_err(|e| e.to_string())?;
             for (k, v) in &patch {
@@ -223,5 +291,55 @@ impl AppState {
         for (k, v) in &patch { s.insert(k.clone(), v.clone()); }
         self.sync_placement(&s);
         Ok(patch)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn patch(v: Value) -> Map<String, Value> {
+        let Value::Object(m) = v else { panic!("object expected") };
+        m
+    }
+
+    #[test]
+    fn valid_patch_passes() {
+        let p = patch(json!({ "language": "en", "hoverDelayMs": 300, "motionSpeed": 1.5, "ecoMode": true, "peekCardOrder": ["player"], "monitor": 1, "workspaces": [] }));
+        assert_eq!(filter_patch(p.clone()), p);
+        assert!(filter_patch(Map::new()).is_empty());
+    }
+
+    #[test]
+    fn unknown_key_dropped_others_kept() {
+        let f = filter_patch(patch(json!({ "language": "ar", "evil": 1 })));
+        assert_eq!(f, patch(json!({ "language": "ar" })));
+    }
+
+    #[test]
+    fn colon_keys_dropped() {
+        assert!(filter_patch(patch(json!({ "palette:recent": "[]", "note:body": "x" }))).is_empty());
+        let f = filter_patch(patch(json!({ "palette:recent": "[]", "language": "en" })));
+        assert_eq!(f, patch(json!({ "language": "en" })));
+    }
+
+    #[test]
+    fn wrong_type_dropped() {
+        for p in [
+            json!({ "hoverDelayMs": "250" }),
+            json!({ "ecoMode": 1 }),
+            json!({ "peekCardOrder": "player" }),
+            json!({ "autostart": "yes" }),
+            json!({ "language": null }),
+        ] {
+            assert!(filter_patch(patch(p)).is_empty());
+        }
+        let f = filter_patch(patch(json!({ "ecoMode": 1, "monitor": 2 })));
+        assert_eq!(f, patch(json!({ "monitor": 2 })));
+    }
+
+    #[test]
+    fn secrets_not_settable() {
+        assert!(filter_patch(patch(json!({ "uploadKey": "k" }))).is_empty());
     }
 }
