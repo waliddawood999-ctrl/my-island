@@ -544,7 +544,7 @@ export function Pill() {
     )}
     {id === "tools" && (
       <div className="min-h-0 flex-1">
-        <ToolsTab />
+        <ToolsTab settings={settings} wide={wide} onOpenTab={dockStyle ? setTabId : undefined} />
       </div>
     )}
     {id === "meetings" && (
