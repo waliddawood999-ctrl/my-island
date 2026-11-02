@@ -15,12 +15,14 @@ export type MediaInfo = {
   can_prev: boolean;
   can_next: boolean;
   can_seek: boolean;
+  /** "gsmtc" = جلسة ميديا حقيقية · "audio" = نشاط صوتي بديل بلا جلسة (بلا عنوان/تحكم) · "" = لا جلسة */
+  kind: "gsmtc" | "audio" | "";
 };
 export type MediaSource = { id: string; name: string };
 
 export const NO_MEDIA: MediaInfo = {
   session: false, source: "", source_name: "", title: "", artist: "", album: "",
-  duration: 0, position: 0, playing: false, can_prev: false, can_next: false, can_seek: false,
+  duration: 0, position: 0, playing: false, can_prev: false, can_next: false, can_seek: false, kind: "",
 };
 
 export type MediaView = { info: MediaInfo; cover: string | null; sources: MediaSource[]; at: number };

@@ -10,6 +10,7 @@ pub mod win;        // موضع/إخفاء/فوكس النافذة الرئيس�
 pub mod watchdog;   // نبض page_pong وإعادة تحميل الصفحة الصامتة
 pub mod clipboard;  // مستمع الحافظة + جدول clips
 pub mod autostart;  // مفتاح Run في ريجيستري ويندوز
+pub mod mediasel;   // اختيار جلسة الميديا (منطق نقي قابل للاختبار)
 pub mod media;      // SMTC: ما يُشغَّل الآن + التحكم
 pub mod spectrum;   // WASAPI loopback + FFT
 // pub mod player_audio;
