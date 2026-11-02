@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "tauri": "tauri",
-    "test": "npm run test:reminders && npm run test:palette && npm run test:motion && npm run test:eyes && npm run test:wow && npm run test:updater && npm run test:home && npm run test:today && npm run test:clip && npm run test:glass && npm run test:theme && npm run test:appearance && npm run test:island && npm run test:p && npm run test:arch",
+    "test": "npm run test:reminders && npm run test:palette && npm run test:motion && npm run test:eyes && npm run test:wow && npm run test:updater && npm run test:home && npm run test:today && npm run test:clip && npm run test:glass && npm run test:theme && npm run test:appearance && npm run test:island && npm run test:p && npm run test:arch && npm run test:ipc",
     "test:ui": "npm run test:tabs && npm run test:updater-ui && npm run test:quit && npm run test:settings && npm run test:lottie && npm run test:shape && npm run test:t02 && npm run test:motion-ui && npm run test:t03 && npm run test:layout && npm run test:t06 && npm run test:docking && npm run test:p-ui && npm run test:glass-ui && npm run test:themes-ui && npm run test:hit",
     "test:reminders": "node scripts/reminderParse.test.mjs",
     "test:palette": "node scripts/palette.test.mjs",
@@ -35,6 +35,7 @@
     "test:docking": "node scripts/docking.regression.cjs",
     "test:p": "node scripts/p.test.mjs",
     "test:arch": "node scripts/arch.test.mjs",
+    "test:ipc": "node scripts/ipc.integration.test.mjs",
     "test:glass-ui": "node scripts/t04.regression.cjs",
     "test:p-ui": "node scripts/p.regression.cjs",
     "test:theme": "node scripts/theme.test.mjs",
@@ -70,3 +71,4 @@
     "vite": "^6.0.0"
   }
 }
+

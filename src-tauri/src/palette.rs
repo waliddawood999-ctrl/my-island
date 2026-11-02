@@ -149,7 +149,7 @@ fn is_local_abs_path(t: &str, exists: impl Fn(&str) -> bool) -> bool {
     b.len() >= 3 && b[0].is_ascii_alphabetic() && b[1] == b':' && (b[2] == b'\\' || b[2] == b'/') && exists(t)
 }
 
-/// منطق خالص لـ open_target_ok. المسموح فقط: http(s):// وmailto: وms-settings: وshell: ومسار محلي مطلق موجود وBARE_EXES.
+/// منطق خالص لـ open_target_ok. المسموح فقط: http(s):// وftp:// وmailto:/tel:/sms: وms-settings: وshell: ومسار محلي مطلق موجود وBARE_EXES.
 /// مرفوض: فارغ، أي محرف تحكم (NUL/CR/LF…)، علامة اقتباس، UNC، file: وأي مخطط آخر.
 fn open_target_ok_with(t: &str, exists: impl Fn(&str) -> bool) -> bool {
     let t = t.trim();
@@ -160,7 +160,7 @@ fn open_target_ok_with(t: &str, exists: impl Fn(&str) -> bool) -> bool {
         return false;
     }
     let lower = t.to_ascii_lowercase();
-    for p in ["http://", "https://", "mailto:", "ms-settings:", "shell:"] {
+    for p in ["http://", "https://", "ftp://", "mailto:", "tel:", "sms:", "ms-settings:", "shell:"] {
         if let Some(rest) = lower.strip_prefix(p) {
             // الرابط/المخطط وحده بلا مضمون مرفوض، عدا ms-settings: الذي يفتح الصفحة الرئيسية للإعدادات.
             return !rest.is_empty() || p == "ms-settings:";
@@ -169,7 +169,7 @@ fn open_target_ok_with(t: &str, exists: impl Fn(&str) -> bool) -> bool {
     BARE_EXES.contains(&lower.as_str()) || is_local_abs_path(t, exists)
 }
 
-/// الأهداف المسموحة لـ open/admin/folder: http(s) وmailto: وms-settings: وshell: ومسار محلي مطلق موجود. (أمر النظام الحر يمر عبر mode="shell" فقط.)
+/// الأهداف المسموحة لـ open/admin/folder: http(s)/ftp وmailto:/tel:/sms: وms-settings: وshell: ومسار محلي مطلق موجود. (أمر النظام الحر يمر عبر mode="shell" فقط.)
 pub fn open_target_ok(t: &str) -> bool {
     open_target_ok_with(t, |p| std::path::Path::new(p).exists())
 }
@@ -386,8 +386,16 @@ mod tests {
     }
 
     #[test]
+    fn every_supported_launcher_link_can_be_opened() {
+        for raw in ["https://example.com/a", "http://example.com", "ftp://example.com/file", "mailto:a@example.com", "tel:+966500000000", "sms:+966500000000", "FTP://example.com/a"] {
+            let link = crate::launcher::normalize_link(raw).unwrap();
+            assert!(open_target_ok_with(&link, |_| false), "launcher accepted but opener rejected: {link}");
+        }
+    }
+
+    #[test]
     fn open_target_rejects_dangerous() {
-        for t in ["", "   ", "file:///C:/Windows/System32/calc.exe", "\\\\server\\share\\a.exe", "//server/share/a.exe", "javascript:alert(1)", "vbscript:x", "data:text/html,x", "search-ms:query=a&crumb=location:\\\\evil\\s", "C:\\a\" /e,\\\\evil\\s", "C:\\a\nb", "C:\\a\rb", "C:\\a\0b", "https://x.y/\"", "http://", "relative\\path.exe", "cmd.exe", "ftp://h/x"] {
+        for t in ["", "   ", "file:///C:/Windows/System32/calc.exe", "\\\\server\\share\\a.exe", "//server/share/a.exe", "javascript:alert(1)", "vbscript:x", "data:text/html,x", "search-ms:query=a&crumb=location:\\\\evil\\s", "C:\\a\" /e,\\\\evil\\s", "C:\\a\nb", "C:\\a\rb", "C:\\a\0b", "https://x.y/\"", "http://", "relative\\path.exe", "cmd.exe", "ftp://", "tel:", "sms:", "ftp://h/\"", "tel:+123\n456", "sms:+123\r456"] {
             assert!(!ok(t), "{t:?}");
         }
     }
@@ -449,3 +457,4 @@ mod tests {
         assert!(sanitize_workspaces(&serde_json::json!("x")).is_empty());
     }
 }
+

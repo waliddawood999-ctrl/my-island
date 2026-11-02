@@ -9,7 +9,7 @@ on:
         default: false
   # الدفع إلى main = بناء فقط. النشر يدوي فقط من main مع تفعيل publish.
   push:
-    branches: [main]
+    branches: [main, fix/verified-regressions-2026-11-02]
 
 permissions:
   contents: read

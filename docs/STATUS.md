@@ -472,3 +472,29 @@
 - الملفات: `src/pages/settings/{fields,main,TodayExtras,Workspaces}.tsx`، `src/index.css` (`.sh-range`)، `scripts/settings.regression.cjs` (بنية جديدة + تأكيدات شكل shadcn).
 - التحقق: `npm run build` ✓ · `cargo check --target x86_64-pc-windows-gnu` ✓ · `npm run test:settings` ALL PASSED · لقطات Playwright داكن/فاتح/زجاج/RTL.
 - لم يُتحقق منه (يحتاج ويندوز): المظهر داخل WebView2 الفعلي فوق أكريليك النظام.
+
+## 2026-11-02 — isolated regression fixes (verification pending on Windows)
+- Base: ca0b8e9fee74e5ed03fec6652366d8e9e379afc9; rollback branch: backup/pre-fixes-2026-11-02-ca0b8e9; existing installer: my-island-releases/v1.0.70. No schema/data migration or release publication.
+- Registered system_accent/wallpaper_color in the ACL manifest and granted the four shared useSettings appearance readers to main/settings/overlay/editor, including media_now/system_transparency.
+- Aligned the opener with the launcher's existing ftp/tel/sms links. Kept quote/control-character, UNC, file:, unknown-scheme and non-existing local-path rejection; added Rust cross-module regression cases.
+- Added IPC registry/capability regression (fails on the original snapshot, passes after the fix), plus a Windows-only native WebView2 test for command permissions, real settings window, persistence across restart, heartbeat and app_quit.
+- Local Linux: npm run build, npm test and all 16 UI suites pass (587 UI assertions). Windows: 182 Rust tests and native debug builds passed twice. Native startup did not pass: the heartbeat watchdog restarted the process before any page could be exercised; app-scoped HKLM debug policy made CDP reachable but no page targets appeared. A third diagnostic run logs setup stages in the CI checkout only and checks all four window ACLs. Main/released installer unchanged. DO NOT MERGE/PUBLISH until native startup is verified.
+
+## 2026-11-03 — Windows verification blocked; no merge or release
+- Tested candidate: 74251dba3c44fa5efc93c3bcfb991c70e4a4fc2e; PR #16 remains draft. The user authorized applying only if verification is clean; that condition is NOT met.
+- Local validation: production frontend build, npm test, all 16 browser UI suites (587 passing checks), and shared appearance ACL checks pass. Windows Rust tests (182) and debug builds passed in the verification attempts.
+- Three native attempts did not establish a healthy app startup. Run 41523471146 completed setup (all CI-only stage markers reached `setup complete`), discovered an about:blank target, then timed out waiting for .island-body and the heartbeat watchdog restarted the process.
+- Exact final native error: `page.waitForSelector: Target page, context or browser has been closed` while waiting for locator('.island-body') to be visible.
+- Harness attempts: environment CDP flags; application-scoped elevated-runner HKLM CDP policy + built frontend; native window metadata selection + setup-stage diagnostics and four-window ACL coverage. No shipping startup logic was changed.
+- The Windows browser UI lane also has a harness mismatch: tabs.regression.cjs uses localhost:4173, while the workflow served localhost:1420. Its failure is not evidence of a UI regression. Canonical Tauri CLI startup/build and a correct 4173 preview lane need validation before retrying. Do not infer that the user's installed release is broken from these CI results.
+- Stop after three attempts per AGENTS.md; no further speculative startup changes, no merge, no published update, no database migration. Stable main and backup/pre-fixes-2026-11-02-ca0b8e9 preserve ca0b8e9fee74e5ed03fec6652366d8e9e379afc9; installer v1.0.70 remains available.
+
+## 2026-11-03 — user authorizes applying the fixes for a local trial
+- The user explicitly requested applying/building the update so they can update and test it themselves. This supersedes the earlier hold on applying unverified native changes for this trial; it does not establish a clean native startup result.
+- Retain the appearance ACL and launcher-link fixes and their contract/unit tests. Remove the unsuccessful experimental verification workflow and its native/trace harnesses from the change; historical run logs remain linked above. The existing Build Windows workflow is unchanged.
+- Shipping application source is unchanged from the tested candidate 74251dba3c44fa5efc93c3bcfb991c70e4a4fc2e. Native startup, visual behaviour and hardware integration still require the user's local trial. Preserve backup/pre-fixes-2026-11-02-ca0b8e9 and release v1.0.70 for rollback.
+
+## 2026-11-03 — isolated installer build started; stable branch preserved
+- Automatic approval review rejected merging PR #16 into main because native Windows startup was not verified and the trial request was not sufficient authorization for that default-branch change. No merge was performed; PR #16 is draft again.
+- Safer alternative: Build Windows now also accepts pushes to fix/verified-regressions-2026-11-02. Its existing release gate still requires manual dispatch with publish=true from main, so branch builds cannot publish to the stable auto-updater.
+- Trial installer build started from b7b5f29e0df51209e4e83c8999753a22f2c827c1: https://github.com/waliddawood999-ctrl/my-island/actions/runs/41530340099 . Pending completion; downloadable installer artifact is my-island-windows-installer. User can install manually for their requested local trial. No installed-device update is claimed. Backup branch and v1.0.70 installer remain available.
