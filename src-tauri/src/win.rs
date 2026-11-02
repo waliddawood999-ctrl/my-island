@@ -79,7 +79,6 @@ pub fn position_main(app: &AppHandle) {
     let x = base + p.offset_x;
     let y = placement_y(area.0.y, p.offset_y, scale, p.attached);
     let _ = w.set_position(PhysicalPosition::new(x, y));
-    crate::backdrop::refresh_shape(app);
 }
 
 /// حجم النافذة الثابت (CSS px): يتّسع لأكبر لوحة (720×420) + ظل وهامش. لا يُغيَّر أبدًا أثناء الحركة (T03).
@@ -96,10 +95,11 @@ fn ensure_fixed_size(w: &WebviewWindow) {
     let _ = w.set_size(PhysicalSize::new(tw, th));
 }
 
-/// الواجهة تبلّغ بشكل الجزيرة الهدف (CSS px): تُضبط المنطقة (اختبار الإصابة + شكل الأكريليك) والنافذة ثابتة لا تتغيّر.
+/// الواجهة تبلّغ بمستطيل الإصابة الهدف (CSS px): يخزَّن فقط والنافذة ثابتة لا تتغيّر.
 pub fn resize_to_island(app: &AppHandle, width: f64, height: f64, radius: Option<f64>) {
-    // المنطقة تتبع الهدف فورًا (لا خلفية نظامية تُسقَط أو تُعاد — الزجاج مرسوم في الصفحة).
-    crate::backdrop::set_shape(app, width, height, radius.unwrap_or(height / 2.0));
+    // مستطيل الإصابة الهدف فقط (hit.rs يستطلع المؤشر ويبدّل set_ignore_cursor_events عند الانتقالات). لا استدعاء نافذة هنا.
+    let _ = app;
+    crate::hit::set_shape(width, height, radius.unwrap_or(height / 2.0));
 }
 
 /// إخفاء/إظهار ناعم: الحدث island:hidden يشغّل التلاشي في الواجهة ثم يُخفى الـ HWND.
@@ -113,6 +113,8 @@ pub fn set_hidden(app: &AppHandle, hidden: bool) {
         }
         *cur = hidden;
     }
+    // hit.rs: الحبة المخفية ⇒ الخيط يُركن؛ الظهور يوقظه من تطبيق أول (قبل show كي لا تلتقط النافذة النقر لحظة).
+    if !hidden { crate::hit::set_hidden(false); }
     if hidden {
         let _ = app.emit_to(MAIN, "island:hidden", true);
         let app2 = app.clone();
@@ -120,6 +122,7 @@ pub fn set_hidden(app: &AppHandle, hidden: bool) {
             std::thread::sleep(std::time::Duration::from_millis(FADE_MS));
             let still_hidden = *app2.state::<AppState>().hidden.lock().unwrap();
             if still_hidden {
+                crate::hit::set_hidden(true);
                 if let Some(w) = app2.get_webview_window(MAIN) {
                     let _ = w.hide();
                 }

@@ -106,8 +106,8 @@ html, body, #root {
    WebView2Feedback #4945): قاعدة OKLCH من محرك الاشتقاق (--glass-base) بلا أكسنت (الأكسنت غسلة اتجاهية + توهّج مرساة)، بعتمة --glass-a (يحسبها appearance.ts::glassAlpha من الأسلوب وglassTint
    والكثافة) + حدّ 1px (6–10٪) + لمعة علوية inset + حبيبات SVG ~3.5٪ (::before) + ظل ناعم خارجي ضمن هامش المنطقة (backdrop.rs).
    data-fallback="solid" (Eco / تقليل الشفافية / «تأثيرات الشفافية» مطفأة في ويندوز) ⇒ اللون نفسه معتم بالكامل (بلا حبيبات/ظل). */
-.island-body { background-color: var(--island-bg); background-image: var(--t-wash-img, none); transition: background-color 160ms var(--ease); color: var(--island-fg); box-shadow: var(--island-ring), var(--t-glow, 0 0 0 0 transparent); }
-.island-body[data-open="true"] { box-shadow: var(--island-ring-open), var(--t-glow, 0 0 0 0 transparent); }
+.island-body { background-color: var(--island-bg); background-image: var(--t-wash-img, none); transition: background-color 160ms var(--ease); color: var(--island-fg); box-shadow: var(--island-ring); }
+.island-body[data-open="true"] { box-shadow: var(--island-ring-open); }
 /* طبقة ::after: الزخرفة المقصوصة 4–8٪ (معدن/ورق/كربون/كتّان) أو الغسلة المتحرّكة. تحت المحتوى فوق خلفية الجسم (isolation + z-index:-1) ومقصوصة بشكل الجزيرة. */
 .island-body { isolation: isolate; --veil-k: var(--sf-pill-veil, 1); --edge-k: var(--sf-pill-edge, 1); --c-edge: color-mix(in srgb, var(--c-border) clamp(0%, calc(var(--edge-k) * 100%), 100%), transparent); }
 /* تجاوزات لكل سطح (themeTune): لوحة/لمحة تأخذ قيم «اللوحة»، الحبة المنكمشة قيم «الحبة». */
@@ -131,19 +131,36 @@ html, body, #root {
 }
 :root[data-fallback="solid"] { --island-bg: var(--glass-solid); }
 
-/* الحدّ 1px (6–10٪ من لون المقدمة) + اللمعة العلوية + التوهّج + الظل الناعم (داخل هامش المنطقة حول الحبة فلا يُقصّ — backdrop.rs::EDGE_PAD_CSS) */
+/* الحدّ 1px (6–10٪ من لون المقدمة) + اللمعة العلوية فقط على الجسم؛ الظل والتوهّج في «الهالة» أدناه (طبقة مُعدّة مسبقًا لا box-shadow حيّ). */
 :root[data-material="glass"] .island-body, :root[data-fallback="solid"] .island-body {
-  box-shadow: inset 0 0 0 1px var(--c-edge, var(--c-border)), inset 0 1px 0 var(--glass-spec), var(--t-glow, 0 0 0 0 transparent), 0 5px 12px rgb(0 0 0 / calc(0.34 * var(--shadow-k)));
+  box-shadow: inset 0 0 0 1px var(--c-edge, var(--c-border)), inset 0 1px 0 var(--glass-spec);
   text-shadow: 0 1px 2px rgb(0 0 0 / 0.30);
 }
-:root[data-fallback="solid"] .island-body { box-shadow: inset 0 0 0 1px var(--c-edge, var(--c-border)), inset 0 1px 0 var(--glass-spec), var(--t-glow, 0 0 0 0 transparent); }
+:root[data-fallback="solid"] .island-body { box-shadow: inset 0 0 0 1px var(--c-edge, var(--c-border)), inset 0 1px 0 var(--glass-spec); }
 :root:is([data-material="glass"], [data-fallback="solid"])[data-theme="light"] .island-body {
-  box-shadow: inset 0 0 0 1px var(--c-edge, var(--c-border)), inset 0 1px 0 var(--glass-spec), var(--t-glow, 0 0 0 0 transparent), 0 5px 12px rgb(13 16 23 / calc(0.22 * var(--shadow-k)));
+  box-shadow: inset 0 0 0 1px var(--c-edge, var(--c-border)), inset 0 1px 0 var(--glass-spec);
   text-shadow: 0 1px 0 rgb(255 255 255 / 0.40);
 }
-:root[data-fallback="solid"][data-theme="light"] .island-body { box-shadow: inset 0 0 0 1px var(--c-edge, var(--c-border)), inset 0 1px 0 var(--glass-spec), var(--t-glow, 0 0 0 0 transparent); }
+:root[data-fallback="solid"][data-theme="light"] .island-body { box-shadow: inset 0 0 0 1px var(--c-edge, var(--c-border)), inset 0 1px 0 var(--glass-spec); }
 :root[data-material="glass"][data-glass="clear"] .island-body { text-shadow: 0 1px 3px rgb(0 0 0 / 0.45); }
 :root[data-material="glass"][data-glass="clear"][data-theme="light"] .island-body { text-shadow: 0 1px 0 rgb(255 255 255 / 0.55); }
+
+
+/* ───────── الهالة: الظل الناعم + التوهّج المرساة (ARCH — بديل box-shadow/blur الحيّين) ─────────
+   سبب البديل: box-shadow بتمويه كبير على عنصر يتغيّر مقاسه كل إطار حركة = إعادة رسم منطقة ضبابية كبيرة كل إطار؛ وقصّه بحافة المنطقة أحادية
+   البت كان يُبقي ألمع ما فيه كحلقة حادة. الآن: صورة قناع SVG (غاوسي σ=8) تُرسَم مرة واحدة وتُمدَّد بـ9-شرائح (-webkit-mask-box-image، شريحة 30px):
+   الزوايا بحجم ثابت والأضلاع تُمدَّد بلا إعادة تمويه — لا طبقة مُعاد رسمها أثناء الحركة؛ اللون من --t-glow-c والعتمة وحدها تتحرّك (opacity
+   عبر motion). قمة السطوع عند حافة الجسم ≈0.5×قوة التوهّج (الغاوسي: نصف القيمة عند الحافة) وتتلاشى إلى صفر داخل 24px — لا حلقة حادة. */
+.island-wrap { position: relative; flex: none; }
+.island-halo { position: absolute; inset: -24px; pointer-events: none; z-index: 0; }
+.island-halo::before, .island-halo::after {
+  content: ""; position: absolute; inset: 0;
+  -webkit-mask-box-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72'%3E%3Cfilter id='b' filterUnits='userSpaceOnUse' x='0' y='0' width='72' height='72'%3E%3CfeGaussianBlur stdDeviation='8'/%3E%3C/filter%3E%3Crect x='24' y='24' width='24' height='24' rx='13' fill='%23fff' filter='url(%23b)'/%3E%3C/svg%3E") 30 fill / 30px stretch;
+}
+.island-halo::before { background: rgb(0 0 0 / calc(0.34 * var(--shadow-k, 1))); transform: translateY(4px); }
+:root[data-theme="light"] .island-halo::before { background: rgb(13 16 23 / calc(0.22 * var(--shadow-k, 1))); }
+.island-halo::after { background: color-mix(in srgb, var(--t-glow-c) calc(var(--t-glow-a) * 70%), transparent); }
+:root[data-fallback="solid"] .island-halo::before { display: none; }
 
 /* حبيبات ~3.5٪: بلاطة SVG feTurbulence ثابتة (لا حركة) فوق السطح؛ تُطفأ في الاحتياط المعتم. */
 :root[data-material="glass"] .island-body::before {
