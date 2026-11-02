@@ -1,5 +1,5 @@
 // Windows-only integration against the actual Tauri process/WebView2, not mockBridge.
-// Debug binary needs the development frontend at localhost:1420. No updater install or release publishing.
+// Debug binary uses the built frontend served at localhost:1420. No updater install or release publishing.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -21,7 +21,7 @@ async function launch(round) {
   const stdout = fs.openSync(path.join(out, `stdout-${round}.log`), 'w');
   const stderr = fs.openSync(path.join(out, `stderr-${round}.log`), 'w');
   child = spawn(path.resolve('src-tauri/target/debug/my-island.exe'), [], {
-    env: { ...process.env, ISLAND_DATA_DIR: data, WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: '--remote-debugging-port=9222' },
+    env: { ...process.env, ISLAND_DATA_DIR: data, WEBVIEW2_USER_DATA_FOLDER: path.join(data, 'webview2'), WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: '--remote-debugging-port=9222' },
     stdio: ['ignore', stdout, stderr],
   });
   fs.closeSync(stdout); fs.closeSync(stderr);
@@ -41,7 +41,7 @@ async function launch(round) {
     if (main) break;
     await delay(500);
   }
-  assert.ok(main, 'main native WebView2 page not found');
+  assert.ok(main, `main native WebView2 page not found; targets: ${browser.contexts().flatMap((c) => c.pages()).map((p) => p.url()).join(', ')}`);
   await main.waitForSelector('.island-body', { timeout: 30000 });
   await main.waitForFunction(() => !!window.__TAURI_INTERNALS__, null, { timeout: 10000 });
   return main;
