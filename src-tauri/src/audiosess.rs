@@ -412,3 +412,52 @@ mod win_impl {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn gate_needs_sustained_sound_and_tolerates_short_gaps() {
+        let mut g = Gate::default();
+        assert!(!g.feed(0.5), "قراءة واحدة (نغمة إشعار) لا تكفي");
+        assert!(!g.feed(0.0));
+        assert!(!g.feed(0.5));
+        assert!(g.feed(0.5), "قراءتان متتاليتان ⇒ نشاط");
+        for _ in 0..(OFF_TICKS - 1) { assert!(g.feed(0.0), "صمت قصير لا يخفيه"); }
+        assert!(!g.feed(0.0), "صمت مستمر ⇒ يختفي");
+        assert!(!g.feed(0.005), "تحت الحدّ ليس صوتًا");
+    }
+
+    #[test]
+    fn interval_backs_off_only_after_long_silence() {
+        assert_eq!(interval_ms(true, 0), 150);
+        assert_eq!(interval_ms(false, 10), 150);
+        assert_eq!(interval_ms(false, 200), 600);
+    }
+
+    #[test]
+    fn exe_stem_variants() {
+        assert_eq!(exe_stem(r"C:\Program Files\VideoLAN\VLC\vlc.exe"), "vlc");
+        assert_eq!(exe_stem("C:/Games/Foo.EXE"), "foo");
+        assert_eq!(exe_stem(""), "");
+    }
+
+    #[test]
+    fn coverage_by_gsmtc_names() {
+        let names = vec!["Spotify".to_string(), "Chrome".to_string(), "MSEdge".to_string()];
+        assert!(covered_by_gsmtc("spotify", &names));
+        assert!(covered_by_gsmtc("chrome", &names));
+        assert!(covered_by_gsmtc("msedge", &names));
+        assert!(!covered_by_gsmtc("vlc", &names));
+        assert!(!covered_by_gsmtc("ab", &names), "اسم قصير لا يطابق بالصدفة");
+        assert!(!covered_by_gsmtc("game", &[]));
+    }
+
+    #[test]
+    fn loudest_picks_max_and_earliest_on_tie() {
+        assert_eq!(loudest(&[]), None);
+        assert_eq!(loudest(&[0.1, 0.7, 0.3]), Some(1));
+        assert_eq!(loudest(&[0.4, 0.4]), Some(0));
+    }
+}

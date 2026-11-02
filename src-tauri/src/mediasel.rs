@@ -48,3 +48,101 @@ pub fn resolve(cands: &[Candidate], picked: &Option<String>, alt_present: bool) 
         None => Resolution::Nothing,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn c(id: &str, playback: Playback, at: Option<i64>, cur: bool) -> Candidate {
+        Candidate { id: id.into(), playback, timeline_at: at, is_system_current: cur }
+    }
+    const NONE: Option<String> = None;
+
+    #[test]
+    fn empty_list_is_nothing_or_audio() {
+        assert_eq!(resolve(&[], &NONE, false), Resolution::Nothing);
+        assert_eq!(resolve(&[], &NONE, true), Resolution::Audio);
+    }
+
+    #[test]
+    fn browser_only_regression() {
+        // مسار المتصفح الشغال حاليًا: جلسة واحدة تُختار دائمًا، وبوجود بديل صوتي تبقى هي (تعمل) ولا يغلبها البديل.
+        let l = [c("Chrome", Playback::Playing, Some(100), true)];
+        assert_eq!(select_session(&l, &NONE), Some(0));
+        assert_eq!(resolve(&l, &NONE, false), Resolution::Session(0));
+        assert_eq!(resolve(&l, &NONE, true), Resolution::Session(0));
+        // متصفح متوقف مؤقتًا بلا بديل: يبقى معروضًا (متوقفًا) كما اليوم
+        let p = [c("Chrome", Playback::Paused, Some(100), true)];
+        assert_eq!(resolve(&p, &NONE, false), Resolution::Session(0));
+    }
+
+    #[test]
+    fn app_only_session() {
+        let l = [c("Spotify.exe", Playback::Playing, Some(5), false)];
+        // حتى لو لم تكن «جلسة النظام الحالية» تُختار (هذا عين الخلل المبلَّغ)
+        assert_eq!(select_session(&l, &NONE), Some(0));
+    }
+
+    #[test]
+    fn concurrent_playing_wins_over_current_and_paused() {
+        let l = [
+            c("Chrome", Playback::Paused, Some(900), true),    // جلسة النظام الحالية لكنها متوقفة
+            c("VLC", Playback::Playing, Some(100), false),     // تعمل فعلًا
+        ];
+        assert_eq!(select_session(&l, &NONE), Some(1));
+    }
+
+    #[test]
+    fn concurrent_playing_most_recent_timeline_wins() {
+        let l = [
+            c("Chrome", Playback::Playing, Some(100), true),
+            c("Spotify", Playback::Playing, Some(500), false),
+            c("Edge", Playback::Playing, Some(300), false),
+        ];
+        assert_eq!(select_session(&l, &NONE), Some(1));
+    }
+
+    #[test]
+    fn full_tie_prefers_system_current_then_first() {
+        let l = [c("A", Playback::Playing, Some(7), false), c("B", Playback::Playing, Some(7), true)];
+        assert_eq!(select_session(&l, &NONE), Some(1));
+        let l2 = [c("A", Playback::Playing, Some(7), false), c("B", Playback::Playing, Some(7), false)];
+        assert_eq!(select_session(&l2, &NONE), Some(0));
+    }
+
+    #[test]
+    fn failed_properties_session_is_not_dropped() {
+        // PlaybackInfo فشل (Other) والخط الزمني فشل (None): تبقى مرشّحة وتُختار إن كانت الوحيدة…
+        let only = [c("Game.exe", Playback::Other, None, true)];
+        assert_eq!(resolve(&only, &NONE, false), Resolution::Session(0));
+        // …وتخسر أمام جلسة سليمة تعمل
+        let mixed = [c("Game.exe", Playback::Other, None, true), c("Chrome", Playback::Playing, Some(1), false)];
+        assert_eq!(select_session(&mixed, &NONE), Some(1));
+    }
+
+    #[test]
+    fn session_without_timeline_ranks_below_dated_one_of_same_status() {
+        let l = [c("NoTimeline", Playback::Playing, None, true), c("Dated", Playback::Playing, Some(1), false)];
+        assert_eq!(select_session(&l, &NONE), Some(1));
+        // وإن تساوى الجميع بلا خط زمني فجلسة النظام ثم الأسبق
+        let l2 = [c("X", Playback::Playing, None, false), c("Y", Playback::Playing, None, true)];
+        assert_eq!(select_session(&l2, &NONE), Some(1));
+    }
+
+    #[test]
+    fn manual_pick_beats_everything_and_falls_back_when_gone() {
+        let l = [c("Chrome", Playback::Playing, Some(900), true), c("VLC", Playback::Paused, None, false)];
+        assert_eq!(select_session(&l, &Some("VLC".into())), Some(1));
+        assert_eq!(resolve(&l, &Some("VLC".into()), true), Resolution::Session(1)); // يدوي يغلب البديل الصوتي
+        assert_eq!(select_session(&l, &Some("Gone".into())), Some(0)); // المختار اختفى ⇒ تلقائي
+    }
+
+    #[test]
+    fn audio_fallback_only_when_nothing_is_actually_playing() {
+        let paused = [c("Chrome", Playback::Paused, Some(1), true)];
+        assert_eq!(resolve(&paused, &NONE, true), Resolution::Audio);
+        let playing = [c("Chrome", Playback::Playing, Some(1), true)];
+        assert_eq!(resolve(&playing, &NONE, true), Resolution::Session(0));
+        assert_eq!(resolve(&[], &NONE, true), Resolution::Audio);
+    }
+}
