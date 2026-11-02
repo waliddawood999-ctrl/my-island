@@ -19,10 +19,15 @@ const ok = (n, c, extra = "") => { if (!c) fails++; console.log(`${c ? "✓" : "
     const t = window.__TAURI_INTERNALS__, inv = t.invoke.bind(t);
     t.invoke = (cmd, args, o) => cmd === "report_island_rect" ? new Promise((r) => setTimeout(() => r(inv(cmd, args, o)), 400)) : inv(cmd, args, o);
   });
+  // حلقة المنطقة (هامش 10px حول الجزيرة) لا يرسمها شيء: html/body/#root شفافة دائمًا (بند الهلالين الفاتحين) — تُفحص أثناء الحركة أيضًا.
+  const transparentAll = () => page.evaluate(() => ["html", "body", "#root"].every((q) => getComputedStyle(document.querySelector(q)).backgroundColor === "rgba(0, 0, 0, 0)"));
+  ok("page background transparent at rest", await transparentAll());
   await page.mouse.move(400, 10);
   await page.waitForTimeout(200);
+  ok("page background transparent mid-transition", await transparentAll());
   ok("growth waits for the region: body still pill-sized before report_island_rect returns", (await width()) <= pillW + 1, String(await width()));
   await page.waitForTimeout(1400);
+  ok("page background transparent in peek", await transparentAll());
   ok("body grows after the region covers it", (await width()) > pillW + 40, String(await width()));
   // لا طلبان متتاليان بنفس المقاس عبر دورة فتح/إغلاق كاملة.
   await page.mouse.move(700, 480); await page.waitForTimeout(2500);
