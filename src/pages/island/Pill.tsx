@@ -47,6 +47,7 @@ import { rowReversed } from "../../eyes";
 import { Palette } from "./Palette";
 import { TabBar } from "./TabBar";
 import { IdleHome } from "./IdleHome";
+import { isWideLayout } from "./layoutMode";
 import { Dock, SubTabs, groupIndexOf, pageGroups, targetTab } from "./Dock";
 import { AttentionSection } from "./AttentionSection";
 import { BatteryChip, BatterySection, hasBatteryContent } from "./BatterySection";
@@ -275,6 +276,8 @@ export function Pill() {
   const peekTabId = tabs[peekIdx].id;
   // دوك الصفحات: يُحسب من التبويبات المتاحة فعليًا؛ آخر تبويب فرعي في كل صفحة يُحفظ لتعود إليه.
   const dockStyle = (settings.panelTabsStyle ?? "dock") === "dock";
+  // تخطيط عريض تلقائي: لوحة قليلة الارتفاع عريضة (≥2.1× ، ≤320px) ⇒ الرئيسية تصير صفًّا (مشغّل/اقتراحات بجانب البلاطات). مقاسات المستخدم لا تُمسّ.
+  const wide = isWideLayout(panel.w, panel.h);
   const groups = pageGroups(PAGE_DEFS, tabs.map((t) => t.id));
   const groupIdx = groupIndexOf(groups, curTab);
   const lastInGroup = useRef<Record<string, string>>({});
@@ -510,7 +513,7 @@ export function Pill() {
     {id === "home" && where === "panel" && (
       // بطاقة النشاط الحي الأعلى أولوية تتصدّر الرئيسية (أو حالة الميديا الفارغة)؛ تحتها صف بلاطات «لمحة» الشرطية. لا شيء آخر.
       // الرئيسية: عمود يمرّر داخليًا إن لم يتّسع المحتوى (لا تداخل أبدًا): بطاقة النشاط/المشغّل بحدّ أدنى لمحتواها، وتحتها البلاطات.
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden" style={{ gap: "var(--island-section-gap)" }}>
+      <div data-layout={wide ? "wide" : "tall"} className={`flex min-h-0 flex-1 overflow-y-auto overflow-x-hidden ${wide ? "flex-row items-stretch" : "flex-col"}`} style={{ gap: "var(--island-section-gap)" }}>
         {(shownPanel || moduleMedia) && (
           <motion.div custom={0} variants={sectionVariants} initial="initial" animate="animate" className="min-w-0 flex-1 shrink-0 [min-height:min-content]">
             {shownPanel ? (
@@ -522,7 +525,7 @@ export function Pill() {
             )}
           </motion.div>
         )}
-        <HomeTiles settings={settings} meetings={meetings.snap.items} battery={battery} liveShown={shownPanel} />
+        <HomeTiles settings={settings} meetings={meetings.snap.items} battery={battery} liveShown={shownPanel} wide={wide} />
       </div>
     )}
     {id === "note" && (
