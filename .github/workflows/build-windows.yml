@@ -19,19 +19,6 @@ permissions:
   contents: read
 
 jobs:
-  cancel-obsolete-settings-tests:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/fix/settings-review-2026-11-03'
-    runs-on: ubuntu-latest
-    permissions:
-      actions: write
-    steps:
-      - name: Stop superseded settings test runs
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh run cancel 41557862752 --repo "${{ github.repository }}" || true
-          gh run cancel 41558498812 --repo "${{ github.repository }}" || true
-          gh run cancel 41559306008 --repo "${{ github.repository }}" || true
   build:
     if: github.event_name != 'pull_request' || (github.event.pull_request.number == 18 && github.event.pull_request.merged == true)
     runs-on: windows-latest

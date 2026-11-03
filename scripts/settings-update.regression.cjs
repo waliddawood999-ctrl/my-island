@@ -7,10 +7,12 @@ const BASE = process.env.BASE || 'http://127.0.0.1:4173';
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.SETTINGS_BROWSER_EXECUTABLE || undefined });
   let checks = 0;
+  let lastPage = null;
+  fs.mkdirSync("docs/screenshots",{recursive:true});
   const ok = (name, value) => { assert(value, name); checks++; console.log('OK '+name); };
   const open = async (settings={}) => {
     const ctx = await browser.newContext({viewport:{width:980,height:700},acceptDownloads:true});
-    const page=await ctx.newPage();page.setDefaultTimeout(10000);page.setDefaultNavigationTimeout(10000);const errors=[];page.on('pageerror',e=>errors.push(e.message));
+    const page=await ctx.newPage();lastPage=page;page.setDefaultTimeout(10000);page.setDefaultNavigationTimeout(10000);const errors=[];page.on('pageerror',e=>errors.push(e.message));
     await page.addInitScript(bridge({settings:{language:'en',settingsVersion:4,...settings}}));
     await page.addInitScript(() => {
       const base=window.__TAURI_INTERNALS__.invoke;
@@ -55,10 +57,16 @@ const BASE = process.env.BASE || 'http://127.0.0.1:4173';
     await p.getByRole('radio',{name:'Off',exact:true}).focus();await p.keyboard.press('Home');await saved(p);ok('radio keyboard Home chooses system',(await patch(p)).reduceMotion==='system');
     await nav(p,'modules');await p.getByRole('radio',{name:'GIF',exact:true}).click();await saved(p);ok('GIF shows effective 20 FPS',await p.getByTestId('gif-fps').isVisible()&&await p.getByRole('radiogroup',{name:'Recording FPS',exact:true}).count()===0);
     const n0=await p.evaluate(()=>window.__calls.filter(c=>c[0]==='attention_clear').length);await p.getByTestId('clear-attention').click();ok('destructive clear first click does not delete',(await p.evaluate(()=>window.__calls.filter(c=>c[0]==='attention_clear').length))===n0);await p.getByTestId('clear-attention').click();ok('clear requires confirmation',(await p.evaluate(()=>window.__calls.filter(c=>c[0]==='attention_clear').length))===n0+1);
-    await p.getByTestId('settings-search').fill('clock size');ok('search reaches disabled child settings',await p.getByRole('slider',{name:'Clock size',exact:true}).isVisible()&&await p.getByRole('slider',{name:'Clock size',exact:true}).isDisabled());await p.getByTestId('settings-search').fill('');
+    await p.getByTestId('settings-search').fill('clock size');await p.getByRole('slider',{name:'Clock size',exact:true}).waitFor({state:'visible'});ok('search reaches disabled child settings',await p.getByRole('slider',{name:'Clock size',exact:true}).isVisible()&&await p.getByRole('slider',{name:'Clock size',exact:true}).isDisabled());await p.getByTestId('settings-search').fill('');
     ok('writes are serialised',await p.evaluate(()=>window.__maxSaves===1));ok('no page errors',errors.length===0);
     fs.mkdirSync('docs/screenshots',{recursive:true});await nav(p,'appearance');await p.screenshot({path:'docs/screenshots/settings-update-en.png'});await ctx.close();
     const {ctx:arCtx,page:ar,errors:arErrors}=await open({language:'ar'});await nav(ar,'appearance');ok('Arabic RTL',await ar.locator('.st-root').getAttribute('dir')==='rtl');ok('Arabic layout does not overflow',await ar.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth && document.querySelector('.st-main').scrollWidth<=document.querySelector('.st-main').clientWidth+1));await ar.screenshot({path:'docs/screenshots/settings-update-ar.png'});ok('no Arabic page errors',arErrors.length===0);await arCtx.close();
     console.log(`PASS ${checks} settings acceptance checks`);
+  } catch(e) {
+    if(lastPage && !lastPage.isClosed()) {
+      await lastPage.screenshot({path:'docs/screenshots/settings-update-failure.png'}).catch(()=>{});
+      console.log('Failure state:', await lastPage.locator('.st-row').evaluateAll(rows=>rows.filter(r=>/clock/i.test(r.textContent)).map(r=>({text:r.textContent.slice(0,100),hidden:r.hidden,display:getComputedStyle(r).display}))).catch(()=>[]));
+    }
+    throw e;
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1);});
