@@ -19,7 +19,7 @@ export function ClockPad({ x, y, scale, onChange }: { x: number; y: number; scal
     onChange(clampPct(cur.x + d[0]), clampPct(cur.y + d[1]));
   };
   return (
-    <div className="flex flex-wrap items-center gap-5" data-testid="clock-pad-wrap">
+    <div className="flex flex-col items-center gap-3" data-testid="clock-pad-wrap">
       <div
         ref={ref} data-testid="clock-pad" role="slider" tabIndex={0} aria-label={i("مكان الساعة", "Clock position")} aria-valuetext={`${cur.x}% / ${cur.y}%`}
         onKeyDown={key}
@@ -37,9 +37,9 @@ export function ClockPad({ x, y, scale, onChange }: { x: number; y: number; scal
           {i("ساعة", "Clock")}
         </span>
       </div>
-      <div className="min-w-[200px] flex-1">
+      <div className="w-[200px] max-w-full">
         <div className="mb-1 text-[11.5px] opacity-60">{i("معاينة الحبة", "Pill preview")}</div>
-        <div data-testid="clock-pad-preview" className="relative mx-auto h-[34px] w-[220px] rounded-full" style={{ background: "color-mix(in srgb, currentColor 10%, transparent)", boxShadow: "inset 0 0 0 1px color-mix(in srgb, currentColor 20%, transparent)" }}>
+        <div data-testid="clock-pad-preview" className="relative mx-auto h-[34px] w-[200px] rounded-full" style={{ background: "color-mix(in srgb, currentColor 10%, transparent)", boxShadow: "inset 0 0 0 1px color-mix(in srgb, currentColor 20%, transparent)" }}>
           <span aria-hidden className="absolute left-1/2 top-[7px] h-[20px] w-[9px] -translate-x-[14px] rounded-full bg-current opacity-80" />
           <span aria-hidden className="absolute left-1/2 top-[7px] h-[20px] w-[9px] translate-x-[5px] rounded-full bg-current opacity-80" />
           <span dir="ltr" className="font-bold tabular-nums" style={{ ...clockAbsStyle(cur.x, cur.y), fontSize: `calc(13px * ${clockFontSize(scale) ? parseFloat(clockFontSize(scale)!) : 1})`, lineHeight: 1 }}>08:23</span>

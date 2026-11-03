@@ -323,9 +323,9 @@ function App() {
             <Toggle label={i("إظهار الساعة", "Show clock")} value={s.showClock ?? true} onChange={(v) => set({ showClock: v })} />
           </Row>
           <Row icon={ic(Clock)} label={i("مكان الساعة في الحبة", "Clock position in the pill")} hint={i("اسحب النقطة في الدائرة فتتحرّك الساعة داخل الحبة لأي مكان؛ «تلقائي» يرجع للترتيب الحالي", "Drag the dot in the circle to place the clock anywhere inside the pill; “Auto” restores the current layout")}>
-            <div className="flex w-full flex-col gap-2">
+            <div className="flex w-[200px] max-w-full flex-col gap-2">
               <ClockPad x={s.clockX ?? 50} y={s.clockY ?? 50} scale={s.clockScale ?? 100} onChange={(x, y) => set({ clockPosition: "free", clockX: x, clockY: y })} />
-              <div className="flex gap-2">
+              <div className="flex flex-wrap justify-center gap-2">
                 <button className={btnOutline} data-testid="clock-auto" onClick={() => set({ clockPosition: "auto" })} aria-pressed={(s.clockPosition ?? "auto") === "auto"}>{i("تلقائي (الحالي)", "Auto (current)")}</button>
                 <button className={btnOutline} data-testid="clock-center" onClick={() => set({ clockPosition: "free", clockX: 50, clockY: 50 })}>{i("إعادة للوسط", "Center")}</button>
               </div>
