@@ -32,3 +32,9 @@ for (const command of ["system_transparency","system_accent","wallpaper_color","
   }
 }
 console.log("OK appearance IPC manifest and four-window permissions");
+
+const tuned={themeTune:{iconScale:1.1,press:"strong",highContrast:true}};
+assert.deepEqual(a.sectionResetPatch("motion",tuned).themeTune,{iconScale:1.1});
+assert.deepEqual(a.sectionResetPatch("appearance",tuned).themeTune,{press:"strong",highContrast:true});
+assert.deepEqual(a.resetPatch(Object.values(a.SECTION_KEYS).flat()).themeTune,{});
+console.log("OK section resets preserve tuning owned by the other section");

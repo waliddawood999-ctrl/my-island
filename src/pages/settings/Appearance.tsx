@@ -7,7 +7,7 @@ import { Accessibility, Brush, ChevronDown, Contrast, Download, Eye, Hand, Layer
 import { i } from "../../i18n";
 import type { Settings } from "../../settings";
 import { useDerivedTheme } from "../../useSettings";
-import { GLASS_STYLE_VALUES, MAX_SHELF, STYLE_PRESETS, exportTheme, glassAlpha, newShelfId, parseThemeImport, resetPatch, shelfEntry } from "../../appearance";
+import { GLASS_STYLE_VALUES, MAX_SHELF, STYLE_PRESETS, exportTheme, glassAlpha, newShelfId, parseThemeImport, resetPatch, sectionResetPatch, shelfEntry } from "../../appearance";
 import { PACKS, SHAPES, WASH_DIRS, resolvePack, sanitizeUserTheme, packInput, USER_RANGES, type Pack, type PackFamily, type UserTheme } from "../../themePacks";
 import { deriveTheme, describeAdjustment, hexToRgb, type RGB } from "../../themeEngine";
 import { TOKEN_KEYS, TUNE_MODULE_FIELDS, TUNE_NUM, checkTokens, compactTune, normTune, resetTuneFields, type TokenKey } from "../../themeTune";
@@ -452,9 +452,9 @@ export function AppearanceBody({ s, set, section = "appearance" }: { s: Partial<
 
       </>}
       {section === "appearance" && <Section title={i("إعادة ضبط شاملة", "Global reset")}>
-        <Row icon={ic(RotateCcw)} label={i("إعادة ضبط كل إعدادات المظهر", "Reset all appearance settings")} hint={i("يعيد الحزمة والمادة والمخزون كله للافتراضي (رفّ «ثيماتي» يبقى)", "Restores the pack, material and every knob to default (your “My themes” shelf is kept)")}>
+        <Row icon={ic(RotateCcw)} label={i("إعادة ضبط كل إعدادات المظهر", "Reset all appearance settings")} hint={i("يعيد خيارات المظهر فقط للافتراضي؛ إعدادات الحركة ورفّ «ثيماتي» تبقى", "Restores appearance defaults; motion settings and your My themes shelf are kept")}>
           <button className={`st-btn ${armed ? "st-btn-danger" : ""}`} style={armed ? { width: "auto" } : undefined} data-armed={armed} data-testid="reset-theme-all"
-            onClick={() => { if (armed) { set({ ...resetPatch(["themeMode", "themePack", "themePackLight", "themePackDark", "accentSource", "accentColor", "accentMode", "artBloom", "themeAnim", "themeCustom", "themeMaterial", "glassStyle", "glassTint", "backgroundOpacity", "borderStrength", "shadowStrength", "cornerStyle", "fontScale", "density"]), themeTune: {} }); setArmed(false); } else setArmed(true); }}
+            onClick={() => { if (armed) { set(sectionResetPatch("appearance", s)); setArmed(false); } else setArmed(true); }}
             onBlur={() => setArmed(false)}>{armed ? i("متأكد؟ إعادة ضبط", "Sure? Reset") : i("إعادة ضبط الكل", "Reset all")}</button>
         </Row>
       </Section>}

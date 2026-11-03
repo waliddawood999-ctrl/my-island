@@ -7,7 +7,7 @@ import { migratePreset, migrateReduce, migrateSpeed, normSpeed, resolveReduce } 
 import { contrast, deriveTheme, hex6, hexToRgb, luminance, over, type Derived } from "./themeEngine";
 import { DEFAULT_PACK, PACKS, effectivePack, getPack, packInput, resolvePack, sanitizeUserTheme, SHAPES, timeHueShift, type Pack, type ShapeTune, type UserTheme } from "./themePacks";
 import type { ArtSwatches } from "./artwork";
-import { DIVIDER_ALPHA, ELEVATION_K, compactTune, normTune, tuneVars, type Tune } from "./themeTune";
+import { DIVIDER_ALPHA, ELEVATION_K, compactTune, normTune, resetTuneFields, TUNE_MODULE_FIELDS, tuneVars, type Tune } from "./themeTune";
 export { contrast, luminance, over };
 export { compactTune, normTune, resetTuneFields, TUNE_MODULE_FIELDS } from "./themeTune";
 export { resolvePack } from "./themePacks";
@@ -218,6 +218,14 @@ export function parseImport(text: string, current: P): P | null {
 export const FULL_DEFAULTS: P = schemaDefaults;
 /** مقطع إعادة الضبط لقائمة مفاتيح. */
 export const resetPatch = (keys: (keyof Settings)[]): P => Object.fromEntries(keys.map((k) => [k, (FULL_DEFAULTS as Record<string, unknown>)[k]])) as P;
+
+/** Reset the visible section without resetting tuning now owned by another section. */
+export function sectionResetPatch(section: string, s: P): P {
+  const patch = resetPatch(SECTION_KEYS[section] ?? []);
+  const groups = section === "appearance" ? ["surfaces", "shape", "text"] : section === "motion" ? ["feel", "behavior", "a11y"] : [];
+  if (groups.length) patch.themeTune = resetTuneFields(s.themeTune, groups.flatMap(k => TUNE_MODULE_FIELDS[k]));
+  return patch;
+}
 
 /** لون وألفا السطح الفعلي خلف النص (وسط الحبة): قاعدة OKLCH المشتقة من حزمة Obsidian (أو المحددة) + عتامة glassAlpha — يُستعمل لاختبار تباين WCAG (scripts/appearance.test.mjs).
  *  الغسلة اللونية طبقة منفصلة فوق القاعدة (وتُقاس في themeEngine ضمن «أسوأ سطح»)، فلا تُمزج هنا. */

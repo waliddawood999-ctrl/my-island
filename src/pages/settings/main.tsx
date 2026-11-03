@@ -20,7 +20,7 @@ import { CountdownsEditor, WorldClockEditor } from "./TodayExtras";
 import { manualCheck } from "../../useUpdater";
 import type { ManualStatus } from "../../updater";
 import { AppearanceBody } from "./Appearance";
-import { SECTION_KEYS, exportSettings, parseImport, resetPatch } from "../../appearance";
+import { SECTION_KEYS, exportSettings, parseImport, resetPatch, sectionResetPatch } from "../../appearance";
 import { spring } from "../../motion";
 import { MOTION_PRESETS, MOTION_PRESET_KEYS, migrateReduce, normBounce, normPreset, normSpeed } from "../../islandMotion";
 import { normCardOrder } from "../../islandMachine";
@@ -655,7 +655,7 @@ function App() {
                         <p dir="auto">{x.desc}</p>
                       </div>
                       {SECTION_KEYS[x.id] && (
-                        <button className="st-btn" data-testid={`reset-${x.id}`} onClick={() => set(resetPatch(SECTION_KEYS[x.id]))}><RotateCcw size={14} className="rtl:-scale-x-100" />{i("إعادة ضبط القسم", "Reset section")}</button>
+                        <button className="st-btn" data-testid={`reset-${x.id}`} onClick={() => set(sectionResetPatch(x.id, s))}><RotateCcw size={14} className="rtl:-scale-x-100" />{i("إعادة ضبط القسم", "Reset section")}</button>
                       )}
                     </div>
                     {x.body}
