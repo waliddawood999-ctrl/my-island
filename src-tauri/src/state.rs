@@ -53,7 +53,7 @@ pub fn defaults() -> Map<String, Value> {
         "eyesEnabled": true,
         "pillWidth": 220,
         "pillHeight": 34,
-        "themeMode": "system",
+        "themeMode": "dark",
         "themePack": "obsidian",
         "themePackLight": "ivory",
         "themePackDark": "noir-gold",

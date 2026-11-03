@@ -296,9 +296,9 @@ function App() {
           <Row icon={ic(MousePointer2)} label={i("التنقل بالعجلة في اللوحة", "Wheel pages in the panel")} hint={i("فوق = الصفحة التالية، تحت = السابقة", "Up = next page, down = previous")}>
             <Toggle label={i("التنقل بالعجلة في اللوحة", "Wheel pages in the panel")} value={s.panelWheelPaging ?? true} onChange={(v) => set({ panelWheelPaging: v })} />
           </Row>
-          <Row icon={ic(PanelTop)} label={i("التبويبات في اللوحة", "Panel tabs")} hint={i("دوك سفلي بخمس صفحات (الافتراضي) أو الأشرطة العلوية القديمة", "A bottom dock with five pages (default) or the older top bars")}>
-            <Segmented label={i("التبويبات في اللوحة", "Panel tabs")} value={s.panelTabsStyle ?? "dock"} onChange={(v) => set({ panelTabsStyle: v })}
-              options={[{ value: "dock", label: i("دوك", "Dock") }, { value: "labels", label: i("نصوص", "Labels") }, { value: "icons", label: i("أيقونات", "Icons") }, { value: "dots", label: i("نقاط", "Dots") }, { value: "hidden", label: i("مخفية", "Hidden") }]} />
+          <Row icon={ic(PanelTop)} label={i("التبويبات في اللوحة", "Panel tabs")} hint={i("دوك سفلي بخمس صفحات، أو إخفاء التبويبات", "A bottom dock with five pages, or hide the tabs")}>
+            <Segmented label={i("التبويبات في اللوحة", "Panel tabs")} value={s.panelTabsStyle === "hidden" ? "hidden" : "dock"} onChange={(v) => set({ panelTabsStyle: v })}
+              options={[{ value: "dock", label: i("دوك", "Dock") }, { value: "hidden", label: i("مخفية", "Hidden") }]} />
           </Row>
         </Section>
         <Section title={i("الظهور", "Visibility")}>

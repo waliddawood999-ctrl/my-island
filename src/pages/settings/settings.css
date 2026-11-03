@@ -68,6 +68,10 @@ select.st-input { appearance: none; padding-inline-end: 34px; cursor: pointer; m
 .st-switch { position: relative; width: 44px; height: 26px; border-radius: 999px; flex: none; background: rgb(255 255 255 / 0.22); outline: none; transition: background-color var(--dur-base) var(--ease), box-shadow var(--dur-fast) var(--ease); box-shadow: inset 0 0 0 1px var(--c-border); }
 :root[data-theme="light"] .st-switch { background: rgb(13 16 23 / 0.2); }
 .st-switch[aria-checked="true"] { background: var(--accent); box-shadow: none; }
+.st-switch[aria-checked="true"] .st-thumb::after { content: ""; position: absolute; inset: 0; margin: auto; width: 9px; height: 5px; border-left: 2.5px solid var(--accent); border-bottom: 2.5px solid var(--accent); transform: translateY(-1px) rotate(-45deg) scale(0.9); }
+:root[data-theme="light"] .st-switch:not([aria-checked="true"]) { background: rgb(13 16 23 / 0.28); box-shadow: inset 0 0 0 1.5px rgb(13 16 23 / 0.45); }
+:root[data-theme="light"] .st-switch[aria-checked="true"] { background: color-mix(in srgb, var(--accent) 86%, #000); }
+:root[data-theme="light"] .st-switch[aria-checked="true"] .st-thumb::after { border-color: color-mix(in srgb, var(--accent) 86%, #000); }
 .st-switch:hover { filter: brightness(1.08); }
 .st-switch:focus-visible { box-shadow: 0 0 0 3px var(--accent-soft); }
 .st-thumb { position: absolute; top: 3px; inset-inline-start: 3px; width: 20px; height: 20px; border-radius: 999px; background: #fff; box-shadow: 0 1px 3px rgb(0 0 0 / 0.35); }
