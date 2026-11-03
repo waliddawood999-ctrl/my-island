@@ -481,6 +481,12 @@ export function Pill() {
     return () => window.removeEventListener("keydown", h);
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   const cf = crossfade(speed, reduceUI);
+  const referenceHome = dockStyle && !wide && curTab === "home";
+  // reduced لا يذكر filter/transform؛ امسح قيم الحالة المخفية السابقة كي تبقى الرئيسية المرجعية حادّة بعد تحميل الإعدادات.
+  const homeCf = referenceHome && reduceUI ? {
+    hidden: { ...cf.hidden, filter: "none", y: 0, scale: 1 },
+    shown: { ...cf.shown, filter: "none", y: 0, scale: 1 },
+  } : cf;
   // نابض الحجم: فتح لمحة (d,b) · فتح لوحة (d×1.1,b) · أي إغلاق (d×0.9، بلا ارتداد). التقليل ⇒ قفز فوري + تلاشٍ 150ms.
   const rank = { pill: 0, peek: 1, panel: 2 } as const;
   const prevMode = useRef<"pill" | "peek" | "panel">("pill");
@@ -520,6 +526,20 @@ export function Pill() {
   const renderTab = (id: string, where: "panel" | "peek") => (
     <>
     {id === "home" && where === "panel" && (
+      dockStyle && !wide ? (
+        <div data-layout="tall" data-testid="home-reference" className="home-reference">
+          {shownPanel && shownPanel !== "media" ? (
+            <ActivityStack kinds={panelKinds} shown={shownPanel} onPin={setPinPanel} data={liveData} />
+          ) : moduleMedia && media.info.session ? (
+            <PlayerPanel media={media} s={settings} accent={accent} reduce={reduceUI} visible={open} />
+          ) : (
+            <IdleHome settings={settings} attention={attention} time={time} onOpenTab={setTabId}>
+              <HomeTiles settings={settings} meetings={meetings.snap.items} battery={battery} liveShown={shownPanel} reference="idle" />
+            </IdleHome>
+          )}
+          {(shownPanel || (moduleMedia && media.info.session)) && <HomeTiles settings={settings} meetings={meetings.snap.items} battery={battery} liveShown={shownPanel} reference="media" />}
+        </div>
+      ) : (
       // بطاقة النشاط الحي الأعلى أولوية تتصدّر الرئيسية (أو حالة الميديا الفارغة)؛ تحتها صف بلاطات «لمحة» الشرطية. لا شيء آخر.
       // الرئيسية: عمود يمرّر داخليًا إن لم يتّسع المحتوى (لا تداخل أبدًا): بطاقة النشاط/المشغّل بحدّ أدنى لمحتواها، وتحتها البلاطات.
       <div data-layout={wide ? "wide" : "tall"} className={`flex min-h-0 flex-1 overflow-y-auto overflow-x-hidden ${wide ? "flex-row items-stretch" : "flex-col"}`} style={{ gap: "var(--island-section-gap)", ...(dockStyle ? { WebkitMaskImage: "linear-gradient(to bottom, #000 calc(100% - 16px), transparent)", maskImage: "linear-gradient(to bottom, #000 calc(100% - 16px), transparent)" } : {}) }}>
@@ -536,6 +556,7 @@ export function Pill() {
         )}
         <HomeTiles settings={settings} meetings={meetings.snap.items} battery={battery} liveShown={shownPanel} wide={wide} />
       </div>
+      )
     )}
     {id === "note" && (
       <div className="min-h-0 flex-1">
@@ -651,7 +672,7 @@ export function Pill() {
             {privacy.mic && <span className="h-2 w-2 rounded-full bg-[var(--c-warning)] shadow-[0_0_6px_var(--c-warning)]" />}
           </div>
         )}
-        {media.cover && (settings.artworkBackdrop ?? true) && (settings.playerLayout ?? "compact") !== "minimal" && (
+        {media.cover && (settings.artworkBackdrop ?? true) && (settings.playerLayout ?? "compact") !== "minimal" && !(open && dockStyle && !wide && curTab === "home") && (
           <>
             <div aria-hidden data-testid="artwork-backdrop" style={{
               position: "absolute", inset: settings.fx?.hero ? "-24px -24px auto -24px" : -40, height: settings.fx?.hero ? "58%" : undefined, backgroundImage: `url(${media.cover})`, backgroundSize: "cover", backgroundPosition: "center", filter: `blur(${settings.fx?.hero ? 18 : 30}px) saturate(1.5)`, pointerEvents: "none",
@@ -817,7 +838,7 @@ export function Pill() {
         </AnimatePresence>
         <motion.div
           initial={false}
-          variants={cf}
+          variants={homeCf}
           animate={open ? "shown" : "hidden"}
           data-testid="panel-layer"
           style={{ width: panel.w, height: panel.h, padding: "var(--island-pad)", pointerEvents: open ? "auto" : "none" }}
@@ -871,7 +892,7 @@ export function Pill() {
                 initial="initial"
                 animate="animate"
                 exit="exit"
-                className="flex min-h-0 flex-1 flex-col pt-3"
+                className={`flex min-h-0 flex-1 flex-col ${referenceHome ? "pt-0" : "pt-3"}`}
               >
                 {dockStyle && groups[groupIdx]?.id === "work" && (
                   <SubTabs

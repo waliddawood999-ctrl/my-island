@@ -37,7 +37,7 @@ const open = async (browser, settings, media) => {
   ok("returning to Tools restores the last sub-tab", (await page.locator('[data-testid="sub-tabs"] [aria-selected="true"]').innerText()) === lastSub, lastSub);
   ok("settings button lives on the dock row", (await page.locator('button[aria-label="Settings"]').count()) >= 1);
   await page.click('[data-testid="dock-home"]'); await page.waitForTimeout(700);
-  ok("no media ⇒ merged idle home (greeting + suggestions) instead of the empty player", (await page.getByTestId("idle-home").count()) === 1 && (await page.getByTestId("idle-greeting").innerText()).length > 3);
+  ok("no media ⇒ Your day, large clock and two resume suggestions", (await page.getByTestId("idle-home").count()) === 1 && (await page.getByTestId("idle-clock").innerText()).length > 3 && (await page.locator('[data-testid="idle-home"] button').count()) === 2);
   await page.getByTestId("idle-captures").click(); await page.waitForTimeout(200);
   ok("'Recent captures' opens the captures folder", await page.evaluate(() => window.__calls.some((c) => c[0] === "open_captures")));
   // العجلة تتنقل بنفس ترتيب الدوك بلا قفز (capture → clip → apps → work)

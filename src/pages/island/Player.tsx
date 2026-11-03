@@ -10,7 +10,8 @@ import { mediaTitle, type MediaView } from "../../useMedia";
 import { classifySource, vibrant } from "../../mediaSource";
 import { THUMB } from "../../tokens";
 import { canSeekNow, clampFrac, fmtTime, fracFromPointer, keySeek, secondsFromFrac } from "../../seek";
-import { Thumb } from "./Thumb";
+import { Thumb, guessKind } from "./Thumb";
+import { thumbKind } from "../../coverImage";
 import { panelThumb, peekThumb } from "./thumbSize";
 
 // المشغّل (T03): عناصر مشتركة بين اللمحة واللوحة والحبة — غلاف، شارة مصدر، شريط تقدّم، أزرار، مؤشر صوتي، لون إبراز من الغلاف.
@@ -293,16 +294,14 @@ export function PlayerPanel({ media, s, accent, reduce, visible, wide = false }:
     // بطاقة المشغّل (التصميم المتفق عليه): غلاف/مصغّرة فيديو كبيرة بحجم يتبع مقاس اللوحة + شارة المصدر + موجة + عنوان + شريط + أزرار.
     const pt = panelThumb(s.panelWidth, s.panelHeight);
     return (
-      <div data-testid="player-panel" data-card="true" className="i-card" style={{ display: "flex", alignItems: "center", gap: 16, padding: 12, borderRadius: 26, height: "100%", minHeight: 0, ["--player-accent" as string]: accent }}>
-        {layout !== "minimal" && <Thumb cover={cover} coverW={media.coverW} coverH={media.coverH} session={info.session} trackKey={tkey(info)} source={info.source} sourceName={info.source_name} duration={info.duration} accent={accent} reduce={reduce} h={pt.h} maxW={pt.maxW} />}
-        <div style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: 5 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-            {(s.showSourceBadge ?? true) ? <SourceBadge aumid={info.source} name={info.source_name} /> : <span />}
-            <Visualizer kind={s.visualizer ?? "bars"} count={14} playing={info.playing} visible={visible} reduce={reduce} accent={accent} w={3} h={20} />
-          </div>
-          <div dir="auto" className="truncate" style={{ fontSize: 21, fontWeight: 700, lineHeight: 1.2 }}>{mediaTitle(info)}</div>
-          <div dir="auto" className="truncate" style={{ fontSize: 13, opacity: 0.65 }}>{sub(info) || " "}</div>
-          {(s.showProgress ?? true) && <SeekBar pos={pos} info={info} accent={accent} h={5} reduce={reduce} showTimes={s.showPlaybackTime ?? true} />}
+      <div data-testid="player-panel" data-card="true" className="i-card home-player" style={{ ["--player-accent" as string]: "var(--accent)" }}>
+        {layout !== "minimal" && <Thumb cover={cover} coverW={media.coverW} coverH={media.coverH} session={info.session} trackKey={tkey(info)} source={info.source} sourceName={info.source_name} duration={info.duration} accent={accent} reduce={reduce} h={Math.round(pt.h * .8)} maxW={Math.round(pt.maxW * .8)} />}
+        <div className="home-player-info">
+          {(s.showSourceBadge ?? true) && <SourceBadge aumid={info.source} name={info.source_name} />}
+          <div dir="auto" className="home-player-title truncate">{mediaTitle(info)}</div>
+          <div dir="auto" className="home-player-sub truncate">{sub(info) || " "}</div>
+          {(cover && media.coverW > 0 ? thumbKind(media.coverW, media.coverH) : guessKind(info.source, info.source_name)) === "audio" && <Visualizer kind={s.visualizer ?? "bars"} count={12} playing={info.playing} visible={visible} reduce={reduce} accent="var(--accent)" w={5} h={16} />}
+          {(s.showProgress ?? true) && <SeekBar pos={pos} info={info} accent="var(--accent)" h={4} reduce={reduce} showTimes={s.showPlaybackTime ?? true} />}
           <div style={{ display: "flex", justifyContent: "center" }}><Controls info={info} /></div>
         </div>
       </div>

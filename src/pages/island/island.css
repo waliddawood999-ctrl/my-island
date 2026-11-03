@@ -275,3 +275,27 @@ svg.lucide { scale: var(--icon-k, 1); }
 /* شارة المدّة: سطح داكن شبه شفاف + حلقة ولمعة علوية (بلا backdrop-filter كبقية الجزيرة) */
 .th-badge { position: absolute; right: 5px; bottom: 5px; z-index: 2; padding: 1px 7px; border-radius: 999px; font-size: 10px; font-weight: 700; line-height: 1.5; color: #fff;
   font-variant-numeric: tabular-nums; background: rgb(12 13 18 / .58); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .16), inset 0 1px 0 rgb(255 255 255 / .2); text-shadow: none; }
+
+/* المهمة 1: الرئيسية فقط — ألوان الثيم الحالية بلا تغيير بذور أو نوافذ أخرى. */
+.home-reference { --home-fill: var(--accent); display: flex; flex: 1; min-height: 0; flex-direction: column; gap: 10px; overflow: auto; padding-bottom: 4px; }
+:root[data-pack="nebula-mesh"] .home-reference { --home-fill: linear-gradient(110deg, var(--accent), var(--t-wash-c2)); }
+.home-reference .home-player { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 22px; flex: none; min-width: 0; }
+.home-reference .home-player-info { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 3px; }
+.home-reference .home-player-title { font-size: 19px; font-weight: 800; line-height: 1.35; }
+.home-reference .home-player-sub { font-size: 12px; color: var(--c-text-secondary); }
+.home-reference .home-player [data-testid="source-badge"] { align-self: flex-start; padding: 0 !important; background: transparent !important; }
+.home-reference .home-player .pl-play { width: 40px; height: 40px; background: var(--home-fill); color: var(--accent-fg); }
+.home-reference .home-player .sk-fill { background: var(--home-fill) !important; }
+.home-reference .home-player [data-viz="bars"] > span:nth-child(3n) { height: 10px !important; }
+.home-reference .home-player [data-viz="bars"] > span:nth-child(3n + 1) { height: 6px !important; }
+.home-reference .home-day-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.home-reference .home-greeting { font-size: 12px; color: var(--c-text-secondary); }
+.home-reference .home-day-title { margin: 0; font-size: 21px; font-weight: 800; line-height: 1.4; }
+.home-reference .home-day-clock { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-size: 40px; font-weight: 800; line-height: 1.2; }
+.home-reference .home-tile { display: flex; flex: 1; min-width: 0; align-items: center; justify-content: center; gap: 7px; padding: 9px 10px; font-size: 12px; border-radius: 17px; }
+.home-reference .home-tile > svg { color: var(--accent); flex: none; }
+.home-reference .home-tile-sub { display: block; color: var(--c-text-secondary); font-size: 10px; }
+.home-reference [data-reference="idle"] .home-tile { justify-content: flex-start; }
+.home-reference .home-resume { border-radius: 17px; }
+.home-reference .home-resume > span:last-child > span:first-child { display: none; }
+.home-reference .home-resume > span:last-child > span:last-child { color: inherit; font-size: 12px; }
