@@ -270,7 +270,11 @@ export function Pill() {
   // مقياس اللوحة (themeTune.panelScale): ضمن النافذة الثابتة 800×500 (مع هامش المنطقة)
   const aSc = settings.fx?.scale.panel ?? 1;
   const panel = { w: Math.min(760, Math.round(clampN(settings.panelWidth, 420, 720, 520) * aSc)), h: Math.min(470, Math.round(clampN(settings.panelHeight, 220, 420, 290) * aSc)) };
-  const tabs = tabDefs(shelfOn, shelf.items.length, launcherOn, meetingsOn);
+  // ترتيب العجلة/الصفحات يطابق الدوك تمامًا (الرئيسية · الالتقاط · الحافظة · التطبيقات · الأدوات[الرف · ملاحظة · اجتماعات · النظام]) — بلا قفز بين الصفحات.
+  const tabsRaw = tabDefs(shelfOn, shelf.items.length, launcherOn, meetingsOn);
+  const dockOrder = PAGE_DEFS.flatMap((d) => d.members);
+  const dockRank = (id: string) => { const n = dockOrder.indexOf(id); return n < 0 ? 99 : n; };
+  const tabs = (settings.panelTabsStyle ?? "dock") === "dock" ? [...tabsRaw].sort((a, b) => dockRank(a.id) - dockRank(b.id)) : tabsRaw;
   const tab = Math.max(0, tabs.findIndex((t) => t.id === tabId));
   const curTab = tabs[tab].id;
   const peekIdx = Math.max(0, tabs.findIndex((t) => t.id === peekTab));
@@ -589,7 +593,7 @@ export function Pill() {
       {/* غلاف يتبع مقاس الجسم؛ الهالة (ظل+توهّج) طبقة مُعدّة مسبقًا بمقاس الهدف تتحرّك بالتحويل/العتامة فقط — لا box-shadow ولا blur حيّ (Halo.tsx · GLASS.md). */}
       <div className="island-wrap">
       <IslandHalo
-        w={(palette || !animSize ? size : animSize).w} h={(palette || !animSize ? size : animSize).h} opacity={opacity}
+        w={(palette || !animSize ? size : animSize).w} h={(palette || !animSize ? size : animSize).h} radius={targetR} opacity={opacity}
         align={settings.pillPosition === "left" ? "left" : settings.pillPosition === "right" ? "right" : "center"}
         transition={kind === "close" ? islandSpring.close : kind === "panel" ? islandSpring.panel : islandSpring.open}
         opacityTransition={{ duration: reduceUI ? 0.15 : dur.base, ease: ease.out }}

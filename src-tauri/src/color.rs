@@ -85,6 +85,11 @@ pub fn push_history(mut list: Vec<ColorEntry>, e: ColorEntry, max: usize) -> Vec
     list
 }
 
+/// يحذف لونًا واحدًا من السجل بحسب HEX (بلا حساسية لحالة الأحرف)؛ غير الموجود ⇒ السجل كما هو.
+pub fn remove_from_history(list: Vec<ColorEntry>, hex: &str) -> Vec<ColorEntry> {
+    list.into_iter().filter(|x| !x.hex.eq_ignore_ascii_case(hex)).collect()
+}
+
 /// بكسل (x,y) من مصفوفة RGB بعرض w وارتفاع h؛ None خارج الحدود.
 pub fn pixel_rgb(rgb: &[u8], w: u32, h: u32, x: i64, y: i64) -> Option<(u8, u8, u8)> {
     if x < 0 || y < 0 || x >= w as i64 || y >= h as i64 {
@@ -199,9 +204,40 @@ pub fn color_history(app: AppHandle) -> Vec<ColorEntry> {
     load(&app)
 }
 
+/// يحذف لونًا واحدًا من السجل ويعيد السجل المحدَّث.
+#[tauri::command]
+pub fn color_delete(app: AppHandle, hex: String) -> Vec<ColorEntry> {
+    let list = remove_from_history(load(&app), &hex);
+    save(&app, &list);
+    list
+}
+
+/// يمسح سجل الألوان كله ويعيد القائمة (فارغة).
+#[tauri::command]
+pub fn color_clear(app: AppHandle) -> Vec<ColorEntry> {
+    let list: Vec<ColorEntry> = Vec::new();
+    save(&app, &list);
+    list
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn entry(hex: &str) -> ColorEntry {
+        let (r, g, b) = parse_hex(hex).unwrap();
+        let (h, sat, l) = rgb_to_hsl(r, g, b);
+        ColorEntry { hex: hex.into(), r, g, b, h, s: sat, l, at: 0 }
+    }
+
+    #[test]
+    fn remove_from_history_deletes_only_the_match() {
+        let list = vec![entry("#4C8DFF"), entry("#1249FC"), entry("#FFFFFF")];
+        let out = remove_from_history(list.clone(), "#1249fc");
+        assert_eq!(out.iter().map(|e| e.hex.as_str()).collect::<Vec<_>>(), vec!["#4C8DFF", "#FFFFFF"], "حالة الأحرف لا تهمّ والترتيب يبقى");
+        assert_eq!(remove_from_history(list.clone(), "#000000").len(), 3, "غير موجود ⇒ لا تغيير");
+        assert!(remove_from_history(Vec::new(), "#fff").is_empty());
+    }
 
     #[test]
     fn hsl_known_values() {

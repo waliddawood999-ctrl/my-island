@@ -4,7 +4,6 @@ import { pathToFileURL } from "node:url";
 import { mkdtempSync, readFileSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { haloPngDataUri } from "./halo.gen.mjs";
 const out = join(mkdtempSync(join(tmpdir(), "arch-")), "m.mjs");
 await build({ entryPoints: ["src/webview.ts"], bundle: true, format: "esm", outfile: out, logLevel: "warning" });
 const wv = await import(pathToFileURL(out).href);
@@ -35,10 +34,7 @@ ok("mascot reads the reported island rect (hit::shape), not a region", readFileS
 
 // 4) الهالة: لا box-shadow/filter حيّ على الجسم/الهالة
 ok("no outer box-shadow with blur on .island-body rules", !/\.island-body[^{]*\{[^}]*box-shadow:[^;}]*\b0 [0-9]+px [0-9]+px/.test(css));
-ok("halo pseudo layers use mask-box-image, no filter/box-shadow", /island-halo::before, \.island-halo::after \{[^}]*-webkit-mask-box-image/s.test(css) && !/\.island-halo[^{]*\{[^}]*(?:box-shadow|filter):/.test(css));
-
-ok("halo mask PNG in CSS is exactly what scripts/halo.gen.mjs generates", css.includes(haloPngDataUri()));
-ok("halo mask is a bitmap (PNG), never an SVG filter re-evaluated per raster", !/island-halo[^{]*\{[^}]*svg\+xml/s.test(css));
+ok("halo is a static layer with box-shadow (no filter) and no 9-slice mask", /\.island-halo \{[^}]*box-shadow:/.test(css) && !/\.island-halo[^{]*\{[^}]*filter:/.test(css) && !css.includes("-webkit-mask-box-image"));
 
 // 5) تشخيص WebView2
 ok("verdict: 145/146 buggy", wv.webviewVerdict({ version: "145.0.3770.0", major: 145, background_clear: true }) === "buggy" && wv.webviewVerdict({ version: "146.0.1", major: 146, background_clear: true }) === "buggy");

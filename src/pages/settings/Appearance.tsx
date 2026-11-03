@@ -201,9 +201,9 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings>; set: (p: Part
         summary={`${packLabel(pack)} · ${theme === "dark" ? i("داكن", "Dark") : i("فاتح", "Light")} · ${i("أكسنت", "accent")} ${derived.vars["--accent"]}`}
         preview={<span className="tp-dots"><i style={{ background: derived.vars["--accent"] }} /><i style={{ background: derived.vars["--t-wash-c"] }} /><i style={{ background: derived.vars["--t-base"] }} /></span>}
         onReset={() => resetKeys(["themeMode", "themePack", "themePackLight", "themePackDark", "accentSource", "accentColor", "accentMode", "artBloom", "themeAnim", "themeCustom"])}>
-        <Row icon={ic(SunMoon)} label={i("النمط", "Theme")} hint={i("فاتح أو داكن، أو يتّبع النظام، أو يتبدّل تلقائيًا مع دورة الشمس (فاتح 6ص–6م)", "Light or dark, follow the system, or switch automatically with the sun (light 6am–6pm)")}>
-          <Segmented label={i("النمط", "Theme")} value={s.themeMode ?? "system"} onChange={(v) => set({ themeMode: v })}
-            options={[{ value: "system", label: i("النظام", "System") }, { value: "light", label: i("فاتح", "Light") }, { value: "dark", label: i("داكن", "Dark") }, { value: "sun", label: i("الشمس", "Sun") }]} />
+        <Row icon={ic(SunMoon)} label={i("النمط", "Theme")} hint={i("فاتح أو داكن", "Light or dark")}>
+          <Segmented label={i("النمط", "Theme")} value={s.themeMode === "light" || s.themeMode === "dark" ? s.themeMode : theme} onChange={(v) => set({ themeMode: v })}
+            options={[{ value: "light", label: i("فاتح", "Light") }, { value: "dark", label: i("داكن", "Dark") }]} />
         </Row>
         <Row icon={ic(Brush)} label={i("مصدر لون الأكسنت", "Accent colour source")} hint={i("اختياري ومحلي بالكامل: لا يُرفع شيء خارج جهازك", "Optional and fully local: nothing leaves your device")}>
           <Select label={i("مصدر لون الأكسنت", "Accent colour source")} value={s.accentSource ?? "pack"} onChange={(v) => set({ accentSource: v })}

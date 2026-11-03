@@ -151,10 +151,10 @@ export const DEFAULTS: Partial<Settings> = {
   ecoOnBattery: false,     // يفعّل Eco تلقائيًا عند فصل الشاحن ويوقفه عند توصيله (اليدوي يبقى)
   pillWidth: 220,          // عرض الحبة المنكمشة (160..280)
   pillHeight: 34,          // ارتفاعها (28..44)؛ المحتوى (خط/عيون/أيقونات) يتدرج k=ارتفاع/32
-  themeMode: 'system',     // system = يتبع النظام · dark · light · sun (كل النوافذ)
+  themeMode: 'dark',     // dark · light (القيمتان القديمتان system/sun تُحلّان إلى وضع النظام الحالي)
   themePack: 'obsidian',   // الحزمة الافتراضية الرائدة (أزرق أردوازي)
-  themePackLight: '',
-  themePackDark: '',
+  themePackLight: 'ivory',
+  themePackDark: 'noir-gold',
   accentSource: 'pack',
   themeAnim: true,
   themeTune: {},
