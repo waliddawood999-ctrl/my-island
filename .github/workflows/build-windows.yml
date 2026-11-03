@@ -141,6 +141,39 @@ jobs:
           gh release create "v$VERSION" "$EXE" "$SIG" latest.json --repo "$REPO" --title "v$VERSION" --notes "MyIsland $VERSION"
 
 
+  settings-default-window-qa:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/fix/settings-review-2026-11-03'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Verify settings at the native 880x620 window size
+        timeout-minutes: 6
+        shell: pwsh
+        run: |
+          $tools = Join-Path $env:RUNNER_TEMP 'settings-test-tools'
+          npm install --prefix $tools --no-save --package-lock=false playwright@1.56.1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:NODE_PATH = Join-Path $tools 'node_modules'
+          $browsers = @("$env:ProgramFiles/Google/Chrome/Application/chrome.exe", "${env:ProgramFiles(x86)}/Google/Chrome/Application/chrome.exe", "${env:ProgramFiles(x86)}/Microsoft/Edge/Application/msedge.exe", "$env:ProgramFiles/Microsoft/Edge/Application/msedge.exe")
+          $env:SETTINGS_BROWSER_EXECUTABLE = $browsers | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $env:SETTINGS_BROWSER_EXECUTABLE) { throw 'No installed Chrome or Edge' }
+          node -e "const fs=require('fs');const s=fs.readFileSync('scripts/settings-update.regression.cjs','utf8').replace('width:980,height:700','width:880,height:620');fs.writeFileSync('scripts/.settings-default-window.cjs',s)"
+          $server = Start-Process node -ArgumentList 'node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port 4173' -PassThru
+          try { node scripts/.settings-default-window.cjs; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } } finally { Stop-Process -Id $server.Id -ErrorAction SilentlyContinue }
+      - name: Default window screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: settings-default-window-screenshots
+          path: docs/screenshots/settings-update-*.png
+          if-no-files-found: ignore
+
   publish-verified-settings:
     # One publication explicitly authorised by the owner; no other PR can publish.
     if: github.event_name == 'pull_request' && github.event.pull_request.number == 18 && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository
