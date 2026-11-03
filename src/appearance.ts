@@ -98,7 +98,7 @@ export const glassAllowed = (s: Partial<Settings>, env: Env) => (s.themeMaterial
 export function appearanceVars(s: Partial<Settings>, env: Env): { attrs: Record<string, string>; vars: Record<string, string> } {
   const { derived, packId, theme, pack } = deriveFor(s, env);
   const glass = glassAllowed(s, env);
-  const style = s.glassStyle === "clear" ? "clear" : "crystal";
+  const style = "crystal" as const; // مادتان فقط: مصمت/مثلّج — القيمة القديمة clear تُعامل مثلّجًا
   const pw = num(s.pillWidth, PILL.minW, PILL.maxW, PILL.w), ph = num(s.pillHeight, PILL.minH, PILL.maxH, PILL.h);
   const sp = shapeRadius(s.pillRadius ?? 0, 0, SHAPES[pack.shape ?? "default"].pillR);
   const pr = sp !== null ? sp : num(s.pillRadius, 0, 22, 0);
@@ -146,9 +146,7 @@ type P = Partial<Settings>;
 /** إعدادات مسبقة: أربعة فقط، كلٌّ منها يرسم فعلًا بشكل مختلف (T04) — الزجاج أكريليك أصلي بصبغة مختلفة، لا blur/saturation (غير فعّالين على ويندوز). */
 export const STYLE_PRESETS: { id: string; ar: string; en: string; values: P }[] = [
   { id: "frosted", ar: "زجاج مثلّج", en: "Frosted", values: { themeMaterial: "glass", glassStyle: "crystal", glassTint: 45 } },
-  { id: "smoked", ar: "زجاج مدخّن", en: "Smoked", values: { themeMaterial: "glass", glassStyle: "crystal", glassTint: 68 } },
-  { id: "clear", ar: "شفاف", en: "Clear", values: { themeMaterial: "glass", glassStyle: "clear", glassTint: 25 } },
-  { id: "minimal", ar: "داكن بسيط", en: "Minimal Dark", values: { themeMode: "dark", themeMaterial: "solid", borderStrength: 30, shadowStrength: 30, cornerStyle: "rounded", accentColor: "#94a3b8" } },
+  { id: "solid", ar: "مصمت", en: "Solid", values: { themeMaterial: "solid" } },
 ];
 /** قيم الأسلوب عند اختيار «مثلّج/شفاف» وحدهما (الصبغة فقط). */
 export const GLASS_STYLE_VALUES: Record<"crystal" | "clear", P> = {

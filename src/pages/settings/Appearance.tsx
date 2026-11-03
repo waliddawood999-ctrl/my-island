@@ -30,7 +30,7 @@ const FAMILY_LABEL: Record<PackFamily, [string, string]> = {
 
 /** معاينة مصغّرة حيّة للوحة الموسّعة بحزمة ووضع محدّدين (متغيرات الرصّة محصورة بعنصر المعاينة نفسه). */
 function MiniIsland({ pack, dark, s, size = "md", label }: { pack: Pack; dark: boolean; s: Partial<Settings>; size?: "sm" | "md" | "lg"; label?: string }) {
-  const style = s.glassStyle === "clear" ? "clear" : "crystal";
+  const style = "crystal" as const;
   const tune = normTune(s.themeTune);
   const accent = s.accentSource === "custom" && typeof s.accentColor === "string" ? s.accentColor : undefined;
   const d = useMemo(
@@ -162,39 +162,19 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings>; set: (p: Part
           </div>
           <div className="tp-stage tp-stage-split"><SplitPreview pack={selected} s={s} /></div>
         </div>
-        {(["seed", "gradient", "craft", "editorial", "shape", "time", "art", "custom"] as PackFamily[]).map((fam) => {
-          const items = allPacks.filter((x) => x.pack.family === fam && (fam !== "art" || x.pack.family === "art"));
-          if (!items.length) return null;
-          return (
-            <div key={fam} className="tp-fam">
-              <div className="tp-fam-title" dir="auto">{i(FAMILY_LABEL[fam][0], FAMILY_LABEL[fam][1])}</div>
-              <div className="tp-grid" role="radiogroup" aria-label={i(FAMILY_LABEL[fam][0], FAMILY_LABEL[fam][1])}>
-                {items.map(({ pack: pk, id }) => (
-                  <button key={id} role="radio" aria-checked={packId === id || (s.themePack ?? "obsidian") === id} aria-label={packLabel(pk)} data-pack={id} className="tp-card-btn"
-                    onMouseEnter={() => setHover(id)} onMouseLeave={() => setHover(null)} onFocus={() => setHover(id)} onBlur={() => setHover(null)}
-                    onClick={() => set({ themePack: id })}>
-                    <MiniIsland pack={pk} dark={dark} s={s} size="sm" />
-                    <span className="tp-card-name" dir="auto">{packLabel(pk)}</span>
-                    <span className="tp-card-desc" dir="auto">{i(pk.dar, pk.den)}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          );
-        })}
+        <div className="tp-grid" role="radiogroup" aria-label={i("الثيمات", "Themes")}>
+          {(["seed", "gradient", "craft", "editorial", "shape", "time", "art", "custom"] as PackFamily[]).flatMap((fam) => allPacks.filter((x) => x.pack.family === fam)).map(({ pack: pk, id }) => (
+            <button key={id} role="radio" aria-checked={packId === id || (s.themePack ?? "obsidian") === id} aria-label={packLabel(pk)} data-pack={id} className="tp-card-btn"
+              onMouseEnter={() => setHover(id)} onMouseLeave={() => setHover(null)} onFocus={() => setHover(id)} onBlur={() => setHover(null)}
+              onClick={() => set({ themePack: id, themePackLight: id, themePackDark: id })}>
+              <MiniIsland pack={pk} dark={dark} s={s} size="sm" />
+              <span className="tp-card-name" dir="auto">{packLabel(pk)}</span>
+              <span className="tp-card-desc" dir="auto">{i(pk.dar, pk.den)}</span>
+            </button>
+          ))}
+        </div>
       </section>
 
-      <Section title={i("تعيين الحزمة", "Pack assignment")}>
-        <Row icon={ic(Palette)} label={i("الحزمة", "Pack")} hint={i("الحزمة العامة لكلا الوضعين ما لم تُعيَّن حزمة منفصلة", "The general pack for both modes unless a separate pack is assigned")}>
-          <Select label={i("الحزمة", "Pack")} value={s.themePack ?? "obsidian"} onChange={(v) => set({ themePack: v })} options={allPacks.map((x) => ({ value: x.id, label: packLabel(x.pack) }))} />
-        </Row>
-        <Row icon={ic(Layers)} label={i("حزمة الوضع الداكن", "Dark-mode pack")} hint={i("تُستعمل حين يكون الوضع داكنًا (فارغ = الحزمة العامة)", "Used when the mode is dark (empty = the general pack)")}>
-          <Select label={i("حزمة الوضع الداكن", "Dark-mode pack")} value={s.themePackDark ?? ""} onChange={(v) => set({ themePackDark: v })} options={[{ value: "", label: i("— مثل العامة —", "— same as general —") }, ...allPacks.map((x) => ({ value: x.id, label: packLabel(x.pack) }))]} />
-        </Row>
-        <Row icon={ic(Layers)} label={i("حزمة الوضع الفاتح", "Light-mode pack")} hint={i("تُستعمل حين يكون الوضع فاتحًا (فارغ = الحزمة العامة)", "Used when the mode is light (empty = the general pack)")}>
-          <Select label={i("حزمة الوضع الفاتح", "Light-mode pack")} value={s.themePackLight ?? ""} onChange={(v) => set({ themePackLight: v })} options={[{ value: "", label: i("— مثل العامة —", "— same as general —") }, ...allPacks.map((x) => ({ value: x.id, label: packLabel(x.pack) }))]} />
-        </Row>
-      </Section>
 
       {/* ───────── 1) الثيمات والحزم ───────── */}
       <Module {...modProps("packs")} icon={ic(Palette)} title={i("الثيمات والحزم", "Themes & packs")}
@@ -272,7 +252,7 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings>; set: (p: Part
 
       {/* ───────── 2) الأسطح والمادة ───────── */}
       <Module {...modProps("surfaces")} icon={ic(Layers)} title={i("الأسطح والمادة", "Surfaces & material")}
-        summary={`${(s.themeMaterial ?? "glass") === "glass" ? (s.glassStyle === "clear" ? i("زجاج شفاف", "Clear glass") : i("زجاج مثلّج", "Frosted glass")) : i("مصمت", "Solid")} · ${i("الحجاب", "veil")} ${s.glassTint ?? 45}% · ${i("ظل", "shadow")} ${tune.en.elevation}`}
+        summary={`${(s.themeMaterial ?? "glass") === "glass" ? i("زجاج مثلّج", "Frosted glass") : i("مصمت", "Solid")} · ${i("الحجاب", "veil")} ${s.glassTint ?? 45}% · ${i("ظل", "shadow")} ${tune.en.elevation}`}
         preview={<span className="tp-mp tp-mp-surf"><i /><b /></span>}
         onReset={() => resetKeys(["themeMaterial", "glassStyle", "glassTint", "backgroundOpacity", "borderStrength", "shadowStrength"], TUNE_MODULE_FIELDS.surfaces)}>
         <Row icon={ic(Sparkles)} label={i("أنماط جاهزة", "Style presets")} hint={i("نقرة واحدة تطبّق مجموعة كاملة من القيم", "One click applies a full set of values")} col>
@@ -285,11 +265,10 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings>; set: (p: Part
             {([
               { id: "solid", ar: "مصمت", en: "Solid", dar: "سطح معتم بلا شفافية", den: "An opaque surface, no see-through" },
               { id: "crystal", ar: "زجاج مُحاكى — مثلّج", en: "Simulated frosted glass", dar: "حجاب ملوّن كثيف بحدّ ولمعة وحبيبات — الموصى به", den: "A dense tinted veil with border, highlight and grain — recommended" },
-              { id: "clear", ar: "زجاج مُحاكى — شفاف", en: "Simulated clear glass", dar: "حجاب أخفّ يُظهر ما خلفه أكثر (بلا تمويه)", den: "A lighter veil that shows more of what is behind (no blur)" },
             ] as const).map((g) => {
               const glassOn = (s.themeMaterial ?? "glass") === "glass";
               return (
-                <button key={g.id} role="radio" aria-label={i(g.ar, g.en)} aria-checked={(!glassOn ? "solid" : (s.glassStyle ?? "crystal")) === g.id} data-bg={g.id} className="st-gstyle"
+                <button key={g.id} role="radio" aria-label={i(g.ar, g.en)} aria-checked={(!glassOn ? "solid" : "crystal") === g.id} data-bg={g.id} className="st-gstyle"
                   onClick={() => set(g.id === "solid" ? { themeMaterial: "solid" } : GLASS_STYLE_VALUES[g.id])}>
                   <span className={`st-gprev ${g.id}`} />
                   <span className="st-row-title">{i(g.ar, g.en)}</span>
