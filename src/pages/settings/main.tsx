@@ -419,6 +419,10 @@ function App() {
             <Segmented label={i("المؤشر الصوتي", "Visualizer")} value={s.visualizer ?? "bars"} onChange={(v) => set({ visualizer: v })}
               options={[{ value: "bars", label: i("أشرطة", "Bars") }, { value: "wave", label: i("موجة", "Wave") }, { value: "off", label: i("مطفأ", "Off") }]} />
           </Row>
+          <Row icon={ic(Clock)} label={i("شكل شريط التقدم", "Progress bar style")} hint={i("يُطبَّق فورًا على الحبة واللوحة", "Applies instantly to the pill and the panel")}>
+            <Segmented label={i("شكل شريط التقدم", "Progress bar style")} value={s.progressStyle ?? "line"} onChange={(v) => set({ progressStyle: v })}
+              options={[{ value: "line", label: i("خط", "Line") }, { value: "shimmer", label: i("لمعان", "Shimmer") }, { value: "wave", label: i("موجة", "Wave") }, { value: "liquid", label: i("سائل", "Liquid") }, { value: "dashes", label: i("شرطات", "Dashes") }]} />
+          </Row>
           <Row icon={ic(Clock)} label={i("الوقت", "Playback time")} hint={i("الوقت المنقضي والمتبقي تحت شريط التقدم", "Elapsed and remaining time under the progress bar")}>
             <Toggle label={i("الوقت", "Playback time")} value={s.showPlaybackTime ?? true} onChange={(v) => set({ showPlaybackTime: v })} />
           </Row>

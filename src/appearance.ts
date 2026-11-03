@@ -172,7 +172,7 @@ export const SECTION_KEYS: Record<string, (keyof Settings)[]> = {
   island: ["clockPosition", "clockX", "clockY", "clockScale", "eyesAlign", "pillWidth", "pillHeight", "pillRadius", "peekWidth", "peekHeight", "peekRadius", "panelWidth", "panelHeight", "panelRadius", "hoverDelayMs", "hoverZone", "peekWheelCycle", "peekCardOrder", "panelWheelPaging", "panelTabsStyle", "offsetX", "offsetY", "pillPosition", "islandDocking", "autoHide", "hideInFullscreen", "opacityRest", "opacityOpen", "showClock", "clockFormat", "eyesEnabled", "captureVisible"],
   appearance: ["themeMode", "themePack", "artBloom", "themeAnim", "themeCustom", "themeTune", "themeDisclosure", "themePackLight", "themePackDark", "accentSource", "themeMaterial", "glassStyle", "glassTint", "backgroundOpacity", "accentMode", "accentColor", "borderStrength", "shadowStrength", "cornerStyle", "fontScale", "density"],
   motion: ["motionLevel", "motionPreset", "motionSpeed", "motionBounce", "reduceMotion"],
-  modules: ["showToday", "prayerCity", "showWeather", "weatherCity", "weatherUnits", "showCountdowns", "showWorldClock", "showBattery", "batteryTip", "btBatteries", "showNetSpeed", "clipLimit", "pasteOnClick", "clipExcludedApps", "privacyIndicator", "showVolume", "showMeetings", "screenshotDir", "recordFormat", "recordingFps", "recordingQuality", "recordingDir", "liveRates", "liquidSpectrum", "playerLayout", "visualizer", "showPlaybackTime", "showSourceBadge", "showProgress", "artworkBackdrop", "attentionTracking"],
+  modules: ["showToday", "prayerCity", "showWeather", "weatherCity", "weatherUnits", "showCountdowns", "showWorldClock", "showBattery", "batteryTip", "btBatteries", "showNetSpeed", "clipLimit", "pasteOnClick", "clipExcludedApps", "privacyIndicator", "showVolume", "showMeetings", "screenshotDir", "recordFormat", "recordingFps", "recordingQuality", "recordingDir", "liveRates", "liquidSpectrum", "playerLayout", "visualizer", "progressStyle", "showPlaybackTime", "showSourceBadge", "showProgress", "artworkBackdrop", "attentionTracking"],
   notifications: ["soundChoice", "soundVolume", "prayerAlerts", "loadAlert", "meetingLeadMin", "breakReminders", "breakMinutes"],
   shortcuts: ["hotkeyPalette", "hotkeyArea", "hotkeyScreen", "hotkeyRecord", "hotkeyColor"],
   perf: ["ecoMode", "ecoOnBattery"],
@@ -249,7 +249,7 @@ export function exportTheme(s: P): string {
 }
 const ENUMS: Record<string, string[]> = {
   themeMode: ["system", "dark", "light", "sun"], accentSource: ["pack", "custom", "windows", "wallpaper"], accentMode: ["auto", "fixed"],
-  themeMaterial: ["solid", "glass"], glassStyle: ["crystal", "clear"], cornerStyle: ["rounded", "extra"], density: ["comfortable", "compact"],
+  progressStyle: ["line", "shimmer", "wave", "liquid", "dashes"], themeMaterial: ["solid", "glass"], glassStyle: ["crystal", "clear"], cornerStyle: ["rounded", "extra"], density: ["comfortable", "compact"],
 };
 /** هل المعرّف حزمة صالحة (مصنع أو custom أو u:xxxx)؟ */
 const validPackId = (v: unknown, mine: UserTheme[]) => typeof v === "string" && (v === "" || v === "custom" || PACKS.some((p) => p.id === v) || mine.some((u) => u.id === v));
