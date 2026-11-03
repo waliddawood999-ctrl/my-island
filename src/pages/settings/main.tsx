@@ -12,7 +12,7 @@ import "../../index.css";
 import "./settings.css";
 import { i } from "../../i18n";
 import { webviewVerdict, type WebviewRuntime } from "../../webview";
-import { saveSettings, useSaveStatus, useSettings } from "../../useSettings";
+import { saveSettings, retrySettingsSave, useSaveStatus, useSettings } from "../../useSettings";
 import { EcoIndicator, RamUsage } from "./Perf";
 import { WorkspacesEditor } from "./Workspaces";
 import { ClockPad } from "./ClockPad";
@@ -238,7 +238,7 @@ function App() {
       </>),
     },
     {
-      id: "island", icon: <PictureInPicture2 size={16} />, label: i("الجزيرة", "Island"), desc: i("الحجم والموضع والظهور — الشكل ثابت ولا يتغيّر إلا من هنا.", "Size, position and visibility — the shape is fixed and only changes here."),
+      id: "island", icon: <PictureInPicture2 size={16} />, label: i("الجزيرة", "Island"), desc: i("الحجم والموضع والظهور والتفاعل.", "Size, position, visibility and interaction."),
       body: (<>
         <Section title={i("الحجم والشكل", "Size & shape")}>
           <Row icon={ic(Ruler)} label={i("حجم الجزيرة", "Island size")} hint={i("مقاسات جاهزة؛ التفاصيل الدقيقة في الخيارات المتقدمة", "Size presets; exact dimensions are in advanced options")}>
@@ -366,7 +366,7 @@ function App() {
     },
     {
       id: "motion", icon: <Zap size={16} />, label: i("الحركة وإمكانية الوصول", "Motion & accessibility"), desc: i("سرعة الحركة ونمط النوابض وتقليلها.", "Animation speed, spring style and reducing motion."),
-      body: (
+      body: (<>
         <Section title={i("الحركة", "Motion")}>
           <Row icon={ic(Zap)} label={i("مستوى الحركة", "Motion level")} hint={i("كاملة: حركة حيّة · مخففة: تلاشٍ قصير · متوقفة: بلا حركة", "Full: lively · Reduced: short fades · Off: no motion")}>
             <Segmented label={i("مستوى الحركة", "Motion level")} value={s.motionLevel === "off" ? "off" : s.motionLevel === "reduced" || s.reduceMotion === "always" ? "reduced" : migrateReduce(s.reduceMotion) === "system" ? "system" : "full"} onChange={(v) => set(v === "system" ? { motionLevel: "full", reduceMotion: "system" } : { motionLevel: v, reduceMotion: "never" })}
@@ -384,7 +384,8 @@ function App() {
           </Row>
 
         </Section>
-      ),
+        <AppearanceBody s={s} set={set} section="motion" />
+      </>),
     },
     {
       id: "modules", icon: <Blocks size={16} />, label: i("الميزات", "Features"), desc: i("فعّل الوحدات التي تحتاجها وعدّل خياراتها.", "Turn on the modules you need and tune their options."),
@@ -563,6 +564,7 @@ function App() {
       id: "shortcuts", icon: <Keyboard size={16} />, label: i("الاختصارات", "Shortcuts"), desc: i("انقر الحقل ثم اضغط التركيبة · Backspace يمسح (= معطّل) · Esc يلغي.", "Click a field, then press the combo · Backspace clears (= off) · Esc cancels."),
       body: (
         <Section title={i("الاختصارات العامة", "Global shortcuts")}>
+          <Row icon={ic(Keyboard)} label={i("إظهار وإخفاء الجزيرة", "Toggle island visibility")} hint={i("اختصار ثابت", "Fixed shortcut")}><kbd dir="ltr">Ctrl+Alt+I</kbd></Row>
           <Row icon={ic(Command)} label={i("اختصار شريط الأوامر", "Command palette hotkey")} hint={i("فارغ = الشريط معطّل", "Empty = palette off")}>
             <ShortcutField label={i("اختصار شريط الأوامر", "Command palette hotkey")} value={s.hotkeyPalette ?? ""} onCommit={(v) => set({ hotkeyPalette: v })} />
           </Row>
@@ -615,8 +617,7 @@ function App() {
   const searching = q.trim().length > 0;
   const cur = all.find((x) => x.id === tab) ?? all[0];
   const visible = searching ? all : [cur];
-  const resetCur = () => { const k = SECTION_KEYS[cur.id]; if (k) set(resetPatch(k)); };
-  const Item = ({ x }: { x: Sec }) => (
+    const Item = ({ x }: { x: Sec }) => (
     <button data-nav={x.id} onClick={() => { setTab(x.id); setQ(""); }} aria-current={!searching && cur.id === x.id ? "true" : undefined} className="st-nav-item">
       {!searching && cur.id === x.id && <motion.span layoutId="st-ind" className="st-nav-ind" transition={spring.press} />}
       <span aria-hidden style={{ display: "contents" }}>{x.icon}</span>
@@ -641,7 +642,7 @@ function App() {
               <div role="separator" style={{ height: 1, background: "var(--c-border)", margin: "6px 4px" }} />
 
             </nav>
-            <div className="st-side-foot"><span role="status" data-testid="save-status" data-state={saveStatus} className="st-save-status">{saveStatus === "saving" ? i("جارٍ الحفظ…", "Saving…") : saveStatus === "error" ? i("تعذّر الحفظ؛ أعد المحاولة", "Save failed; try again") : saveStatus === "saved" ? i("تم الحفظ", "Saved") : i("تُحفظ التغييرات تلقائيًا", "Changes save automatically")}</span><QuitButton /></div>
+            <div className="st-side-foot"><span role="status" data-testid="save-status" data-state={saveStatus} className="st-save-status">{saveStatus === "saving" ? i("جارٍ الحفظ…", "Saving…") : saveStatus === "error" ? i("تعذّر الحفظ؛ أعد المحاولة", "Save failed; try again") : saveStatus === "saved" ? i("تم الحفظ", "Saved") : i("تُحفظ التغييرات تلقائيًا", "Changes save automatically")}</span>{saveStatus === "error" && <button className="st-btn" data-testid="retry-save" onClick={() => retrySettingsSave()}>{i("إعادة محاولة الحفظ", "Retry save")}</button>}<QuitButton /></div>
           </aside>
           <main ref={mainRef} className="st-main">
             <AnimatePresence mode="wait" initial={false}>

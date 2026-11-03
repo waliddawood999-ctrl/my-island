@@ -87,7 +87,7 @@ function Module(p: { id: string; icon: ReactNode; title: string; summary: string
   );
 }
 
-export function AppearanceBody({ s, set }: { s: Partial<Settings> & { environment?: Env }; set: (p: Partial<Settings>) => Promise<boolean> }) {
+export function AppearanceBody({ s, set, section = "appearance" }: { s: Partial<Settings> & { environment?: Env }; set: (p: Partial<Settings>) => Promise<boolean>; section?: "appearance" | "motion" }) {
   const q = useContext(SearchCtx);
   const searching = q.trim().length > 0;
   const level: Lvl = s.themeDisclosure === "advanced" || s.themeDisclosure === "expert" ? s.themeDisclosure : "basic";
@@ -98,7 +98,7 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings> & { environmen
   const mine = (Array.isArray(s.myThemes) ? s.myThemes : []).map(sanitizeUserTheme).filter((u): u is UserTheme => !!u && u.id.startsWith("u:"));
   const [hover, setHover] = useState<string | null>(null);
   const [openMods, setOpenMods] = useState<Record<string, boolean>>({});
-  const isOpen = (id: string) => openMods[id] ?? (id === "packs");
+  const isOpen = (id: string) => openMods[id] ?? (id === "packs" || (section === "motion" && id === "a11y"));
   const modProps = (id: string) => ({ id, open: isOpen(id), setOpen: (v: boolean) => setOpenMods((m) => ({ ...m, [id]: v })), searching });
   const [msg, setMsg] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -154,6 +154,7 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings> & { environmen
 
   return (
     <div className="tp-root" data-level={level} data-testid="appearance-body">
+      {section === "appearance" && <>
       {/* ───────── معرض الحزم (أول شاشة) ───────── */}
       <section className="tp-gallery" data-testid="theme-gallery" hidden={searching}>
         <div className="tp-gal-head">
@@ -310,7 +311,7 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings> & { environmen
             <Slider label={i("عتامة الخلفية الزجاجية", "Glass background opacity")} value={s.glassTint ?? 45} min={0} max={80} step={1} format={pct} onLive={(v) => set({ glassTint: v })} onCommit={(v) => set({ glassTint: v })} />
           </Row>
         )}
-        {at("advanced") && (
+        {at("expert") && (
           <Row icon={ic(Percent)} label={i("الكثافة", "Density of background")} hint={i("العتامة الكلية للحجاب — الأقل يُظهر ما خلف الجزيرة أكثر", "Overall opacity of the veil — lower shows more of what is behind the island")}>
             <Slider label={i("الكثافة", "Density of background")} value={s.backgroundOpacity ?? 1} min={0.3} max={1} step={0.05} format={x100} onLive={(v) => set({ backgroundOpacity: v })} onCommit={(v) => set({ backgroundOpacity: v })} />
           </Row>
@@ -321,7 +322,7 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings> & { environmen
         <Row icon={ic(Layers)} label={i("قوة الظلال", "Shadow strength")} hint={i("عمق الظل تحت العناصر", "How deep the shadows under things are")}>
           <Slider label={i("قوة الظلال", "Shadow strength")} value={s.shadowStrength ?? 50} min={0} max={100} step={5} format={pct} onLive={(v) => set({ shadowStrength: v })} onCommit={(v) => set({ shadowStrength: v })} />
         </Row>
-        {at("advanced") && (<>
+        {at("expert") && (<>
           <Row icon={ic(Layers)} label={i("أسلوب الظل والارتفاع", "Shadow & elevation style")} hint={i("مسطّح بلا ظل · ناعم (الافتراضي) · مرفوع أعمق", "Flat with no shadow · soft (default) · lifted and deeper")}>
             <Segmented label={i("أسلوب الظل والارتفاع", "Shadow & elevation style")} value={tune.en.elevation as "soft"} onChange={(v) => setTune({ elevation: v })}
               options={[{ value: "flat", label: i("مسطّح", "Flat") }, { value: "soft", label: i("ناعم", "Soft") }, { value: "lifted", label: i("مرفوع", "Lifted") }]} />
@@ -358,7 +359,7 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings> & { environmen
           <Segmented label={i("الكثافة المكانية", "Density")} value={s.density ?? "comfortable"} onChange={(v) => set({ density: v })}
             options={[{ value: "comfortable", label: i("مريحة", "Comfortable") }, { value: "compact", label: i("مدمجة", "Compact") }]} />
         </Row>
-        {at("advanced") && (<>
+        {at("expert") && (<>
           <Row icon={ic(Ruler)} label={i("نصف قطر البطاقات", "Card radius")} hint={i("يضرب استدارة البطاقات والأزرار والقوائم (0.4–2×)", "Multiplies the roundness of cards, buttons and menus (0.4–2×)")}>
             <Slider label={i("نصف قطر البطاقات", "Card radius")} value={tune.num.cornerK} min={TUNE_NUM.cornerK[0]} max={TUNE_NUM.cornerK[1]} step={0.1} format={(v) => `${v.toFixed(1)}×`} onLive={(v) => setTune({ cornerK: v })} onCommit={(v) => setTune({ cornerK: v })} />
           </Row>
@@ -393,6 +394,8 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings> & { environmen
         </>)}
       </Module>
 
+      </>}
+      {section === "motion" && <>
       {/* ───────── 5) الحركة والشعور ───────── */}
       <Module {...modProps("feel")} icon={ic(Zap)} title={i("الحركة والشعور", "Motion & feel")}
         summary={`${i("الضغط", "Press")}: ${({ none: i("بلا", "none"), normal: i("عادي", "normal"), strong: i("قوي", "strong") } as Record<string, string>)[tune.en.press]} · ${i("التلاشي بين الحزم", "pack crossfade")} ${Math.round(0.6 * 1000)}ms`}
@@ -447,13 +450,14 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings> & { environmen
         {rawOpen && <RawTokens derived={derived} tokens={tune.tokens} onChange={(t) => setTune({ tokens: t })} />}
       </Module>
 
-      <Section title={i("إعادة ضبط شاملة", "Global reset")}>
+      </>}
+      {section === "appearance" && <Section title={i("إعادة ضبط شاملة", "Global reset")}>
         <Row icon={ic(RotateCcw)} label={i("إعادة ضبط كل إعدادات المظهر", "Reset all appearance settings")} hint={i("يعيد الحزمة والمادة والمخزون كله للافتراضي (رفّ «ثيماتي» يبقى)", "Restores the pack, material and every knob to default (your “My themes” shelf is kept)")}>
           <button className={`st-btn ${armed ? "st-btn-danger" : ""}`} style={armed ? { width: "auto" } : undefined} data-armed={armed} data-testid="reset-theme-all"
             onClick={() => { if (armed) { set({ ...resetPatch(["themeMode", "themePack", "themePackLight", "themePackDark", "accentSource", "accentColor", "accentMode", "artBloom", "themeAnim", "themeCustom", "themeMaterial", "glassStyle", "glassTint", "backgroundOpacity", "borderStrength", "shadowStrength", "cornerStyle", "fontScale", "density"]), themeTune: {} }); setArmed(false); } else setArmed(true); }}
             onBlur={() => setArmed(false)}>{armed ? i("متأكد؟ إعادة ضبط", "Sure? Reset") : i("إعادة ضبط الكل", "Reset all")}</button>
         </Row>
-      </Section>
+      </Section>}
     </div>
   );
 }

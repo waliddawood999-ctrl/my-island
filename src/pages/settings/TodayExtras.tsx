@@ -10,11 +10,14 @@ export function CountdownsEditor({ s }: { s: Partial<Settings> }) {
   const list = sanitizeCountdowns(s.countdowns);
   const [name, setName] = useState("");
   const [date, setDate] = useState("");
-  const canAdd = name.trim().length > 0 && validDate(date) && list.length < MAX_COUNTDOWNS;
-  const add = () => {
+  const [saving, setSaving] = useState(false);
+  const canAdd = !saving && name.trim().length > 0 && validDate(date) && list.length < MAX_COUNTDOWNS;
+  const add = async () => {
     if (!canAdd) return;
-    saveSettings({ countdowns: [...list, { id: `ev-${Date.now().toString(36)}`, name: name.trim().slice(0, 40), date }] });
-    setName(""); setDate("");
+    setSaving(true);
+    const saved = await saveSettings({ countdowns: [...list, { id: `ev-${Date.now().toString(36)}`, name: name.trim().slice(0, 40), date }] });
+    setSaving(false);
+    if (saved) { setName(""); setDate(""); }
   };
   return (
     <div className="flex flex-col gap-2">
@@ -71,3 +74,4 @@ export function WorldClockEditor({ s }: { s: Partial<Settings> }) {
     </>
   );
 }
+

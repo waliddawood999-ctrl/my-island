@@ -10,7 +10,7 @@ const BASE = process.env.BASE || 'http://127.0.0.1:4173';
   const ok = (name, value) => { assert(value, name); checks++; console.log('OK '+name); };
   const open = async (settings={}) => {
     const ctx = await browser.newContext({viewport:{width:980,height:700},acceptDownloads:true});
-    const page=await ctx.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+    const page=await ctx.newPage();page.setDefaultTimeout(10000);page.setDefaultNavigationTimeout(10000);const errors=[];page.on('pageerror',e=>errors.push(e.message));
     await page.addInitScript(bridge({settings:{language:'en',settingsVersion:4,...settings}}));
     await page.addInitScript(() => {
       const base=window.__TAURI_INTERNALS__.invoke;
@@ -40,6 +40,7 @@ const BASE = process.env.BASE || 'http://127.0.0.1:4173';
     await p.getByTestId('import-file').setInputFiles({name:'settings.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({app:'myisland',settings:{language:'en',motionSpeed:999,loaded:true}}))});
     await p.getByText('Importing…',{exact:true}).waitFor();await p.getByText('Save failed; try again',{exact:true}).first().waitFor();ok('import never reports success on save failure',await p.getByText(/Imported \d/).count()===0);
     await p.evaluate(()=>{window.__rejectSaves=false;window.__saveDelay=40;});
+    await p.getByTestId('retry-save').click();await saved(p);ok('failed values can be retried explicitly',(await patch(p)).autostart===false);
     await p.getByTestId('import-file').setInputFiles({name:'valid.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({app:'myisland',settings:{clockScale:120,motionSpeed:999,loaded:true}}))});
     await p.getByText('Imported 1 valid settings',{exact:true}).waitFor();ok('invalid import keys excluded',JSON.stringify(await patch(p))===JSON.stringify({clockScale:120}));
     const dlPromise=p.waitForEvent('download');await p.getByTestId('export-btn').click();const dl=await dlPromise;const file=await dl.path();const ex=JSON.parse(fs.readFileSync(file,'utf8')).settings;ok('export excludes runtime state',!('loaded'in ex)&&!('fx'in ex)&&!('environment'in ex));

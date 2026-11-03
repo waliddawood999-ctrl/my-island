@@ -195,6 +195,7 @@ export function useSettings(): Partial<Settings> & { loaded?: boolean; /** تأ�
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 let saveQueue: Promise<unknown> = Promise.resolve();
 let pendingSaves = 0;
+const failedSettings: Partial<Settings> = {};
 let saveStatus: SaveStatus = "idle";
 const saveListeners = new Set<() => void>();
 function reportSave(status: SaveStatus) { saveStatus = status; saveListeners.forEach(f => f()); }
@@ -209,8 +210,16 @@ export function saveSettings(patch: Partial<Settings>): Promise<boolean> {
   if (Object.keys(valid).length !== Object.keys(patch).length) { reportSave("error"); return Promise.resolve(false); }
   pendingSaves++; reportSave("saving");
   const task = saveQueue.then(() => invoke("settings_set", { patch: valid }));
-  const result = task.then(() => { pendingSaves--; reportSave(pendingSaves ? "saving" : "saved"); return true; }, () => { pendingSaves--; reportSave("error"); return false; });
+  const result = task.then(() => {
+    for (const k of Object.keys(valid)) delete (failedSettings as Record<string, unknown>)[k];
+    pendingSaves--; reportSave(pendingSaves ? "saving" : Object.keys(failedSettings).length ? "error" : "saved"); return true;
+  }, () => {
+    Object.assign(failedSettings, valid); pendingSaves--; reportSave("error"); return false;
+  });
   saveQueue = result;
   return result;
 }
 
+
+/** Retry only the values whose last save failed. */
+export const retrySettingsSave = () => saveSettings({ ...failedSettings });
