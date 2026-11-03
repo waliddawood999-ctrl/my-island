@@ -177,7 +177,7 @@ export function AppearanceBody({ s, set, section = "appearance" }: { s: Partial<
               <div className="tp-fam-title" dir="auto">{i(FAMILY_LABEL[fam][0], FAMILY_LABEL[fam][1])}</div>
               <div className="tp-grid" role="radiogroup" aria-label={i(FAMILY_LABEL[fam][0], FAMILY_LABEL[fam][1])}>
                 {items.map(({ pack: pk, id }) => (
-                  <button key={id} role="radio" aria-checked={packId === id || (s.themePack ?? "obsidian") === id} aria-label={packLabel(pk)} data-pack={id} className="tp-card-btn"
+                  <button key={id} role="radio" aria-checked={chosenPackId(s, theme) === id} aria-label={packLabel(pk)} data-pack={id} className="tp-card-btn"
                     onMouseEnter={() => setHover(id)} onMouseLeave={() => setHover(null)} onFocus={() => setHover(id)} onBlur={() => setHover(null)}
                     onClick={() => applyPack(id)}>
                     <MiniIsland pack={pk} dark={dark} s={s} size="sm" />
@@ -307,8 +307,8 @@ export function AppearanceBody({ s, set, section = "appearance" }: { s: Partial<
           </div>
         </Row>
         {(s.themeMaterial ?? "glass") === "glass" && (
-          <Row icon={ic(Contrast)} label={i("عتامة الخلفية الزجاجية", "Glass background opacity")} hint={i("لون الحجاب وعتامته فوق سطح المكتب — الأعلى أوضح للنص", "Colour and opacity of the veil over the desktop — higher is easier to read")}>
-            <Slider label={i("عتامة الخلفية الزجاجية", "Glass background opacity")} value={s.glassTint ?? 45} min={0} max={80} step={1} format={pct} onLive={(v) => set({ glassTint: v })} onCommit={(v) => set({ glassTint: v })} />
+          <Row icon={ic(Contrast)} label={i("شدة الزجاج", "Glass strength")} hint={i("لون الحجاب وعتامته فوق سطح المكتب — الأعلى أوضح للنص", "Colour and opacity of the veil over the desktop — higher is easier to read")}>
+            <Slider label={i("شدة الزجاج", "Glass strength")} value={s.glassTint ?? 45} min={0} max={80} step={1} format={pct} onLive={(v) => set({ glassTint: v })} onCommit={(v) => set({ glassTint: v })} />
           </Row>
         )}
         {at("expert") && (
