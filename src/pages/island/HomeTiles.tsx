@@ -25,11 +25,13 @@ const tile = "i-card flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-3 py
  * الصلاة (showToday) · الطقس (showWeather) · الاجتماع القادم (showMeetings) · البطارية (showBattery + وجود بطارية).
  * لا شيء قائم ⇒ لا عنصر أصلًا (الفراغ الهادئ مقصود). البطاقة التي تعرضها بطاقة النشاط الحي الآن تُخفى هنا منعًا للتكرار.
  */
-export function HomeTiles({ settings, meetings, battery, liveShown }: {
+export function HomeTiles({ settings, meetings, battery, liveShown, wide = false }: {
   settings: Partial<Settings>;
   meetings: readonly Meeting[];
   battery: Battery | null;
   liveShown: string | null;
+  /** تخطيط عريض: البلاطات عمود جانبي بدل صف أسفل المشغّل. */
+  wide?: boolean;
 }) {
   const lang: Lang = settings.language === "en" ? "en" : "ar";
   const clock = settings.clockFormat ?? "auto";
@@ -131,7 +133,7 @@ export function HomeTiles({ settings, meetings, battery, liveShown }: {
 
   // الأم تدخل بنابض القسم؛ كل بلاطة بتدرّج خفيف (itemVariants) — كلاهما من src/motion.ts ويتبعان motionLevel.
   return (
-    <motion.div data-testid="home-tiles" custom={1} variants={sectionVariants} initial="initial" animate="animate" className="flex shrink-0 items-stretch gap-2">
+    <motion.div data-testid="home-tiles" custom={1} variants={sectionVariants} initial="initial" animate="animate" className={wide ? "flex w-[36%] shrink-0 flex-col items-stretch gap-2 overflow-y-auto" : "flex shrink-0 items-stretch gap-2"}>
       {kinds.map((k, n) => (
         <motion.div key={k} custom={n} variants={itemVariants} initial="initial" animate="animate" className="flex min-w-0 flex-1">
           {render(k)}

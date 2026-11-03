@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { FolderOpen, Monitor, Pencil, Pipette, Square, Video } from "lucide-react";
+import { FolderOpen, Monitor, NotebookPen, Pencil, Pipette, Square, Video } from "lucide-react";
 import { i } from "../../i18n";
 import { fmtElapsed, useRecording } from "../../useRecording";
+import type { Settings } from "../../settings";
 
 type ColorEntry = { hex: string; r: number; g: number; b: number; h: number; s: number; l: number };
 
 /** تبويب الأدوات: لقطات، تسجيل، منتقي ألوان مع السجل، محرّر آخر لقطة (الجلسة 3.3). */
-export function ToolsTab() {
+export function ToolsTab({ settings, wide = false, onOpenTab }: { settings?: Partial<Settings>; wide?: boolean; onOpenTab?: (id: string) => void } = {}) {
   const rec = useRecording();
   const [colors, setColors] = useState<ColorEntry[]>([]);
   const [toast, setToast] = useState<string | null>(null);
@@ -41,14 +42,16 @@ export function ToolsTab() {
   };
 
   const btn = "i-btn flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs";
+  // الاختصار العام تحت اسم كل إجراء (فارغ = معطّل ⇒ لا يظهر). الصفحة مستقلة «الالتقاط» في الدوك.
+  const hk = (v?: string) => (v ? <kbd dir="ltr" className="rounded bg-white/10 px-1 text-[9.5px] font-normal text-white/55">{v}</kbd> : null);
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
-      <div className="grid shrink-0 grid-cols-6 gap-2">
+      <div data-testid="capture-grid" className={`grid shrink-0 gap-2 ${wide ? "grid-cols-7" : "grid-cols-4"}`}>
         <button className={btn} onClick={run("capture_start", { mode: "area" })}>
-          <Square size={18} /><span dir="auto">{i("لقطة منطقة", "Area shot")}</span>
+          <Square size={18} /><span dir="auto">{i("لقطة منطقة", "Area shot")}</span>{hk(settings?.hotkeyArea)}
         </button>
         <button className={btn} onClick={run("capture_start", { mode: "screen" })}>
-          <Monitor size={18} /><span dir="auto">{i("لقطة الشاشة", "Full screen")}</span>
+          <Monitor size={18} /><span dir="auto">{i("لقطة الشاشة", "Full screen")}</span>{hk(settings?.hotkeyScreen)}
         </button>
         {rec.recording ? (
           <button className={`${btn} !bg-red-600/80`} onClick={run("record_stop")} aria-label={i("إيقاف التسجيل", "Stop recording")}>
@@ -57,15 +60,20 @@ export function ToolsTab() {
           </button>
         ) : (
           <button className={btn} onClick={run("record_begin")}>
-            <Video size={18} /><span dir="auto">{i("تسجيل", "Record")}</span>
+            <Video size={18} /><span dir="auto">{i("تسجيل", "Record")}</span>{hk(settings?.hotkeyRecord)}
           </button>
         )}
         <button className={btn} onClick={run("color_pick")}>
-          <Pipette size={18} /><span dir="auto">{i("منتقي الألوان", "Color picker")}</span>
+          <Pipette size={18} /><span dir="auto">{i("منتقي الألوان", "Color picker")}</span>{hk(settings?.hotkeyColor)}
         </button>
         <button className={btn} onClick={run("editor_open")}>
           <Pencil size={18} /><span dir="auto">{i("تحرير آخر لقطة", "Edit last shot")}</span>
         </button>
+        {onOpenTab && (
+          <button data-testid="capture-note" className={btn} onClick={() => onOpenTab("note")}>
+            <NotebookPen size={18} /><span dir="auto">{i("ملاحظة سريعة", "Quick note")}</span>
+          </button>
+        )}
         <button className={btn} onClick={run("open_captures")}>
           <FolderOpen size={18} /><span dir="auto">{i("مجلد اللقطات", "Captures folder")}</span>
         </button>

@@ -15,6 +15,7 @@ import { webviewVerdict, type WebviewRuntime } from "../../webview";
 import { saveSettings, useSettings } from "../../useSettings";
 import { EcoIndicator, RamUsage } from "./Perf";
 import { WorkspacesEditor } from "./Workspaces";
+import { ClockPad } from "./ClockPad";
 import { CountdownsEditor, WorldClockEditor } from "./TodayExtras";
 import { manualCheck } from "../../useUpdater";
 import type { ManualStatus } from "../../updater";
@@ -295,9 +296,9 @@ function App() {
           <Row icon={ic(MousePointer2)} label={i("التنقل بالعجلة في اللوحة", "Wheel pages in the panel")} hint={i("فوق = الصفحة التالية، تحت = السابقة", "Up = next page, down = previous")}>
             <Toggle label={i("التنقل بالعجلة في اللوحة", "Wheel pages in the panel")} value={s.panelWheelPaging ?? true} onChange={(v) => set({ panelWheelPaging: v })} />
           </Row>
-          <Row icon={ic(PanelTop)} label={i("التبويبات في اللوحة", "Panel tabs")} hint={i("شكل أزرار التنقل أعلى اللوحة", "Style of the navigation buttons at the top of the panel")}>
-            <Segmented label={i("التبويبات في اللوحة", "Panel tabs")} value={s.panelTabsStyle ?? "icons"} onChange={(v) => set({ panelTabsStyle: v })}
-              options={[{ value: "labels", label: i("نصوص", "Labels") }, { value: "icons", label: i("أيقونات", "Icons") }, { value: "dots", label: i("نقاط", "Dots") }, { value: "hidden", label: i("مخفية", "Hidden") }]} />
+          <Row icon={ic(PanelTop)} label={i("التبويبات في اللوحة", "Panel tabs")} hint={i("دوك سفلي بخمس صفحات (الافتراضي) أو الأشرطة العلوية القديمة", "A bottom dock with five pages (default) or the older top bars")}>
+            <Segmented label={i("التبويبات في اللوحة", "Panel tabs")} value={s.panelTabsStyle ?? "dock"} onChange={(v) => set({ panelTabsStyle: v })}
+              options={[{ value: "dock", label: i("دوك", "Dock") }, { value: "labels", label: i("نصوص", "Labels") }, { value: "icons", label: i("أيقونات", "Icons") }, { value: "dots", label: i("نقاط", "Dots") }, { value: "hidden", label: i("مخفية", "Hidden") }]} />
           </Row>
         </Section>
         <Section title={i("الظهور", "Visibility")}>
@@ -320,6 +321,22 @@ function App() {
         <Section title={i("المحتوى", "Content")}>
           <Row icon={ic(Clock)} label={i("إظهار الساعة", "Show clock")} hint={i("يعرض الوقت داخل الحبة", "Shows the time inside the pill")}>
             <Toggle label={i("إظهار الساعة", "Show clock")} value={s.showClock ?? true} onChange={(v) => set({ showClock: v })} />
+          </Row>
+          <Row icon={ic(Clock)} label={i("مكان الساعة في الحبة", "Clock position in the pill")} hint={i("اسحب النقطة في الدائرة فتتحرّك الساعة داخل الحبة لأي مكان؛ «تلقائي» يرجع للترتيب الحالي", "Drag the dot in the circle to place the clock anywhere inside the pill; “Auto” restores the current layout")}>
+            <div className="flex w-[200px] max-w-full flex-col gap-2">
+              <ClockPad x={s.clockX ?? 50} y={s.clockY ?? 50} scale={s.clockScale ?? 100} onChange={(x, y) => set({ clockPosition: "free", clockX: x, clockY: y })} />
+              <div className="flex flex-wrap justify-center gap-2">
+                <button className={btnOutline} data-testid="clock-auto" onClick={() => set({ clockPosition: "auto" })} aria-pressed={(s.clockPosition ?? "auto") === "auto"}>{i("تلقائي (الحالي)", "Auto (current)")}</button>
+                <button className={btnOutline} data-testid="clock-center" onClick={() => set({ clockPosition: "free", clockX: 50, clockY: 50 })}>{i("إعادة للوسط", "Center")}</button>
+              </div>
+            </div>
+          </Row>
+          <Row icon={ic(Clock)} label={i("حجم الساعة", "Clock size")} hint={i("٦٠–١٨٠٪ من الحجم الأساسي", "60–180% of the base size")}>
+            <Slider label={i("حجم الساعة", "Clock size")} value={s.clockScale ?? 100} min={60} max={180} step={5} format={(v) => `${v}%`} onCommit={(v) => set({ clockScale: v })} />
+          </Row>
+          <Row icon={ic(Eye)} label={i("مكان العيون", "Eyes position")} hint={i("يسار / وسط / يمين الحبة (تلقائي = بجانب الساعة)", "Left / center / right of the pill (Auto = beside the clock)")}>
+            <Segmented label={i("مكان العيون", "Eyes position")} value={s.eyesAlign ?? "auto"} onChange={(v) => set({ eyesAlign: v })}
+              options={[{ value: "auto", label: i("تلقائي", "Auto") }, { value: "left", label: i("يسار", "Left") }, { value: "center", label: i("وسط", "Center") }, { value: "right", label: i("يمين", "Right") }]} />
           </Row>
           <Row icon={ic(Clock)} label={i("نظام الساعة", "Clock format")} hint={i("طريقة عرض الوقت في الحبة", "How the time is shown in the pill")}>
             <Segmented label={i("نظام الساعة", "Clock format")} value={s.clockFormat ?? "auto"} onChange={(v) => set({ clockFormat: v })}

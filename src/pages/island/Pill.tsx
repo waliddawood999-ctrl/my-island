@@ -35,7 +35,7 @@ import { crossfade, normSpeed, resolveReduce } from "../../islandMotion";
 import { PeekView } from "./PeekView";
 import { PillMedia, PlayerPanel, useAccent } from "./Player";
 import { scrollsFurther } from "./wheel";
-import { Bell as BellIcon, Calendar as CalendarIcon, ClipboardList, Grid2x2, Home as HomeIcon, Layers as LayersIcon, Notebook, Wrench, Cpu as CpuIcon, MessageCircle, Rocket, Users } from "lucide-react";
+import { Bell as BellIcon, Calendar as CalendarIcon, Camera as CameraIcon, ClipboardList, Grid2x2, Home as HomeIcon, Layers as LayersIcon, Notebook, Wrench, Cpu as CpuIcon, MessageCircle, Rocket, Users } from "lucide-react";
 import { fmtCountdown, TIMER_NEAR_MS, useNoteAlert, useTimer } from "../../useNote";
 import { MediaSection } from "./MediaSection";
 import { TodaySection } from "./TodaySection";
@@ -46,6 +46,10 @@ import { TabBoundary } from "./TabBoundary";
 import { rowReversed } from "../../eyes";
 import { Palette } from "./Palette";
 import { TabBar } from "./TabBar";
+import { IdleHome } from "./IdleHome";
+import { isWideLayout } from "./layoutMode";
+import { clampPct, clockAbsStyle, clockFontSize, eyesAlignStyle, normClockPosition } from "./clockPlacement";
+import { Dock, SubTabs, groupIndexOf, pageGroups, targetTab } from "./Dock";
 import { AttentionSection } from "./AttentionSection";
 import { BatteryChip, BatterySection, hasBatteryContent } from "./BatterySection";
 import { useAttention } from "../../useAttention";
@@ -95,6 +99,15 @@ const tabDefs = (shelfOn: boolean, shelfCount: number, launcherOn: boolean, meet
   ...(meetingsOn ? [{ id: "meetings", label: i("الاجتماعات", "Meetings") }] : []),
   { id: "system", label: i("النظام", "System") },
   ...(CHAT_TAB_ENABLED ? [{ id: "chat", label: i("المحادثة", "Chat") }] : []),
+];
+
+/** صفحات الدوك (مجموعات فوق التبويبات الدقيقة). «الالتقاط» = تبويب tools الحالي؛ «الأدوات» = الرف/ملاحظة/اجتماعات/النظام كتبويبات فرعية. */
+const PAGE_DEFS = [
+  { id: "home", members: ["home"], label: () => i("الرئيسية", "Home"), icon: <HomeIcon size={16} /> },
+  { id: "capture", members: ["tools"], label: () => i("الالتقاط", "Capture"), icon: <CameraIcon size={16} /> },
+  { id: "clip", members: ["clip"], label: () => i("الحافظة", "Clipboard"), icon: <ClipboardList size={16} /> },
+  { id: "apps", members: ["launcher"], label: () => i("التطبيقات", "Apps"), icon: <Grid2x2 size={16} /> },
+  { id: "work", members: ["shelf", "note", "meetings", "system"], label: () => i("الأدوات", "Tools"), icon: <Wrench size={16} /> },
 ];
 
 /**
@@ -262,6 +275,18 @@ export function Pill() {
   const curTab = tabs[tab].id;
   const peekIdx = Math.max(0, tabs.findIndex((t) => t.id === peekTab));
   const peekTabId = tabs[peekIdx].id;
+  // دوك الصفحات: يُحسب من التبويبات المتاحة فعليًا؛ آخر تبويب فرعي في كل صفحة يُحفظ لتعود إليه.
+  const dockStyle = (settings.panelTabsStyle ?? "dock") === "dock";
+  // تخطيط عريض تلقائي: لوحة قليلة الارتفاع عريضة (≥2.1× ، ≤320px) ⇒ الرئيسية تصير صفًّا (مشغّل/اقتراحات بجانب البلاطات). مقاسات المستخدم لا تُمسّ.
+  const wide = isWideLayout(panel.w, panel.h);
+  const clockFree = normClockPosition(settings.clockPosition) === "free";
+  const clockFs = clockFontSize(settings.clockScale);
+  const eyesAlign = eyesAlignStyle(settings.eyesAlign, Math.round(12 * (pill.h / 34)));
+  const liveDataW = wide && liveData.player ? { ...liveData, player: { ...liveData.player, wide: true } } : liveData;
+  const groups = pageGroups(PAGE_DEFS, tabs.map((t) => t.id));
+  const groupIdx = groupIndexOf(groups, curTab);
+  const lastInGroup = useRef<Record<string, string>>({});
+  lastInGroup.current[groups[groupIdx]?.id ?? "home"] = curTab;
   // الإطلالة التفاعلية: جسم الرئيسية = peekHeight + شريط التبويبات؛ أي تبويب آخر ⇒ جسم أطول قابل للتمرير. سقف مطلق PEEK.maxW×maxH (docs/MOTION.md §الإطلالة).
   const peekBase = { w: clampN(settings.peekWidth, 240, PEEK.maxW, 460), h: clampN(settings.peekHeight, 72, 200, 148) };
   const peekSz = { w: peekBase.w, h: Math.min(PEEK.maxH, peekTabId === "home" ? peekBase.h + PEEK.tabsH : Math.max(peekBase.h + PEEK.tabsH, PEEK.tabBodyH)) };
@@ -493,17 +518,19 @@ export function Pill() {
     {id === "home" && where === "panel" && (
       // بطاقة النشاط الحي الأعلى أولوية تتصدّر الرئيسية (أو حالة الميديا الفارغة)؛ تحتها صف بلاطات «لمحة» الشرطية. لا شيء آخر.
       // الرئيسية: عمود يمرّر داخليًا إن لم يتّسع المحتوى (لا تداخل أبدًا): بطاقة النشاط/المشغّل بحدّ أدنى لمحتواها، وتحتها البلاطات.
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden" style={{ gap: "var(--island-section-gap)" }}>
+      <div data-layout={wide ? "wide" : "tall"} className={`flex min-h-0 flex-1 overflow-y-auto overflow-x-hidden ${wide ? "flex-row items-stretch" : "flex-col"}`} style={{ gap: "var(--island-section-gap)", ...(dockStyle ? { WebkitMaskImage: "linear-gradient(to bottom, #000 calc(100% - 16px), transparent)", maskImage: "linear-gradient(to bottom, #000 calc(100% - 16px), transparent)" } : {}) }}>
         {(shownPanel || moduleMedia) && (
           <motion.div custom={0} variants={sectionVariants} initial="initial" animate="animate" className="min-w-0 flex-1 shrink-0 [min-height:min-content]">
             {shownPanel ? (
-              <ActivityStack kinds={panelKinds} shown={shownPanel} onPin={setPinPanel} data={liveData} />
+              <ActivityStack kinds={panelKinds} shown={shownPanel} onPin={setPinPanel} data={liveDataW} />
+            ) : dockStyle && !media.info.session ? (
+              <IdleHome settings={settings} attention={attention} onOpenTab={setTabId} />
             ) : (
-              <PlayerPanel media={media} s={settings} accent={accent} reduce={reduceUI} visible={open} />
+              <PlayerPanel media={media} s={settings} accent={accent} reduce={reduceUI} visible={open} wide={wide} />
             )}
           </motion.div>
         )}
-        <HomeTiles settings={settings} meetings={meetings.snap.items} battery={battery} liveShown={shownPanel} />
+        <HomeTiles settings={settings} meetings={meetings.snap.items} battery={battery} liveShown={shownPanel} wide={wide} />
       </div>
     )}
     {id === "note" && (
@@ -521,7 +548,7 @@ export function Pill() {
     )}
     {id === "tools" && (
       <div className="min-h-0 flex-1">
-        <ToolsTab />
+        <ToolsTab settings={settings} wide={wide} onOpenTab={dockStyle ? setTabId : undefined} />
       </div>
     )}
     {id === "meetings" && (
@@ -687,6 +714,7 @@ export function Pill() {
               exit="exit"
               onPanEnd={(_, info) => { if (capKinds.length > 1 && Math.abs(info.offset.x) > 28) { lastPanAt.current = performance.now(); cycleCap(); } }}
               className="flex w-full items-center justify-center"
+              style={pillKey === "clock" && !clockFree && eyesAlign ? eyesAlign : undefined}
             >
               {pillKey === "alert" && alert ? (
                 <span dir="auto" className="flex max-w-full items-center gap-2 px-3" role="alert">
@@ -737,16 +765,29 @@ export function Pill() {
                 <CapsuleSplit kind="net" k={k} dots={dots} left={i("الشبكة", "Network")} value={<NetValue down={net.down} up={net.up} />} />
               ) : (
                 (settings.eyesEnabled ?? true) ? (
-                  // عيون التميمة بجانب الساعة؛ ينعكس الترتيب بالعربية فقط (التتبّع فيزيائي لا يتأثر).
-                  <span
-                    className="flex items-center gap-2.5"
-                    style={{ flexDirection: rowReversed(settings.language === "en" ? "en" : "ar") ? "row-reverse" : "row" }}
-                  >
-                    <Eyes islandHidden={hidden || mode !== "pill" || !!palette} k={k} />
-                    {(settings.showClock ?? true) && <span dir="ltr">{time}</span>}
-                  </span>
+                  clockFree ? (
+                    // وضع الساعة الحرّ: العيون تُحاذى لوحدها (eyesAlign) والساعة تُثبَّت بنسبتي clockX/clockY داخل الحبة (لا تخرج عنها).
+                    <>
+                      <span className="flex w-full items-center" style={eyesAlign ?? { justifyContent: "center" }}>
+                        <Eyes islandHidden={hidden || mode !== "pill" || !!palette} k={k} />
+                      </span>
+                      {(settings.showClock ?? true) && <span dir="ltr" data-testid="pill-clock" style={{ ...clockAbsStyle(settings.clockX, settings.clockY), fontSize: clockFs, lineHeight: 1 }}>{time}</span>}
+                    </>
+                  ) : (
+                    // عيون التميمة بجانب الساعة؛ ينعكس الترتيب بالعربية فقط (التتبّع فيزيائي لا يتأثر).
+                    <span
+                      data-testid="pill-row"
+                      className="flex items-center gap-2.5"
+                      style={{ flexDirection: rowReversed(settings.language === "en" ? "en" : "ar") ? "row-reverse" : "row" }}
+                    >
+                      <Eyes islandHidden={hidden || mode !== "pill" || !!palette} k={k} />
+                      {(settings.showClock ?? true) && <span dir="ltr" data-testid="pill-clock" style={{ fontSize: clockFs }}>{time}</span>}
+                    </span>
+                  )
                 ) : (
-                  (settings.showClock ?? true) && <span dir="ltr">{time}</span>
+                  (settings.showClock ?? true) && (clockFree
+                    ? <span dir="ltr" data-testid="pill-clock" style={{ ...clockAbsStyle(settings.clockX, settings.clockY), fontSize: clockFs, lineHeight: 1 }}>{time}</span>
+                    : <span dir="ltr" data-testid="pill-clock" style={{ fontSize: clockFs }}>{time}</span>)
                 )
               )}
               {pillKey === "clock" && showBat && battery?.has_battery && (
@@ -778,11 +819,11 @@ export function Pill() {
           style={{ width: panel.w, height: panel.h, padding: "var(--island-pad)", pointerEvents: open ? "auto" : "none" }}
           className="absolute left-1/2 top-0 flex -translate-x-1/2 flex-col"
         >
-          <div className="flex shrink-0 items-center gap-2">
-            {(settings.panelTabsStyle ?? "icons") !== "hidden" && <div className="min-w-0 overflow-x-auto"><TabBar
+          <div className={dockStyle ? "hidden" : "flex shrink-0 items-center gap-2"}>
+            {(settings.panelTabsStyle ?? "dock") !== "hidden" && !dockStyle && <div className="min-w-0 overflow-x-auto"><TabBar
               labels={tabLabels}
               icons={tabs.map((t) => TAB_ICONS[t.id])}
-              variant={(settings.panelTabsStyle ?? "icons") as "labels" | "icons" | "dots"}
+              variant={(settings.panelTabsStyle === "dock" || !settings.panelTabsStyle ? "icons" : settings.panelTabsStyle) as "labels" | "icons" | "dots"}
               active={tab}
               onSelect={(n) => setTabId(tabs[n]?.id ?? "home")}
               onHint={(n) => { if (tabs[n]?.id === "note") void importNote().catch(() => {}); }}
@@ -828,10 +869,37 @@ export function Pill() {
                 exit="exit"
                 className="flex min-h-0 flex-1 flex-col pt-3"
               >
+                {dockStyle && groups[groupIdx]?.id === "work" && (
+                  <SubTabs
+                    items={groups[groupIdx].members.map((m) => ({ id: m, label: tabs.find((t) => t.id === m)?.label ?? m }))}
+                    active={curTab}
+                    onSelect={(id) => setTabId(id)}
+                  />
+                )}
                 {renderTab(curTab, "panel")}
               </motion.div>
             )}
           </AnimatePresence>
+          {dockStyle && (
+            <div className="relative flex shrink-0 items-center justify-center pt-2">
+              <Dock
+                groups={groups.map((g) => ({ id: g.id, label: g.label(), icon: g.icon, members: g.members }))}
+                active={groupIdx}
+                onSelect={(n) => { const g = groups[n]; if (g) setTabId(targetTab(g, lastInGroup.current[g.id])); }}
+              />
+              <motion.button
+                aria-label={i("الإعدادات", "Settings")}
+                title={i("الإعدادات", "Settings")}
+                onClick={() => invoke("open_settings").catch(() => {})}
+                whileHover={tap.whileHover}
+                whileTap={tap.whileTap}
+                transition={tap.transition}
+                className="i-btn absolute end-0 shrink-0 p-1.5"
+              >
+                <SettingsIcon size={16} />
+              </motion.button>
+            </div>
+          )}
         </motion.div>
       </motion.div>
       </div>

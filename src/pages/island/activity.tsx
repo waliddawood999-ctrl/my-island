@@ -294,7 +294,7 @@ function UpdateCard({ u, onInstall }: { u: UpdateState; onInstall: () => void })
 
 function MediaCard({ media, player }: { media: MediaView; player?: LiveData["player"] }) {
   // T03: المشغّل الجديد (PlayerPanel) بلا ترويسة الشارة — يملأ اللوحة بتخطيط compact/large/minimal.
-  if (player) return <div data-testid="activity-media" className="h-full"><PlayerPanel media={media} s={player.s} accent={player.accent} reduce={player.reduce} visible={player.visible} /></div>;
+  if (player) return <div data-testid="activity-media" className="h-full"><PlayerPanel media={media} s={player.s} accent={player.accent} reduce={player.reduce} visible={player.visible} wide={player.wide} /></div>;
   return (
     <ActivityShell kind="media">
       <MediaSection media={media} />
@@ -330,7 +330,7 @@ export interface LiveData {
   timer: TimerState | null;
   remaining: number | null;
   media: MediaView;
-  player?: { s: Partial<Settings>; accent: string; reduce: boolean; visible: boolean };
+  player?: { s: Partial<Settings>; accent: string; reduce: boolean; visible: boolean; wide?: boolean };
   battery: Battery | null;
   batteryHist: BatSample[];
   meeting: UpcomingMeeting<Meeting> | null;
