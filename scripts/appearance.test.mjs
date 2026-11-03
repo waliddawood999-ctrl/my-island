@@ -30,7 +30,7 @@ ok("reduceMotion/OS ⇒ reduced; off stays off", a.effectiveMotion({ reduceMotio
 ok("accent invalid ⇒ default; fg readable", (() => { const x = a.accentVars("zzz", "dark"); return x.accent === "#4fd1c5" && ["#ffffff", "#06080c"].includes(x.accentFg); })());
 ok("light accent darkened to ≥3:1 on light surface", (() => { const x = a.accentVars("#ffb224", "light"); const c = [1, 3, 5].map((i) => parseInt(x.accent.slice(i, i + 2), 16)); return a.contrast(c, [236, 239, 244]) >= 3; })());
 // إعدادات مسبقة
-ok("2 presets with expected ids (مصمت + مثلّج)", a.STYLE_PRESETS.map((p) => p.id).join() === "frosted,solid");
+ok("4 presets with expected ids", a.STYLE_PRESETS.map((p) => p.id).join() === "frosted,smoked,clear,minimal");
 ok("presets never set blur/saturation", a.STYLE_PRESETS.every((p) => !("glassBlur" in p.values) && !("glassSaturation" in p.values)));
 // ترحيل
 ok("migrate v0: shrunken pill reset, crystal added, version 2", (() => { const m = a.migrateSettings({ pillWidth: 180, pillHeight: 30 }); return m.pillWidth === 220 && m.pillHeight === 34 && m.glassStyle === "crystal" && m.settingsVersion === 4; })());

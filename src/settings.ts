@@ -102,7 +102,6 @@ export interface Settings {
   accentMode:'auto'|'fixed',      // auto = من غلاف الأغنية
   playerLayout:'compact'|'large'|'minimal',
   visualizer:'bars'|'wave'|'off',
-  progressStyle:'line'|'shimmer'|'wave'|'liquid'|'dashes',
   showPlaybackTime:boolean, showSourceBadge:boolean, showProgress:boolean, artworkBackdrop:boolean,
   settingsVersion:number,         // ترحيل الإعدادات (appearance.ts::migrateSettings)
   showNetSpeed:boolean,
@@ -191,7 +190,6 @@ export const DEFAULTS: Partial<Settings> = {
   accentMode: 'auto',
   playerLayout: 'compact',
   visualizer: 'bars',
-  progressStyle: 'line',
   showPlaybackTime: true, showSourceBadge: true, showProgress: true, artworkBackdrop: true,
   settingsVersion: 4,
   showNetSpeed: false,     // سرعتا الشبكة (تحميل/رفع) في الكبسولة المدمجة؛ القراءة من عدّادات ويندوز فقط أثناء التفعيل (netspeed_active)
