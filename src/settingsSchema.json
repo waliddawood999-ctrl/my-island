@@ -1,0 +1,1074 @@
+{
+  "autostart": {
+    "type": "boolean",
+    "default": false
+  },
+  "language": {
+    "type": "string",
+    "default": "ar",
+    "enum": [
+      "ar",
+      "en"
+    ],
+    "maxLength": 4096
+  },
+  "monitor": {
+    "type": "number",
+    "default": 0,
+    "min": 0,
+    "max": 64,
+    "integer": true
+  },
+  "offsetX": {
+    "type": "number",
+    "default": 0,
+    "min": -800,
+    "max": 800,
+    "integer": true
+  },
+  "style": {
+    "type": "string",
+    "maxLength": 4096
+  },
+  "opacityRest": {
+    "type": "number",
+    "default": 100,
+    "min": 20,
+    "max": 100,
+    "integer": true
+  },
+  "opacityOpen": {
+    "type": "number",
+    "default": 100,
+    "min": 20,
+    "max": 100,
+    "integer": true
+  },
+  "autoHide": {
+    "type": "boolean",
+    "default": false
+  },
+  "hideInFullscreen": {
+    "type": "boolean",
+    "default": false
+  },
+  "through": {
+    "type": "boolean"
+  },
+  "hoverDelayMs": {
+    "type": "number",
+    "default": 250,
+    "min": 0,
+    "max": 800,
+    "integer": true
+  },
+  "captureVisible": {
+    "type": "boolean",
+    "default": false
+  },
+  "showClock": {
+    "type": "boolean",
+    "default": true
+  },
+  "clockFormat": {
+    "type": "string",
+    "enum": [
+      "auto",
+      "24",
+      "12"
+    ],
+    "default": "auto",
+    "maxLength": 4096
+  },
+  "clockPosition": {
+    "type": "string",
+    "enum": [
+      "auto",
+      "free"
+    ],
+    "default": "auto",
+    "maxLength": 4096
+  },
+  "clockX": {
+    "type": "number",
+    "default": 50,
+    "min": 0,
+    "max": 100,
+    "integer": true
+  },
+  "clockY": {
+    "type": "number",
+    "default": 50,
+    "min": 0,
+    "max": 100,
+    "integer": true
+  },
+  "clockScale": {
+    "type": "number",
+    "default": 100,
+    "min": 60,
+    "max": 180,
+    "integer": true
+  },
+  "eyesAlign": {
+    "type": "string",
+    "enum": [
+      "auto",
+      "left",
+      "center",
+      "right"
+    ],
+    "default": "auto",
+    "maxLength": 4096
+  },
+  "showBattery": {
+    "type": "boolean",
+    "default": false
+  },
+  "btBatteries": {
+    "type": "boolean",
+    "default": true
+  },
+  "batteryTip": {
+    "type": "boolean",
+    "default": true
+  },
+  "attentionTracking": {
+    "type": "boolean",
+    "default": true
+  },
+  "breakReminders": {
+    "type": "boolean",
+    "default": false
+  },
+  "breakMinutes": {
+    "type": "number",
+    "default": 60,
+    "min": 5,
+    "max": 240,
+    "integer": true
+  },
+  "mediaPill": {
+    "type": "string",
+    "maxLength": 4096
+  },
+  "liquidSpectrum": {
+    "type": "boolean",
+    "default": false
+  },
+  "soundChoice": {
+    "type": "string",
+    "enum": [
+      "chime",
+      "glass",
+      "pop",
+      "bubble",
+      "bell",
+      "none"
+    ],
+    "default": "chime",
+    "maxLength": 4096
+  },
+  "soundVolume": {
+    "type": "number",
+    "default": 70,
+    "min": 0,
+    "max": 100,
+    "integer": true
+  },
+  "mascot": {
+    "type": "string",
+    "maxLength": 4096
+  },
+  "recordFormat": {
+    "type": "string",
+    "enum": [
+      "mp4",
+      "gif"
+    ],
+    "default": "mp4",
+    "maxLength": 4096
+  },
+  "recordingFps": {
+    "type": "number",
+    "enum": [
+      30,
+      60
+    ],
+    "default": 30,
+    "integer": true
+  },
+  "recordingQuality": {
+    "type": "string",
+    "default": "medium",
+    "enum": [
+      "low",
+      "medium",
+      "high"
+    ],
+    "maxLength": 4096
+  },
+  "screenshotDir": {
+    "type": "string",
+    "default": "",
+    "maxLength": 4096
+  },
+  "recordingDir": {
+    "type": "string",
+    "default": "",
+    "maxLength": 4096
+  },
+  "clipLimit": {
+    "type": "number",
+    "default": 200,
+    "min": 10,
+    "max": 1000,
+    "integer": true
+  },
+  "clipExcludedApps": {
+    "type": "array",
+    "default": [],
+    "maxItems": 1000,
+    "items": {
+      "type": "string",
+      "maxLength": 4096
+    }
+  },
+  "pasteOnClick": {
+    "type": "boolean",
+    "default": true
+  },
+  "moduleMedia": {
+    "type": "boolean"
+  },
+  "moduleShelf": {
+    "type": "boolean"
+  },
+  "moduleLauncher": {
+    "type": "boolean"
+  },
+  "showVolume": {
+    "type": "boolean",
+    "default": true
+  },
+  "privacyIndicator": {
+    "type": "boolean",
+    "default": false
+  },
+  "showMeetings": {
+    "type": "boolean",
+    "default": false
+  },
+  "loadAlert": {
+    "type": "boolean",
+    "default": false
+  },
+  "meetingLeadMin": {
+    "type": "number",
+    "default": 15,
+    "min": 1,
+    "max": 60,
+    "integer": true
+  },
+  "paletteFiles": {
+    "type": "boolean"
+  },
+  "paletteFolders": {
+    "type": "boolean"
+  },
+  "searchEngine": {
+    "type": "string",
+    "maxLength": 4096
+  },
+  "searchUrl": {
+    "type": "string",
+    "maxLength": 4096
+  },
+  "liveRates": {
+    "type": "boolean",
+    "default": true
+  },
+  "ecoMode": {
+    "type": "boolean",
+    "default": false
+  },
+  "ecoOnBattery": {
+    "type": "boolean",
+    "default": false
+  },
+  "motionLevel": {
+    "type": "string",
+    "enum": [
+      "full",
+      "reduced",
+      "off"
+    ],
+    "default": "full",
+    "maxLength": 4096
+  },
+  "eyesEnabled": {
+    "type": "boolean",
+    "default": true
+  },
+  "pillWidth": {
+    "type": "number",
+    "default": 220,
+    "min": 160,
+    "max": 280,
+    "integer": true
+  },
+  "pillHeight": {
+    "type": "number",
+    "default": 34,
+    "min": 28,
+    "max": 44,
+    "integer": true
+  },
+  "themeMode": {
+    "type": "string",
+    "enum": [
+      "system",
+      "dark",
+      "light",
+      "sun"
+    ],
+    "default": "system",
+    "maxLength": 4096
+  },
+  "themePack": {
+    "type": "string",
+    "default": "obsidian",
+    "maxLength": 4096
+  },
+  "themePackLight": {
+    "type": "string",
+    "default": "",
+    "maxLength": 4096
+  },
+  "themePackDark": {
+    "type": "string",
+    "default": "",
+    "maxLength": 4096
+  },
+  "artBloom": {
+    "type": "number",
+    "default": 60,
+    "min": 0,
+    "max": 200,
+    "integer": true
+  },
+  "themeTune": {
+    "type": "object",
+    "default": {},
+    "properties": {
+      "veilPill": {
+        "type": "number",
+        "min": 0.4,
+        "max": 1.2
+      },
+      "veilPanel": {
+        "type": "number",
+        "min": 0.4,
+        "max": 1.2
+      },
+      "veilCards": {
+        "type": "number",
+        "min": 0.4,
+        "max": 2
+      },
+      "veilPop": {
+        "type": "number",
+        "min": 0.4,
+        "max": 2
+      },
+      "edgePill": {
+        "type": "number",
+        "min": 0,
+        "max": 1
+      },
+      "edgePanel": {
+        "type": "number",
+        "min": 0,
+        "max": 1
+      },
+      "edgeCards": {
+        "type": "number",
+        "min": 0,
+        "max": 1
+      },
+      "edgePop": {
+        "type": "number",
+        "min": 0,
+        "max": 1
+      },
+      "pillScale": {
+        "type": "number",
+        "min": 0.85,
+        "max": 1.25
+      },
+      "panelScale": {
+        "type": "number",
+        "min": 0.85,
+        "max": 1.15
+      },
+      "cornerK": {
+        "type": "number",
+        "min": 0.4,
+        "max": 2
+      },
+      "iconScale": {
+        "type": "number",
+        "min": 0.85,
+        "max": 1.25
+      },
+      "iconTint": {
+        "type": "number",
+        "min": 0,
+        "max": 100
+      },
+      "hoverK": {
+        "type": "number",
+        "min": 0.4,
+        "max": 1.6
+      },
+      "textWeight": {
+        "type": "string",
+        "enum": [
+          "regular",
+          "bold"
+        ]
+      },
+      "elevation": {
+        "type": "string",
+        "enum": [
+          "soft",
+          "flat",
+          "lifted"
+        ]
+      },
+      "dividers": {
+        "type": "string",
+        "enum": [
+          "hairline",
+          "none",
+          "strong"
+        ]
+      },
+      "press": {
+        "type": "string",
+        "enum": [
+          "normal",
+          "none",
+          "strong"
+        ]
+      },
+      "scroll": {
+        "type": "string",
+        "enum": [
+          "instant",
+          "smooth"
+        ]
+      },
+      "focusRing": {
+        "type": "string",
+        "enum": [
+          "accent",
+          "contrast"
+        ]
+      },
+      "highContrast": {
+        "type": "boolean"
+      },
+      "tokens": {
+        "type": "object",
+        "properties": {
+          "--accent": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "--glass-base": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "--c-surface-raised": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "--island-fg": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "--c-success": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "--c-warning": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "--c-danger": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "--c-info": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          }
+        },
+        "required": []
+      }
+    }
+  },
+  "themeDisclosure": {
+    "type": "string",
+    "enum": [
+      "basic",
+      "advanced",
+      "expert"
+    ],
+    "default": "basic",
+    "maxLength": 4096
+  },
+  "themeAnim": {
+    "type": "boolean",
+    "default": true
+  },
+  "themeCustom": {
+    "type": "object",
+    "default": {},
+    "properties": {
+      "id": {
+        "type": "string",
+        "maxLength": 120
+      },
+      "name": {
+        "type": "string",
+        "maxLength": 40
+      },
+      "base": {
+        "type": "string",
+        "maxLength": 120
+      },
+      "accent": {
+        "type": "string",
+        "pattern": "^#[0-9a-fA-F]{6}$"
+      },
+      "wash": {
+        "type": "number",
+        "min": 0,
+        "max": 1
+      },
+      "glow": {
+        "type": "number",
+        "min": 0,
+        "max": 1
+      },
+      "grain": {
+        "type": "number",
+        "min": 0,
+        "max": 0.08
+      },
+      "washDir": {
+        "type": "string",
+        "enum": [
+          "top",
+          "bottom",
+          "start",
+          "end",
+          "radial"
+        ]
+      }
+    }
+  },
+  "myThemes": {
+    "type": "array",
+    "default": [],
+    "maxItems": 24,
+    "items": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "base": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "accent": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$"
+        },
+        "wash": {
+          "type": "number",
+          "min": 0,
+          "max": 1
+        },
+        "glow": {
+          "type": "number",
+          "min": 0,
+          "max": 1
+        },
+        "grain": {
+          "type": "number",
+          "min": 0,
+          "max": 0.08
+        },
+        "washDir": {
+          "type": "string",
+          "enum": [
+            "top",
+            "bottom",
+            "start",
+            "end",
+            "radial"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ]
+    }
+  },
+  "accentSource": {
+    "type": "string",
+    "enum": [
+      "pack",
+      "custom",
+      "windows",
+      "wallpaper"
+    ],
+    "default": "pack",
+    "maxLength": 4096
+  },
+  "themeMaterial": {
+    "type": "string",
+    "enum": [
+      "solid",
+      "glass"
+    ],
+    "default": "glass",
+    "maxLength": 4096
+  },
+  "glassTint": {
+    "type": "number",
+    "default": 45,
+    "min": 0,
+    "max": 80,
+    "integer": true
+  },
+  "glassStyle": {
+    "type": "string",
+    "enum": [
+      "crystal",
+      "clear"
+    ],
+    "default": "crystal",
+    "maxLength": 4096
+  },
+  "accentColor": {
+    "type": "string",
+    "default": "#4fd1c5",
+    "maxLength": 4096,
+    "pattern": "^#[0-9a-fA-F]{6}$"
+  },
+  "borderStrength": {
+    "type": "number",
+    "default": 50,
+    "min": 0,
+    "max": 100,
+    "integer": true
+  },
+  "shadowStrength": {
+    "type": "number",
+    "default": 50,
+    "min": 0,
+    "max": 100,
+    "integer": true
+  },
+  "cornerStyle": {
+    "type": "string",
+    "enum": [
+      "rounded",
+      "extra"
+    ],
+    "default": "rounded",
+    "maxLength": 4096
+  },
+  "fontScale": {
+    "type": "number",
+    "default": 100,
+    "min": 90,
+    "max": 120,
+    "integer": true
+  },
+  "density": {
+    "type": "string",
+    "enum": [
+      "comfortable",
+      "compact"
+    ],
+    "default": "comfortable",
+    "maxLength": 4096
+  },
+  "pillRadius": {
+    "type": "number",
+    "default": 0,
+    "min": 0,
+    "max": 22,
+    "integer": true
+  },
+  "offsetY": {
+    "type": "number",
+    "default": 0,
+    "min": 0,
+    "max": 60,
+    "integer": true
+  },
+  "pillPosition": {
+    "type": "string",
+    "enum": [
+      "center",
+      "left",
+      "right"
+    ],
+    "default": "center",
+    "maxLength": 4096
+  },
+  "islandDocking": {
+    "type": "string",
+    "enum": [
+      "floating",
+      "attached"
+    ],
+    "default": "floating",
+    "maxLength": 4096
+  },
+  "motionPreset": {
+    "type": "string",
+    "enum": [
+      "calm",
+      "snappy",
+      "bouncy",
+      "boringNotch",
+      "cultUi"
+    ],
+    "default": "calm",
+    "maxLength": 4096
+  },
+  "motionSpeed": {
+    "type": "number",
+    "default": 1,
+    "min": 0.5,
+    "max": 2
+  },
+  "motionBounce": {
+    "type": "number",
+    "default": 0.1,
+    "min": 0,
+    "max": 0.4
+  },
+  "reduceMotion": {
+    "type": "string",
+    "enum": [
+      "system",
+      "always",
+      "never"
+    ],
+    "default": "system",
+    "maxLength": 4096
+  },
+  "peekWidth": {
+    "type": "number",
+    "default": 460,
+    "min": 240,
+    "max": 560,
+    "integer": true
+  },
+  "peekHeight": {
+    "type": "number",
+    "default": 148,
+    "min": 72,
+    "max": 200,
+    "integer": true
+  },
+  "peekRadius": {
+    "type": "number",
+    "default": 30,
+    "min": 12,
+    "max": 60,
+    "integer": true
+  },
+  "panelWidth": {
+    "type": "number",
+    "default": 520,
+    "min": 420,
+    "max": 720,
+    "integer": true
+  },
+  "panelHeight": {
+    "type": "number",
+    "default": 290,
+    "min": 220,
+    "max": 420,
+    "integer": true
+  },
+  "panelRadius": {
+    "type": "number",
+    "default": 34,
+    "min": 16,
+    "max": 60,
+    "integer": true
+  },
+  "hoverZone": {
+    "type": "string",
+    "enum": [
+      "island",
+      "islandAndBelow"
+    ],
+    "default": "island",
+    "maxLength": 4096
+  },
+  "peekWheelCycle": {
+    "type": "boolean",
+    "default": true
+  },
+  "peekCardOrder": {
+    "type": "array",
+    "default": [
+      "player",
+      "today",
+      "weather",
+      "timer"
+    ],
+    "maxItems": 4,
+    "items": {
+      "type": "string",
+      "enum": [
+        "player",
+        "today",
+        "weather",
+        "timer"
+      ]
+    },
+    "unique": true
+  },
+  "panelWheelPaging": {
+    "type": "boolean",
+    "default": true
+  },
+  "panelTabsStyle": {
+    "type": "string",
+    "enum": [
+      "dock",
+      "labels",
+      "icons",
+      "dots",
+      "hidden"
+    ],
+    "default": "dock",
+    "maxLength": 4096
+  },
+  "backgroundOpacity": {
+    "type": "number",
+    "default": 1,
+    "min": 0.3,
+    "max": 1
+  },
+  "accentMode": {
+    "type": "string",
+    "enum": [
+      "auto",
+      "fixed"
+    ],
+    "default": "auto",
+    "maxLength": 4096
+  },
+  "playerLayout": {
+    "type": "string",
+    "enum": [
+      "compact",
+      "large",
+      "minimal"
+    ],
+    "default": "compact",
+    "maxLength": 4096
+  },
+  "visualizer": {
+    "type": "string",
+    "enum": [
+      "bars",
+      "wave",
+      "off"
+    ],
+    "default": "bars",
+    "maxLength": 4096
+  },
+  "showPlaybackTime": {
+    "type": "boolean",
+    "default": true
+  },
+  "showSourceBadge": {
+    "type": "boolean",
+    "default": true
+  },
+  "showProgress": {
+    "type": "boolean",
+    "default": true
+  },
+  "artworkBackdrop": {
+    "type": "boolean",
+    "default": true
+  },
+  "settingsVersion": {
+    "type": "number",
+    "default": 4,
+    "min": 0,
+    "max": 100,
+    "integer": true
+  },
+  "showNetSpeed": {
+    "type": "boolean",
+    "default": false
+  },
+  "workspaces": {
+    "type": "array",
+    "maxItems": 100,
+    "items": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "items": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "type": "string",
+            "maxLength": 4096
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "items"
+      ]
+    }
+  },
+  "weatherCity": {
+    "type": "string",
+    "default": "madinah",
+    "maxLength": 4096
+  },
+  "weatherUnits": {
+    "type": "string",
+    "enum": [
+      "c",
+      "f"
+    ],
+    "default": "c",
+    "maxLength": 4096
+  },
+  "showWeather": {
+    "type": "boolean",
+    "default": false
+  },
+  "showToday": {
+    "type": "boolean",
+    "default": true
+  },
+  "prayerCity": {
+    "type": "string",
+    "default": "riyadh",
+    "maxLength": 4096
+  },
+  "showCountdowns": {
+    "type": "boolean",
+    "default": true
+  },
+  "countdowns": {
+    "type": "array",
+    "default": [],
+    "maxItems": 12,
+    "items": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "date": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "date"
+      ]
+    }
+  },
+  "showWorldClock": {
+    "type": "boolean",
+    "default": false
+  },
+  "worldClocks": {
+    "type": "array",
+    "default": [],
+    "maxItems": 2,
+    "items": {
+      "type": "string",
+      "maxLength": 4096
+    },
+    "unique": true
+  },
+  "prayerAlerts": {
+    "type": "boolean",
+    "default": true
+  },
+  "updateAutoCheck": {
+    "type": "boolean",
+    "default": true
+  },
+  "hotkeyPalette": {
+    "type": "string",
+    "default": "Alt+Space",
+    "maxLength": 4096
+  },
+  "hotkeyArea": {
+    "type": "string",
+    "default": "Ctrl+Alt+A",
+    "maxLength": 4096
+  },
+  "hotkeyScreen": {
+    "type": "string",
+    "default": "Ctrl+Alt+S",
+    "maxLength": 4096
+  },
+  "hotkeyColor": {
+    "type": "string",
+    "default": "Ctrl+Alt+C",
+    "maxLength": 4096
+  },
+  "hotkeyRecord": {
+    "type": "string",
+    "default": "Ctrl+Alt+R",
+    "maxLength": 4096
+  }
+}

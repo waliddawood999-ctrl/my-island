@@ -12,7 +12,7 @@ import "../../index.css";
 import "./settings.css";
 import { i } from "../../i18n";
 import { webviewVerdict, type WebviewRuntime } from "../../webview";
-import { saveSettings, useSettings } from "../../useSettings";
+import { saveSettings, useSaveStatus, useSettings } from "../../useSettings";
 import { EcoIndicator, RamUsage } from "./Perf";
 import { WorkspacesEditor } from "./Workspaces";
 import { ClockPad } from "./ClockPad";
@@ -157,9 +157,13 @@ function Backup({ s }: { s: Parameters<typeof exportSettings>[0] }) {
   };
   const doImport = async (f?: File) => {
     if (!f) return;
-    const p = parseImport(await f.text(), s);
-    if (!p || !Object.keys(p).length) { setMsg(i("ملف غير صالح", "Invalid file")); return; }
-    saveSettings(p); setMsg(i(`استُورد ${Object.keys(p).length} إعدادًا`, `Imported ${Object.keys(p).length} settings`));
+    try {
+      const p = parseImport(await f.text(), s);
+      if (!p || !Object.keys(p).length) { setMsg(i("الملف لا يحتوي إعدادات صالحة", "No valid settings in this file")); return; }
+      setMsg(i("جارٍ الاستيراد…", "Importing…"));
+      const saved = await saveSettings(p);
+      setMsg(saved ? i(`استُورد ${Object.keys(p).length} إعدادًا صالحًا`, `Imported ${Object.keys(p).length} valid settings`) : i("تعذّر الحفظ؛ أعد المحاولة", "Save failed; try again"));
+    } catch { setMsg(i("تعذّرت قراءة الملف", "Could not read the file")); }
   };
   const all = Object.values(SECTION_KEYS).flat();
   return (
@@ -173,7 +177,7 @@ function Backup({ s }: { s: Parameters<typeof exportSettings>[0] }) {
       </Row>
       <Row icon={ic(RotateCcw)} label={i("إعادة ضبط كل الإعدادات", "Reset all settings")} hint={i("يعيد الافتراضيات (قوائمك مثل العدّادات ومساحات العمل تبقى)", "Restores defaults (your lists like countdowns and workspaces stay)")}>
         <button className={`st-btn ${sure ? "st-btn-danger" : ""}`} style={sure ? { width: "auto" } : undefined} data-armed={sure} data-testid="reset-all"
-          onClick={() => { if (sure) { saveSettings(resetPatch(all)); setSure(false); setMsg(i("أُعيد الضبط", "Reset done")); } else setSure(true); }} onBlur={() => setSure(false)}>
+          onClick={async () => { if (sure) { setSure(false); const saved = await saveSettings(resetPatch(all)); setMsg(saved ? i("أُعيد الضبط", "Reset done") : i("تعذّرت إعادة الضبط", "Reset failed")); } else setSure(true); }} onBlur={() => setSure(false)}>
           {sure ? i("متأكد؟ إعادة ضبط", "Sure? Reset") : i("إعادة ضبط الكل", "Reset all")}
         </button>
       </Row>
@@ -186,6 +190,9 @@ interface Sec { id: string; icon: ReactNode; label: string; desc: string; body: 
 
 function App() {
   const s = useSettings();
+  const saveStatus = useSaveStatus();
+  const [clearArmed, setClearArmed] = useState(false);
+  const [clearMsg, setClearMsg] = useState("");
   const [monitors, setMonitors] = useState<MonitorInfo[]>([]);
   const [cities, setCities] = useState<CityOpt[]>([]);
   useEffect(() => {
@@ -201,7 +208,7 @@ function App() {
   const glassOn = (s.themeMaterial ?? "glass") === "glass";
   const set = saveSettings;
 
-  const sections: Sec[] = [
+  const originalSections: Sec[] = [
     {
       id: "general", icon: <Settings2 size={16} />, label: i("عام", "General"), desc: i("التشغيل واللغة والشاشة وسلوك الفتح والإغلاق.", "Startup, language, screen and open/close behavior."),
       body: (<>
@@ -234,6 +241,10 @@ function App() {
       id: "island", icon: <PictureInPicture2 size={16} />, label: i("الجزيرة", "Island"), desc: i("الحجم والموضع والظهور — الشكل ثابت ولا يتغيّر إلا من هنا.", "Size, position and visibility — the shape is fixed and only changes here."),
       body: (<>
         <Section title={i("الحجم والشكل", "Size & shape")}>
+          <Row icon={ic(Ruler)} label={i("حجم الجزيرة", "Island size")} hint={i("مقاسات جاهزة؛ التفاصيل الدقيقة في الخيارات المتقدمة", "Size presets; exact dimensions are in advanced options")}>
+            <div className="st-chips">{[{ id: "compact", ar: "صغير", en: "Compact", p: { pillWidth: 200, pillHeight: 30, peekWidth: 400, peekHeight: 130, panelWidth: 480, panelHeight: 260 } }, { id: "default", ar: "افتراضي", en: "Default", p: { pillWidth: 220, pillHeight: 34, peekWidth: 460, peekHeight: 148, panelWidth: 520, panelHeight: 290 } }, { id: "large", ar: "كبير", en: "Large", p: { pillWidth: 260, pillHeight: 40, peekWidth: 520, peekHeight: 180, panelWidth: 640, panelHeight: 380 } }].map(x => <button key={x.id} className="st-chip" onClick={() => set({ ...x.p, themeTune: { ...(s.themeTune ?? {}), pillScale: 1, panelScale: 1 } })}>{i(x.ar,x.en)}</button>)}</div>
+          </Row>
+          <details open={q.trim() ? true : undefined} className="st-advanced"><summary>{i("مقاسات متقدمة", "Advanced dimensions")}</summary>
           <Row icon={ic(Ruler)} label={i("عرض الحبة", "Pill width")} hint={i("مقاس الحبة: العرض للحالة الصغيرة", "Pill size: the width of the small state")}>
             <Slider label={i("عرض الحبة", "Pill width")} value={s.pillWidth ?? 220} min={160} max={280} step={5} format={px} onLive={(v) => set({ pillWidth: v })} onCommit={(v) => set({ pillWidth: v })} />
           </Row>
@@ -261,6 +272,7 @@ function App() {
           <Row icon={ic(Square)} label={i("زوايا اللوحة", "Panel corner radius")} hint={i("استدارة زوايا اللوحة", "Roundness of the panel corners")}>
             <Slider label={i("زوايا اللوحة", "Panel corner radius")} value={s.panelRadius ?? 34} min={16} max={60} step={1} format={px} onLive={(v) => set({ panelRadius: v })} onCommit={(v) => set({ panelRadius: v })} />
           </Row>
+          </details>
         </Section>
         <Section title={i("الموضع", "Position")}>
           <Row icon={ic(MapPin)} label={i("موضع الجزيرة", "Position")} hint={i("أين تقع الحبة على الحافة العليا للشاشة", "Where the pill sits along the top edge of the screen")}>
@@ -322,7 +334,7 @@ function App() {
           <Row icon={ic(Clock)} label={i("إظهار الساعة", "Show clock")} hint={i("يعرض الوقت داخل الحبة", "Shows the time inside the pill")}>
             <Toggle label={i("إظهار الساعة", "Show clock")} value={s.showClock ?? true} onChange={(v) => set({ showClock: v })} />
           </Row>
-          <Row icon={ic(Clock)} label={i("مكان الساعة في الحبة", "Clock position in the pill")} hint={i("اسحب النقطة في الدائرة فتتحرّك الساعة داخل الحبة لأي مكان؛ «تلقائي» يرجع للترتيب الحالي", "Drag the dot in the circle to place the clock anywhere inside the pill; “Auto” restores the current layout")}>
+          <Row when={s.showClock !== false} icon={ic(Clock)} label={i("مكان الساعة في الحبة", "Clock position in the pill")} hint={i("اسحب النقطة في الدائرة فتتحرّك الساعة داخل الحبة لأي مكان؛ «تلقائي» يرجع للترتيب الحالي", "Drag the dot in the circle to place the clock anywhere inside the pill; “Auto” restores the current layout")}>
             <div className="flex w-[200px] max-w-full flex-col gap-2">
               <ClockPad x={s.clockX ?? 50} y={s.clockY ?? 50} scale={s.clockScale ?? 100} onChange={(x, y) => set({ clockPosition: "free", clockX: x, clockY: y })} />
               <div className="flex flex-wrap justify-center gap-2">
@@ -331,14 +343,14 @@ function App() {
               </div>
             </div>
           </Row>
-          <Row icon={ic(Clock)} label={i("حجم الساعة", "Clock size")} hint={i("٦٠–١٨٠٪ من الحجم الأساسي", "60–180% of the base size")}>
+          <Row when={s.showClock !== false} icon={ic(Clock)} label={i("حجم الساعة", "Clock size")} hint={i("٦٠–١٨٠٪ من الحجم الأساسي", "60–180% of the base size")}>
             <Slider label={i("حجم الساعة", "Clock size")} value={s.clockScale ?? 100} min={60} max={180} step={5} format={(v) => `${v}%`} onCommit={(v) => set({ clockScale: v })} />
           </Row>
-          <Row icon={ic(Eye)} label={i("مكان العيون", "Eyes position")} hint={i("يسار / وسط / يمين الحبة (تلقائي = بجانب الساعة)", "Left / center / right of the pill (Auto = beside the clock)")}>
+          <Row when={s.eyesEnabled !== false} icon={ic(Eye)} label={i("مكان العيون", "Eyes position")} hint={i("يسار / وسط / يمين الحبة (تلقائي = بجانب الساعة)", "Left / center / right of the pill (Auto = beside the clock)")}>
             <Segmented label={i("مكان العيون", "Eyes position")} value={s.eyesAlign ?? "auto"} onChange={(v) => set({ eyesAlign: v })}
               options={[{ value: "auto", label: i("تلقائي", "Auto") }, { value: "left", label: i("يسار", "Left") }, { value: "center", label: i("وسط", "Center") }, { value: "right", label: i("يمين", "Right") }]} />
           </Row>
-          <Row icon={ic(Clock)} label={i("نظام الساعة", "Clock format")} hint={i("طريقة عرض الوقت في الحبة", "How the time is shown in the pill")}>
+          <Row when={s.showClock !== false} icon={ic(Clock)} label={i("نظام الساعة", "Clock format")} hint={i("طريقة عرض الوقت في الحبة", "How the time is shown in the pill")}>
             <Segmented label={i("نظام الساعة", "Clock format")} value={s.clockFormat ?? "auto"} onChange={(v) => set({ clockFormat: v })}
               options={[{ value: "auto", label: i("تلقائي", "Auto") }, { value: "24", label: i("24 ساعة", "24-hour") }, { value: "12", label: i("12 ساعة", "12-hour") }]} />
           </Row>
@@ -353,33 +365,47 @@ function App() {
       body: <AppearanceBody s={s} set={set} />,
     },
     {
-      id: "motion", icon: <Zap size={16} />, label: i("الحركة", "Motion"), desc: i("سرعة الحركة ونمط النوابض وتقليلها.", "Animation speed, spring style and reducing motion."),
+      id: "motion", icon: <Zap size={16} />, label: i("الحركة وإمكانية الوصول", "Motion & accessibility"), desc: i("سرعة الحركة ونمط النوابض وتقليلها.", "Animation speed, spring style and reducing motion."),
       body: (
         <Section title={i("الحركة", "Motion")}>
           <Row icon={ic(Zap)} label={i("مستوى الحركة", "Motion level")} hint={i("كاملة: حركة حيّة · مخففة: تلاشٍ قصير · متوقفة: بلا حركة", "Full: lively · Reduced: short fades · Off: no motion")}>
-            <Segmented label={i("مستوى الحركة", "Motion level")} value={s.motionLevel === "reduced" || s.motionLevel === "off" ? s.motionLevel : "full"} onChange={(v) => set({ motionLevel: v })}
-              options={[{ value: "full", label: i("كاملة", "Full") }, { value: "reduced", label: i("مخففة", "Reduced") }, { value: "off", label: i("متوقفة", "Off") }]} />
+            <Segmented label={i("مستوى الحركة", "Motion level")} value={s.motionLevel === "off" ? "off" : s.motionLevel === "reduced" || s.reduceMotion === "always" ? "reduced" : migrateReduce(s.reduceMotion) === "system" ? "system" : "full"} onChange={(v) => set(v === "system" ? { motionLevel: "full", reduceMotion: "system" } : { motionLevel: v, reduceMotion: "never" })}
+              options={[{ value: "system", label: i("حسب النظام", "System") }, { value: "full", label: i("كاملة", "Full") }, { value: "reduced", label: i("مخففة", "Reduced") }, { value: "off", label: i("متوقفة", "Off") }]} />
           </Row>
-          <Row icon={ic(Waves)} label={i("نوع الحركة", "Motion style")} hint={i("إحساس التمدد والرجوع، والهادئ هو المقترح", "How expanding and closing feel; Calm is recommended")}>
+          <Row when={s.motionLevel !== "off" && s.motionLevel !== "reduced" && s.reduceMotion !== "always"} icon={ic(Waves)} label={i("نوع الحركة", "Motion style")} hint={i("إحساس التمدد والرجوع، والهادئ هو المقترح", "How expanding and closing feel; Calm is recommended")}>
             <Select label={i("نوع الحركة", "Motion style")} value={normPreset(s.motionPreset)} onChange={(v) => set({ motionPreset: v, motionBounce: MOTION_PRESETS[v].bounce })}
               options={MOTION_PRESET_KEYS.map((k) => ({ value: k, label: i(MOTION_PRESETS[k].ar, MOTION_PRESETS[k].en) }))} />
           </Row>
-          <Row icon={ic(Gauge)} label={i("السرعة", "Speed")} hint={i("١ هو الافتراضي، والأعلى أسرع", "1 is the default; higher is faster")}>
+          <Row when={s.motionLevel !== "off" && s.motionLevel !== "reduced" && s.reduceMotion !== "always"} icon={ic(Gauge)} label={i("السرعة", "Speed")} hint={i("١ هو الافتراضي، والأعلى أسرع", "1 is the default; higher is faster")}>
             <Slider label={i("السرعة", "Speed")} value={normSpeed(s.motionSpeed)} min={0.5} max={2} step={0.1} format={(v) => `${v.toFixed(1)}×`} onCommit={(v) => set({ motionSpeed: v })} />
           </Row>
-          <Row icon={ic(Waves)} label={i("الارتداد", "Bounce")} hint={i("صفر يعني بدون اهتزاز، والإغلاق دائماً بدون ارتداد", "Zero means no wobble; closing never bounces")}>
+          <Row when={s.motionLevel !== "off" && s.motionLevel !== "reduced" && s.reduceMotion !== "always"} icon={ic(Waves)} label={i("الارتداد", "Bounce")} hint={i("صفر يعني بدون اهتزاز، والإغلاق دائماً بدون ارتداد", "Zero means no wobble; closing never bounces")}>
             <Slider label={i("الارتداد", "Bounce")} value={normBounce(s.motionBounce)} min={0} max={0.4} step={0.02} format={(v) => v.toFixed(2)} onCommit={(v) => set({ motionBounce: v })} />
           </Row>
-          <Row icon={ic(Eye)} label={i("تقليل الحركة", "Reduce motion")} hint={i("يتبع إعداد ويندوز، أو دائماً، أو أبداً", "Follows the Windows setting, always, or never")}>
-            <Segmented label={i("تقليل الحركة", "Reduce motion")} value={migrateReduce(s.reduceMotion)} onChange={(v) => set({ reduceMotion: v })}
-              options={[{ value: "system", label: i("النظام", "System") }, { value: "always", label: i("دائماً", "Always") }, { value: "never", label: i("أبداً", "Never") }]} />
-          </Row>
+
         </Section>
       ),
     },
     {
-      id: "modules", icon: <Blocks size={16} />, label: i("الوحدات", "Modules"), desc: i("فعّل الوحدات التي تحتاجها وعدّل خياراتها.", "Turn on the modules you need and tune their options."),
+      id: "modules", icon: <Blocks size={16} />, label: i("الميزات", "Features"), desc: i("فعّل الوحدات التي تحتاجها وعدّل خياراتها.", "Turn on the modules you need and tune their options."),
       body: (<>
+        <Section title={i("التنبيهات", "Alerts")}>
+          <Row icon={ic(Volume2)} label={i("صوت التنبيه", "Alert sound")} hint={i("يُعزف مع التذكيرات والمؤقّت والصلاة والاجتماعات", "Plays with reminders, timers, prayers and meetings")}>
+            <div className="flex items-center gap-2">
+              <Select label={i("صوت التنبيه", "Alert sound")} value={normSound(s.soundChoice)} onChange={(v) => { set({ soundChoice: v }); playSound(v, normVolume(s.soundVolume)); }}
+                options={SOUND_IDS.map((id) => ({ value: id, label: i(SOUND_LABELS[id][0], SOUND_LABELS[id][1]) }))} />
+              <button className="st-btn" style={{ width: 36, paddingInline: 0 }} aria-label={i("معاينة الصوت", "Preview sound")} data-testid="sound-preview" disabled={normSound(s.soundChoice) === "none"} onClick={() => playSound(normSound(s.soundChoice), normVolume(s.soundVolume))}><Play size={14} className="rtl:-scale-x-100" /></button>
+            </div>
+          </Row>
+          <Row when={normSound(s.soundChoice) !== "none"} icon={ic(Volume2)} label={i("مستوى الصوت", "Sound volume")} hint={i("مستوى صوت التنبيه فقط", "Only the alert sound's loudness")}>
+            <Slider label={i("مستوى الصوت", "Sound volume")} value={normVolume(s.soundVolume)} min={0} max={100} step={5} format={pct} onCommit={(v) => set({ soundVolume: v })} />
+          </Row>
+
+
+
+
+
+        </Section>
         <Section title={i("اليوم والصلاة", "Today & prayer")}>
           <Row icon={ic(CalendarClock)} label={i("إظهار قسم «اليوم»", "Show the Today section")} hint={i("بطاقة التاريخ الهجري ومواقيت الصلاة في الرئيسية والنظام (الطقس له مفتاحه أدناه)", "The Hijri date and prayer-times card on Home and System (weather has its own switch below)")}>
             <Toggle label={i("إظهار قسم «اليوم»", "Show the Today section")} value={s.showToday ?? true} onChange={(v) => set({ showToday: v })} />
@@ -394,15 +420,18 @@ function App() {
           <Row icon={ic(Cloud)} label={i("الطقس", "Weather")} hint={i("يتصل بـ Open-Meteo (بلا حساب) لمدينتك — مطفأ افتراضيًا", "Connects to Open-Meteo (no account) for your city — off by default")}>
             <Toggle label={i("الطقس", "Weather")} value={s.showWeather ?? false} onChange={(v) => set({ showWeather: v })} />
           </Row>
-          <Row icon={ic(MapPin)} label={i("مدينة الطقس", "Weather city")} hint={i("المدينة التي يُجلب لها الطقس (الافتراضي المدينة المنورة)", "The city the weather is fetched for (default Madinah)")}>
+          <Row when={!!s.showWeather} icon={ic(MapPin)} label={i("مدينة الطقس", "Weather city")} hint={i("المدينة التي يُجلب لها الطقس (الافتراضي المدينة المنورة)", "The city the weather is fetched for (default Madinah)")}>
             <Select
               label={i("مدينة الطقس", "Weather city")} value={s.weatherCity ?? "madinah"}
               options={(cities.length ? cities : [{ id: "madinah", ar: "المدينة المنورة", en: "Madinah" }]).map((c) => ({ value: c.id, label: s.language === "en" ? c.en : c.ar }))}
               onChange={(v) => set({ weatherCity: v })}
             />
           </Row>
-          <Row icon={ic(Cloud)} label={i("وحدة الحرارة", "Temperature unit")} hint={i("درجة مئوية أو فهرنهايت", "Celsius or Fahrenheit")}>
+          <Row when={!!s.showWeather} icon={ic(Cloud)} label={i("وحدة الحرارة", "Temperature unit")} hint={i("درجة مئوية أو فهرنهايت", "Celsius or Fahrenheit")}>
             <Segmented label={i("وحدة الحرارة", "Temperature unit")} value={s.weatherUnits ?? "c"} onChange={(v) => set({ weatherUnits: v })} options={[{ value: "c", label: "°C" }, { value: "f", label: "°F" }]} />
+          </Row>
+          <Row icon={ic(Bell)} label={i("تنبيهات الصلاة", "Prayer alerts")} hint={i("قبل 10 دقائق وعند دخول الوقت — بصوت التنبيه إن فُعّل", "10 minutes before and at the time — with the alert sound if set")}>
+            <Toggle label={i("تنبيهات الصلاة", "Prayer alerts")} value={s.prayerAlerts ?? true} onChange={(v) => set({ prayerAlerts: v })} />
           </Row>
           <CountdownsEditor s={s} />
           <WorldClockEditor s={s} />
@@ -436,10 +465,10 @@ function App() {
           <Row icon={ic(BatteryCharging)} label={i("إظهار البطارية", "Show battery")}>
             <Toggle label={i("إظهار البطارية", "Show battery")} value={s.showBattery ?? false} onChange={(v) => set({ showBattery: v })} />
           </Row>
-          <Row icon={ic(BatteryCharging)} label={i("نصيحة «افصل الشاحن عند 80%»", "“Unplug at 80%” tip")} hint={i("في قسم البطارية أثناء الشحن", "In the battery section while charging")}>
+          <Row when={!!s.showBattery} icon={ic(BatteryCharging)} label={i("نصيحة «افصل الشاحن عند 80%»", "“Unplug at 80%” tip")} hint={i("في قسم البطارية أثناء الشحن", "In the battery section while charging")}>
             <Toggle label={i("نصيحة «افصل الشاحن عند 80%»", "“Unplug at 80%” tip")} value={s.batteryTip ?? true} onChange={(v) => set({ batteryTip: v })} />
           </Row>
-          <Row icon={ic(BatteryCharging)} label={i("بطاريات أجهزة البلوتوث", "Bluetooth device batteries")} hint={i("يقرأ محليًا مستوى الأجهزة المتصلة (BLE) التي تُبلغه، كل 5 دقائق", "Reads, locally, the level of connected BLE devices that report it, every 5 minutes")}>
+          <Row when={!!s.showBattery} icon={ic(BatteryCharging)} label={i("بطاريات أجهزة البلوتوث", "Bluetooth device batteries")} hint={i("يقرأ محليًا مستوى الأجهزة المتصلة (BLE) التي تُبلغه، كل 5 دقائق", "Reads, locally, the level of connected BLE devices that report it, every 5 minutes")}>
             <Toggle label={i("بطاريات أجهزة البلوتوث", "Bluetooth device batteries")} value={s.btBatteries ?? true} onChange={(v) => set({ btBatteries: v })} />
           </Row>
           <Row icon={ic(Network)} label={i("سرعتا الشبكة في الحبة", "Network speed in the pill")} hint={i("تحميل/رفع حاليان من عدّادات ويندوز المحلية؛ يتوقف القياس تمامًا عند الإطفاء.", "Current down/up speed from local Windows counters; measuring stops completely when off.")}>
@@ -461,6 +490,9 @@ function App() {
           <Row icon={ic(Mic)} label={i("مؤشر الميكروفون والكاميرا", "Mic & camera indicator")} hint={i("نقطة في الحبة أثناء استخدام أي تطبيق لهما — قراءة محلية لسجلّ ويندوز فقط", "A dot in the pill while any app uses them — a local read of the Windows registry only")}>
             <Toggle label={i("مؤشر الميكروفون والكاميرا", "Mic & camera indicator")} value={s.privacyIndicator ?? false} onChange={(v) => set({ privacyIndicator: v })} />
           </Row>
+          <Row icon={ic(Cpu)} label={i("تنبيه الحمل المرتفع", "High-load alert")} hint={i("معالج ≥90% لمدة 30 ثانية متواصلة ⇒ تنبيه يسمّي التطبيق المسبّب (مرة كل 10 دقائق كحدّ أقصى). مطفأ افتراضيًا.", "CPU ≥90% for 30 s straight ⇒ an alert naming the culprit app (at most once per 10 min). Off by default.")}>
+            <Toggle label={i("تنبيه الحمل المرتفع", "High-load alert")} value={s.loadAlert ?? false} onChange={(v) => set({ loadAlert: v })} />
+          </Row>
           <Row icon={ic(Volume2)} label={i("التحكم بالصوت في قسم النظام", "Volume control in System")}>
             <Toggle label={i("التحكم بالصوت في قسم النظام", "Volume control in System")} value={s.showVolume ?? true} onChange={(v) => set({ showVolume: v })} />
           </Row>
@@ -471,15 +503,28 @@ function App() {
             )}>
             <Toggle label={i("تتبّع زمن التركيز (وقتي)", "Focus-time tracking")} value={s.attentionTracking ?? true} onChange={(v) => set({ attentionTracking: v })} />
           </Row>
+          <Row icon={ic(Timer)} label={i("تذكير الاستراحة", "Break reminders")} hint={i("إشعار داخل التطبيق بعد استخدام متواصل (استراحة 5 دقائق تصفّر العدّ)", "In-app notice after continuous use (a 5-minute pause resets the count)")}>
+            <Toggle label={i("تذكير الاستراحة", "Break reminders")} value={s.breakReminders ?? false} onChange={(v) => set({ breakReminders: v })} />
+          </Row>
+          <Row when={!!s.breakReminders} icon={ic(Timer)} label={i("مدة الاستخدام المتواصل (دقيقة)", "Continuous use before a break (min)")}>
+            <NumberField label={i("مدة الاستخدام المتواصل (دقيقة)", "Continuous use before a break (min)")} value={s.breakMinutes ?? 60} min={5} max={240} onCommit={(v) => set({ breakMinutes: v })} />
+          </Row>
           <Row icon={ic(RotateCcw)} label={i("مسح بيانات وقتي", "Clear My-time data")} hint={i("يحذف كل ما سُجّل محليًا", "Deletes everything recorded locally")}>
-            <button onClick={() => invoke("attention_clear").catch(() => {})} className={btnOutline}>{i("مسح", "Clear")}</button>
+            <button data-testid="clear-attention" onBlur={() => setClearArmed(false)} onClick={async () => { if (!clearArmed) { setClearArmed(true); return; } setClearArmed(false); try { await invoke("attention_clear"); setClearMsg(i("مُسحت بيانات الاستخدام", "Usage data cleared")); } catch { setClearMsg(i("تعذّر المسح", "Clear failed")); } }} className={clearArmed ? "st-btn st-btn-danger" : btnOutline}>{clearArmed ? i("تأكيد حذف سجل الاستخدام؟", "Delete usage history?") : i("مسح", "Clear")}</button><span role="status">{clearMsg}</span>
           </Row>
         </Section>
         <Section title={i("الاجتماعات", "Meetings")}>
           <Row icon={ic(CalendarClock)} label={i("عرض الاجتماعات القادمة", "Show upcoming meetings")} hint={i("ميزة شبكية اختيارية: تجلب تقويمك من الرابط أدناه فقط", "Optional network feature: fetches your calendar from the link below only")}>
             <Toggle label={i("عرض الاجتماعات القادمة", "Show upcoming meetings")} value={s.showMeetings ?? false} onChange={(v) => set({ showMeetings: v })} />
           </Row>
-          <MeetingsKey />
+          <Row when={!!s.showMeetings} icon={ic(CalendarClock)} label={i("نافذة «اجتماع قريب»", "“Upcoming meeting” window")} hint={i("يظهر الاجتماع في الحبة/الرئيسية بلون نوعه قبل بدئه بهذه المدة", "The meeting shows in the island/Home in its colour this long before it starts")}>
+            <Select
+              label={i("نافذة «اجتماع قريب»", "“Upcoming meeting” window")} value={s.meetingLeadMin ?? 15}
+              options={[5, 10, 15, 30, 60].map((n) => ({ value: n, label: i(`${n} دقيقة`, `${n} min`) }))}
+              onChange={(v) => set({ meetingLeadMin: Number(v) })}
+            />
+          </Row>
+          {(s.showMeetings || q.trim()) && <MeetingsKey />}
         </Section>
         <Section title={i("الالتقاط والتسجيل", "Capture & recording")}>
           <Row icon={ic(FolderOpen)} label={i("مجلد اللقطات", "Screenshots folder")} hint={i("فارغ = Pictures\\MyIsland", "Empty = Pictures\\MyIsland")}>
@@ -489,7 +534,7 @@ function App() {
             <Segmented label={i("صيغة التسجيل", "Recording format")} value={s.recordFormat ?? "mp4"} onChange={(v) => set({ recordFormat: v })} options={[{ value: "mp4", label: "MP4" }, { value: "gif", label: "GIF" }]} />
           </Row>
           <Row icon={ic(Film)} label={i("إطارات التسجيل في الثانية", "Recording FPS")} hint={i("GIF يُسقَّف عند 20", "GIF is capped at 20")}>
-            <Segmented label={i("إطارات التسجيل في الثانية", "Recording FPS")} value={String(s.recordingFps ?? 30) as "30" | "60"} onChange={(v) => set({ recordingFps: Number(v) as 30 | 60 })} options={[{ value: "30", label: "30" }, { value: "60", label: "60" }]} />
+            {s.recordFormat === "gif" ? <span className="st-val" data-testid="gif-fps">20 FPS</span> : <Segmented label={i("إطارات التسجيل في الثانية", "Recording FPS")} value={String(s.recordingFps ?? 30) as "30" | "60"} onChange={(v) => set({ recordingFps: Number(v) as 30 | 60 })} options={[{ value: "30", label: "30" }, { value: "60", label: "60" }]} />}
           </Row>
           <Row icon={ic(Film)} label={i("جودة التسجيل", "Recording quality")}>
             <Segmented label={i("جودة التسجيل", "Recording quality")} value={(s.recordingQuality ?? "medium") as "low" | "medium" | "high"} onChange={(v) => set({ recordingQuality: v })}
@@ -513,42 +558,6 @@ function App() {
           </Row>
         </Section>
       </>),
-    },
-    {
-      id: "notifications", icon: <Bell size={16} />, label: i("التنبيهات", "Notifications"), desc: i("متى وكيف تنبّهك الجزيرة — داخل الحبة نفسها دون تغيير شكلها.", "When and how the island alerts you — inside the pill, never changing its shape."),
-      body: (
-        <Section title={i("التنبيهات", "Alerts")}>
-          <Row icon={ic(Volume2)} label={i("صوت التنبيه", "Alert sound")} hint={i("يُعزف مع التذكيرات والمؤقّت والصلاة والاجتماعات", "Plays with reminders, timers, prayers and meetings")}>
-            <div className="flex items-center gap-2">
-              <Select label={i("صوت التنبيه", "Alert sound")} value={normSound(s.soundChoice)} onChange={(v) => { set({ soundChoice: v }); playSound(v, normVolume(s.soundVolume)); }}
-                options={SOUND_IDS.map((id) => ({ value: id, label: i(SOUND_LABELS[id][0], SOUND_LABELS[id][1]) }))} />
-              <button className="st-btn" style={{ width: 36, paddingInline: 0 }} aria-label={i("معاينة الصوت", "Preview sound")} data-testid="sound-preview" disabled={normSound(s.soundChoice) === "none"} onClick={() => playSound(normSound(s.soundChoice), normVolume(s.soundVolume))}><Play size={14} className="rtl:-scale-x-100" /></button>
-            </div>
-          </Row>
-          <Row icon={ic(Volume2)} label={i("مستوى الصوت", "Sound volume")} hint={i("مستوى صوت التنبيه فقط", "Only the alert sound's loudness")}>
-            <Slider label={i("مستوى الصوت", "Sound volume")} value={normVolume(s.soundVolume)} min={0} max={100} step={5} format={pct} onCommit={(v) => set({ soundVolume: v })} />
-          </Row>
-          <Row icon={ic(Bell)} label={i("تنبيهات الصلاة", "Prayer alerts")} hint={i("قبل 10 دقائق وعند دخول الوقت — بصوت التنبيه إن فُعّل", "10 minutes before and at the time — with the alert sound if set")}>
-            <Toggle label={i("تنبيهات الصلاة", "Prayer alerts")} value={s.prayerAlerts ?? true} onChange={(v) => set({ prayerAlerts: v })} />
-          </Row>
-          <Row icon={ic(Cpu)} label={i("تنبيه الحمل المرتفع", "High-load alert")} hint={i("معالج ≥90% لمدة 30 ثانية متواصلة ⇒ تنبيه يسمّي التطبيق المسبّب (مرة كل 10 دقائق كحدّ أقصى). مطفأ افتراضيًا.", "CPU ≥90% for 30 s straight ⇒ an alert naming the culprit app (at most once per 10 min). Off by default.")}>
-            <Toggle label={i("تنبيه الحمل المرتفع", "High-load alert")} value={s.loadAlert ?? false} onChange={(v) => set({ loadAlert: v })} />
-          </Row>
-          <Row icon={ic(CalendarClock)} label={i("نافذة «اجتماع قريب»", "“Upcoming meeting” window")} hint={i("يظهر الاجتماع في الحبة/الرئيسية بلون نوعه قبل بدئه بهذه المدة", "The meeting shows in the island/Home in its colour this long before it starts")}>
-            <Select
-              label={i("نافذة «اجتماع قريب»", "“Upcoming meeting” window")} value={s.meetingLeadMin ?? 15}
-              options={[5, 10, 15, 30, 60].map((n) => ({ value: n, label: i(`${n} دقيقة`, `${n} min`) }))}
-              onChange={(v) => set({ meetingLeadMin: Number(v) })}
-            />
-          </Row>
-          <Row icon={ic(Timer)} label={i("تذكير الاستراحة", "Break reminders")} hint={i("إشعار داخل التطبيق بعد استخدام متواصل (استراحة 5 دقائق تصفّر العدّ)", "In-app notice after continuous use (a 5-minute pause resets the count)")}>
-            <Toggle label={i("تذكير الاستراحة", "Break reminders")} value={s.breakReminders ?? false} onChange={(v) => set({ breakReminders: v })} />
-          </Row>
-          <Row icon={ic(Timer)} label={i("مدة الاستخدام المتواصل (دقيقة)", "Continuous use before a break (min)")}>
-            <NumberField label={i("مدة الاستخدام المتواصل (دقيقة)", "Continuous use before a break (min)")} value={s.breakMinutes ?? 60} min={5} max={240} onCommit={(v) => set({ breakMinutes: v })} />
-          </Row>
-        </Section>
-      ),
     },
     {
       id: "shortcuts", icon: <Keyboard size={16} />, label: i("الاختصارات", "Shortcuts"), desc: i("انقر الحقل ثم اضغط التركيبة · Backspace يمسح (= معطّل) · Esc يلغي.", "Click a field, then press the combo · Backspace clears (= off) · Esc cancels."),
@@ -600,7 +609,9 @@ function App() {
     },
   ];
   const about: Sec = { id: "about", icon: <Info size={16} />, label: i("حول", "About"), desc: i("الإصدار والمطوّر وما الجديد.", "Version, developer and what's new."), body: <AboutSection /> };
-  const all = [...sections, about];
+  const system: Sec = { id: "system", icon: <Cpu size={16} />, label: i("النظام", "System"), desc: i("الأداء والتحديثات ومعلومات الإصدار.", "Performance, updates and version information."), body: <>{originalSections.find(x => x.id === "perf")?.body}{originalSections.find(x => x.id === "updates")?.body}{about.body}</> };
+  const sections = [...originalSections.filter(x => !["perf", "updates"].includes(x.id)), system];
+  const all = sections;
   const searching = q.trim().length > 0;
   const cur = all.find((x) => x.id === tab) ?? all[0];
   const visible = searching ? all : [cur];
@@ -625,12 +636,12 @@ function App() {
               <Search size={15} aria-hidden />
               <input type="search" dir="auto" aria-label={i("بحث في الإعدادات", "Search settings")} placeholder={i("بحث في الإعدادات…", "Search settings…")} value={q} onChange={(e) => setQ(e.target.value)} className="st-input" data-testid="settings-search" />
             </label>
-            <nav aria-label="Settings sections" className="st-nav">
+            <nav aria-label={i("أقسام الإعدادات", "Settings sections")} className="st-nav">
               {sections.map((x) => <Item key={x.id} x={x} />)}
               <div role="separator" style={{ height: 1, background: "var(--c-border)", margin: "6px 4px" }} />
-              <Item x={about} />
+
             </nav>
-            <div className="st-side-foot"><QuitButton /></div>
+            <div className="st-side-foot"><span role="status" data-testid="save-status" data-state={saveStatus} className="st-save-status">{saveStatus === "saving" ? i("جارٍ الحفظ…", "Saving…") : saveStatus === "error" ? i("تعذّر الحفظ؛ أعد المحاولة", "Save failed; try again") : saveStatus === "saved" ? i("تم الحفظ", "Saved") : i("تُحفظ التغييرات تلقائيًا", "Changes save automatically")}</span><QuitButton /></div>
           </aside>
           <main ref={mainRef} className="st-main">
             <AnimatePresence mode="wait" initial={false}>
@@ -659,3 +670,4 @@ function App() {
 }
 
 createRoot(document.getElementById("root")!).render(<App />);
+

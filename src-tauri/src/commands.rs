@@ -25,7 +25,21 @@ pub fn settings_get(state: State<AppState>) -> Map<String, Value> {
 /// يحفظ مقطعًا جزئيًا من الإعدادات في kv ويبث settings:changed بالمقطع.
 #[tauri::command]
 pub fn settings_set(app: AppHandle, state: State<AppState>, patch: Map<String, Value>) -> Result<(), String> {
-    let applied = state.apply_patch(patch)?;
+    let _write = state.settings_write.lock().unwrap();
+    let validated = crate::state::filter_patch(patch.clone());
+    if validated.len() != patch.len() { return Err("Invalid settings values".into()); }
+    let old_autostart = state.settings.lock().unwrap().get("autostart").and_then(Value::as_bool).unwrap_or(false);
+    let autostart = validated.get("autostart").and_then(Value::as_bool);
+    if let Some(on) = autostart { crate::autostart::apply(on)?; }
+    let applied = match state.apply_patch(validated) {
+        Ok(p) => p,
+        Err(e) => {
+            if autostart.is_some() {
+                if let Err(rollback) = crate::autostart::apply(old_autostart) { return Err(format!("{e}; autostart rollback failed: {rollback}")); }
+            }
+            return Err(e);
+        }
+    };
     if applied.keys().any(|k| matches!(k.as_str(), "monitor" | "offsetX" | "offsetY" | "pillPosition" | "islandDocking" | "hoverZone")) {
         win::position_main(&app);
     }
@@ -55,9 +69,6 @@ pub fn settings_set(app: AppHandle, state: State<AppState>, patch: Map<String, V
     }
     if applied.keys().any(|k| matches!(k.as_str(), "ecoMode" | "ecoOnBattery")) {
         crate::perf::recompute(&app);
-    }
-    if let Some(on) = applied.get("autostart").and_then(Value::as_bool) {
-        crate::autostart::apply(on)?;
     }
     let _ = app.emit("settings:changed", applied);
     Ok(())
@@ -126,3 +137,4 @@ pub fn monitors_list(app: AppHandle) -> Vec<MonitorInfo> {
         })
         .collect()
 }
+

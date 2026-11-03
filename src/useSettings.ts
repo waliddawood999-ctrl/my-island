@@ -1,3 +1,4 @@
+import { filterSettings } from "./settingsValidation";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -158,7 +159,7 @@ export function useResolvedTheme(s: Partial<Settings>): { theme: "dark" | "light
 let migrated = false;
 /** يعكس إعدادات الخلفية (settings_get) ويتحدّث عند settings:changed. الخلفية مصدر الحقيقة.
  *  اللغة: تُطبَّق على i18n أثناء الرسم نفسه، فكل نافذة تعيد رسم نفسها عند تغيّر language عبر الحدث. */
-export function useSettings(): Partial<Settings> & { loaded?: boolean; /** تأثيرات الحزمة غير اللونية (شكل/بطل غلاف) */ fx?: Fx } {
+export function useSettings(): Partial<Settings> & { loaded?: boolean; /** تأثيرات الحزمة غير اللونية (شكل/بطل غلاف) */ fx?: Fx; environment?: Env } {
   const [s, setS] = useState<Partial<Settings> & { loaded?: boolean }>(DEFAULTS);
   useEffect(() => {
     let alive = true;
@@ -187,9 +188,29 @@ export function useSettings(): Partial<Settings> & { loaded?: boolean; /** تأ�
   useEffect(() => { setPressTap(PRESS[pressKey].tap); }, [pressKey]);
   const fx = fxFor(s, env);
   const fxKey = `${fx.hero}|${fx.shape.corner}|${fx.shape.pillR}|${fx.shape.peekR}|${fx.shape.panelR}|${fx.scale.pill}|${fx.scale.panel}`;
-  return useMemo(() => ({ ...s, fx }), [s, fxKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  return useMemo(() => ({ ...s, fx, environment: env }), [s, fxKey, JSON.stringify(env)]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
 /** يحفظ مقطعًا عبر settings_set (الحدث settings:changed يعيد الرسم في كل النوافذ). */
-export const saveSettings = (patch: Partial<Settings>) =>
-  invoke("settings_set", { patch }).catch(() => {});
+export type SaveStatus = "idle" | "saving" | "saved" | "error";
+let saveQueue: Promise<unknown> = Promise.resolve();
+let pendingSaves = 0;
+let saveStatus: SaveStatus = "idle";
+const saveListeners = new Set<() => void>();
+function reportSave(status: SaveStatus) { saveStatus = status; saveListeners.forEach(f => f()); }
+export function useSaveStatus() {
+  const [status, setStatus] = useState(saveStatus);
+  useEffect(() => { const f = () => setStatus(saveStatus); saveListeners.add(f); f(); return () => { saveListeners.delete(f); }; }, []);
+  return status;
+}
+/** Serialise slider commits and surface failures; fire-and-forget controls stay safe. */
+export function saveSettings(patch: Partial<Settings>): Promise<boolean> {
+  const valid = filterSettings(patch);
+  if (Object.keys(valid).length !== Object.keys(patch).length) { reportSave("error"); return Promise.resolve(false); }
+  pendingSaves++; reportSave("saving");
+  const task = saveQueue.then(() => invoke("settings_set", { patch: valid }));
+  const result = task.then(() => { pendingSaves--; reportSave(pendingSaves ? "saving" : "saved"); return true; }, () => { pendingSaves--; reportSave("error"); return false; });
+  saveQueue = result;
+  return result;
+}
+

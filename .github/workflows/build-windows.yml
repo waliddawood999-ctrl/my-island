@@ -9,7 +9,7 @@ on:
         default: false
   # الدفع إلى main = بناء فقط. النشر يدوي فقط من main مع تفعيل publish.
   push:
-    branches: [main]
+    branches: [main, fix/settings-review-2026-11-03]
 
 permissions:
   contents: read
@@ -35,6 +35,14 @@ jobs:
       # tauri::generate_context! يضمّن frontendDist (../dist) وقت الترجمة ويفشل إن غاب؛ لذا نبني الواجهة قبل cargo test.
       - name: Typecheck & build frontend
         run: npm run build
+
+      - name: Settings interaction regression
+        shell: pwsh
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install chromium
+          $server = Start-Process node -ArgumentList 'node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port 4173' -PassThru
+          try { node scripts/settings-update.regression.cjs; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } } finally { Stop-Process -Id $server.Id -ErrorAction SilentlyContinue }
 
       - name: Rust tests
         working-directory: src-tauri
@@ -106,3 +114,4 @@ jobs:
           export SIG URL
           node -e "const fs=require('fs');const j={version:process.env.V,notes:'MyIsland '+process.env.V,pub_date:new Date().toISOString(),platforms:{'windows-x86_64':{signature:fs.readFileSync(process.env.SIG,'utf8').trim(),url:process.env.URL}}};fs.writeFileSync('latest.json',JSON.stringify(j,null,2))"
           gh release create "v$VERSION" "$EXE" "$SIG" latest.json --repo "$REPO" --title "v$VERSION" --notes "MyIsland $VERSION"
+

@@ -216,3 +216,11 @@ input[type="range"].st-range:focus-visible::-webkit-slider-thumb { box-shadow: 0
 .tp-measures li[data-ok="0"] em { color: var(--c-danger); font-style: normal; }
 .tp-adj { display: flex; flex-direction: column; gap: 3px; width: 100%; font-size: var(--fs-12); color: var(--c-text-secondary); }
 @media (max-width: 760px) { .tp-hero { grid-template-columns: 1fr; } }
+
+
+/* Progressive disclosure and save acknowledgement. */
+.st-save-status { display: block; padding: 6px 4px 10px; font-size: var(--fs-12); color: var(--c-text-secondary); }
+.st-save-status[data-state="error"] { color: var(--c-danger, #ff706f); }
+.st-advanced > summary { cursor: pointer; padding: 14px 18px; color: var(--c-text-secondary); font-size: var(--fs-13); }
+.st-advanced > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+.st-row-ctl:disabled { cursor: not-allowed; }

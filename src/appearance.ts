@@ -1,5 +1,6 @@
 // منطق المظهر الخالص (بلا واجهة): تحويل الإعدادات إلى متغيرات CSS على <html>، الإعدادات المسبقة، ترحيل الإعدادات القديمة،
 // وحساب التباين (WCAG). يُختبر بـ scripts/glass.test.mjs. الواجهة: useSettings.ts::useAppearance.
+import { filterSettings, schemaDefaults } from "./settingsValidation";
 import { DEFAULTS, type Settings } from "./settings";
 import { PILL } from "./tokens";
 import { migratePreset, migrateReduce, migrateSpeed, normSpeed, resolveReduce } from "./islandMotion";
@@ -174,11 +175,9 @@ export const SECTION_KEYS: Record<string, (keyof Settings)[]> = {
   island: ["clockPosition", "clockX", "clockY", "clockScale", "eyesAlign", "pillWidth", "pillHeight", "pillRadius", "peekWidth", "peekHeight", "peekRadius", "panelWidth", "panelHeight", "panelRadius", "hoverDelayMs", "hoverZone", "peekWheelCycle", "peekCardOrder", "panelWheelPaging", "panelTabsStyle", "offsetX", "offsetY", "pillPosition", "islandDocking", "autoHide", "hideInFullscreen", "opacityRest", "opacityOpen", "showClock", "clockFormat", "eyesEnabled", "captureVisible"],
   appearance: ["themeMode", "themePack", "artBloom", "themeAnim", "themeCustom", "themeTune", "themeDisclosure", "themePackLight", "themePackDark", "accentSource", "themeMaterial", "glassStyle", "glassTint", "backgroundOpacity", "accentMode", "accentColor", "borderStrength", "shadowStrength", "cornerStyle", "fontScale", "density"],
   motion: ["motionLevel", "motionPreset", "motionSpeed", "motionBounce", "reduceMotion"],
-  modules: ["showToday", "prayerCity", "showWeather", "weatherCity", "weatherUnits", "showCountdowns", "showWorldClock", "showBattery", "batteryTip", "btBatteries", "showNetSpeed", "clipLimit", "pasteOnClick", "clipExcludedApps", "privacyIndicator", "showVolume", "showMeetings", "screenshotDir", "recordFormat", "recordingFps", "recordingQuality", "recordingDir", "liveRates", "liquidSpectrum", "playerLayout", "visualizer", "showPlaybackTime", "showSourceBadge", "showProgress", "artworkBackdrop", "attentionTracking"],
-  notifications: ["soundChoice", "soundVolume", "prayerAlerts", "loadAlert", "meetingLeadMin", "breakReminders", "breakMinutes"],
+  modules: ["showToday", "prayerCity", "showWeather", "weatherCity", "weatherUnits", "showCountdowns", "showWorldClock", "showBattery", "batteryTip", "btBatteries", "showNetSpeed", "clipLimit", "pasteOnClick", "clipExcludedApps", "privacyIndicator", "showVolume", "showMeetings", "screenshotDir", "recordFormat", "recordingFps", "recordingQuality", "recordingDir", "liveRates", "liquidSpectrum", "playerLayout", "visualizer", "showPlaybackTime", "showSourceBadge", "showProgress", "artworkBackdrop", "attentionTracking", "prayerAlerts", "meetingLeadMin", "breakReminders", "breakMinutes", "loadAlert", "soundChoice", "soundVolume"],
   shortcuts: ["hotkeyPalette", "hotkeyArea", "hotkeyScreen", "hotkeyRecord", "hotkeyColor"],
-  perf: ["ecoMode", "ecoOnBattery"],
-  updates: ["updateAutoCheck"],
+  system: ["ecoMode", "ecoOnBattery", "updateAutoCheck"],
 };
 
 /** ترحيل الإعدادات المخزّنة: يعيد مقطعًا يُحفظ مرة واحدة (فارغ ⇒ لا شيء).
@@ -205,31 +204,18 @@ export function migrateSettings(stored: P): P {
 
 /** تصدير/استيراد الإعدادات (JSON): الأسرار ليست في الإعدادات أصلًا (DPAPI منفصل). الاستيراد يقبل مفاتيحًا معروفة بنفس النوع فقط. */
 export function exportSettings(s: P): string {
-  return JSON.stringify({ app: "myisland", version: 2, settings: s }, null, 2);
+  return JSON.stringify({ app: "myisland", version: 2, settings: filterSettings(s) }, null, 2);
 }
 export function parseImport(text: string, current: P): P | null {
   try {
     const j = JSON.parse(text) as { app?: string; settings?: Record<string, unknown> };
     if (j?.app !== "myisland" || !j.settings || typeof j.settings !== "object") return null;
-    const known = { ...DEFAULTS, ...current } as Record<string, unknown>;
-    const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(j.settings)) {
-      if (!(k in known)) continue;
-      const d = known[k];
-      if (Array.isArray(d) ? Array.isArray(v) : typeof d === typeof v) out[k] = v;
-    }
-    return out as P;
+    return filterSettings(j.settings);
   } catch { return null; }
 }
 
 /** قيم افتراضية كاملة لكل مفتاح تغطيه SECTION_KEYS (DEFAULTS جزئي): تُستعمل لـ«إعادة ضبط القسم/الكل». */
-export const FULL_DEFAULTS: P = {
-  ...DEFAULTS,
-  autostart: false, monitor: 0, offsetX: 0, autoHide: false, hideInFullscreen: false, showClock: true,
-  opacityRest: 100, opacityOpen: 100, liquidSpectrum: false,
-  showWeather: false, weatherUnits: "c", showBattery: false, showNetSpeed: false, clipLimit: 200, pasteOnClick: true, clipExcludedApps: [],
-  privacyIndicator: false, showVolume: true, showMeetings: false, captureVisible: false, screenshotDir: "", recordingDir: ""
-};
+export const FULL_DEFAULTS: P = schemaDefaults;
 /** مقطع إعادة الضبط لقائمة مفاتيح. */
 export const resetPatch = (keys: (keyof Settings)[]): P => Object.fromEntries(keys.map((k) => [k, (FULL_DEFAULTS as Record<string, unknown>)[k]])) as P;
 
@@ -290,3 +276,4 @@ export function newShelfId(mine: unknown, rnd: () => number = Math.random): stri
   for (let n = 0; n < 50; n++) { const id = `u:${Math.floor(rnd() * 36 ** 6).toString(36).padStart(6, "0")}`; if (!used.has(id)) return id; }
   return `u:${Date.now().toString(36).slice(-8)}`;
 }
+

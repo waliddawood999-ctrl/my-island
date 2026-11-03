@@ -1,3 +1,4 @@
+import { deriveFor, ENV_DEFAULT, chosenPackId, type Env } from "../../appearance";
 // قسم «المظهر» الشامل (docs/THEMES.md §التخصيص): معرض الحزم أولًا (معاينة حيّة للوحة الموسّعة + معاينة فاتح/داكن منقسمة + تعيين حزمة منفصل لكل وضع)،
 // ثم وحدات منظّمة (أيقونة + ملخص سطر + معاينة مصغّرة + إعادة ضبط لكل وحدة). مستويات إفصاح (أساسي/متقدم/خبير)، رفّ «ثيماتي»، تصدير/استيراد، بحث (SearchCtx).
 // كل المقابض ضمن نطاقات مصمَّمة (themeTune.ts / themePacks.USER_RANGES) والمحرك يفرض المقروئية — لا مقبض ينتج ثيمًا كاسرًا للقراءة.
@@ -42,7 +43,7 @@ function MiniIsland({ pack, dark, s, size = "md", label }: { pack: Pack; dark: b
   const sh = SHAPES[pack.shape ?? "default"];
   const vars = { ...d.vars, "--pv-a": String(a), "--tp-r": `${Math.round((sh.panelR ?? 34) * (size === "lg" ? 0.5 : size === "md" ? 0.38 : 0.28))}px`, "--tp-c": String(sh.corner) } as CSSProperties;
   return (
-    <div className="tp-mini" data-size={size} data-theme={dark ? "dark" : "light"} style={vars} role="img" aria-label={label ?? i(`معاينة ${pack.ar}`, `${pack.en} preview`)}>
+    <div className="tp-mini" data-pack-preview={pack.id} data-size={size} data-theme={dark ? "dark" : "light"} style={vars} role="img" aria-label={label ?? i(`معاينة ${pack.ar}`, `${pack.en} preview`)}>
       <div className="tp-body">
         <div className="tp-tabs"><span data-on="1" /><span /><span /><span /></div>
         <div className="tp-cards">
@@ -56,11 +57,11 @@ function MiniIsland({ pack, dark, s, size = "md", label }: { pack: Pack; dark: b
 }
 
 /** معاينة مقسومة فاتح/داكن مثبّتة للحزمة المحدّدة (قطر عمودي: داكن يسارًا وفاتح يمينًا). */
-function SplitPreview({ pack, s }: { pack: Pack; s: Partial<Settings> }) {
+function SplitPreview({ pack, s, previewing }: { pack: Pack; s: Partial<Settings>; previewing: boolean }) {
   return (
     <div className="tp-split" data-testid="split-preview" role="group" aria-label={i("معاينة فاتح/داكن", "Light/dark preview")}>
-      <MiniIsland pack={pack} dark s={s} size="md" label={i("داكن", "Dark")} />
-      <div className="tp-split-light"><MiniIsland pack={pack} dark={false} s={s} size="md" label={i("فاتح", "Light")} /></div>
+      <MiniIsland pack={previewing ? pack : resolvePack(chosenPackId(s,"dark"), s.themeCustom,s.myThemes)} dark s={s} size="md" label={i("داكن", "Dark")} />
+      <div className="tp-split-light"><MiniIsland pack={previewing ? pack : resolvePack(chosenPackId(s,"light"), s.themeCustom,s.myThemes)} dark={false} s={s} size="md" label={i("فاتح", "Light")} /></div>
       <span className="tp-split-tag" data-side="d">{i("داكن", "Dark")}</span>
       <span className="tp-split-tag" data-side="l">{i("فاتح", "Light")}</span>
     </div>
@@ -86,28 +87,29 @@ function Module(p: { id: string; icon: ReactNode; title: string; summary: string
   );
 }
 
-export function AppearanceBody({ s, set }: { s: Partial<Settings>; set: (p: Partial<Settings>) => void }) {
+export function AppearanceBody({ s, set }: { s: Partial<Settings> & { environment?: Env }; set: (p: Partial<Settings>) => Promise<boolean> }) {
   const q = useContext(SearchCtx);
   const searching = q.trim().length > 0;
   const level: Lvl = s.themeDisclosure === "advanced" || s.themeDisclosure === "expert" ? s.themeDisclosure : "basic";
   const at = (min: Lvl) => searching || RANK[level] >= RANK[min];
-  const { derived, packId, pack, theme } = useDerivedTheme(s);
+  const { derived, packId, pack, theme } = deriveFor(s, s.environment ?? ENV_DEFAULT);
   const tune = normTune(s.themeTune);
   const setTune = (patch: Record<string, unknown>) => set({ themeTune: compactTune(normTune({ ...compactTune(tune), ...patch })) });
   const mine = (Array.isArray(s.myThemes) ? s.myThemes : []).map(sanitizeUserTheme).filter((u): u is UserTheme => !!u && u.id.startsWith("u:"));
   const [hover, setHover] = useState<string | null>(null);
   const [openMods, setOpenMods] = useState<Record<string, boolean>>({});
-  const isOpen = (id: string) => openMods[id] !== false;
+  const isOpen = (id: string) => openMods[id] ?? (id === "packs");
   const modProps = (id: string) => ({ id, open: isOpen(id), setOpen: (v: boolean) => setOpenMods((m) => ({ ...m, [id]: v })), searching });
   const [msg, setMsg] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [armed, setArmed] = useState(false);
   const file = useRef<HTMLInputElement>(null);
 
-  const allPacks: { pack: Pack; id: string }[] = [...PACKS.map((p) => ({ pack: p, id: p.id })), ...mine.map((u) => ({ pack: resolvePack(u.id, null, mine), id: u.id }))];
-  const selected = hover ? resolvePack(hover, s.themeCustom, mine) : resolvePack(s.themePack ?? "obsidian", s.themeCustom, mine);
+  const allPacks: { pack: Pack; id: string }[] = [...PACKS.map((p) => ({ pack: p, id: p.id })), { pack: resolvePack("custom",s.themeCustom,mine), id: "custom" }, ...mine.map((u) => ({ pack: resolvePack(u.id, null, mine), id: u.id }))];
+  const selected = hover ? resolvePack(hover, s.themeCustom, mine) : resolvePack(chosenPackId(s,theme), s.themeCustom, mine);
   const dark = theme === "dark";
   const packLabel = (p: Pack) => i(p.ar, p.en);
+  const applyPack = (id: string) => set({ themePack: id, themePackDark: "", themePackLight: "" });
   const resetKeys = (keys: (keyof Settings)[], tuneFields: string[] = []) => set({ ...resetPatch(keys), ...(tuneFields.length ? { themeTune: resetTuneFields(s.themeTune, tuneFields) } : {}) });
 
   // ── قراءة المقروئية الحيّة
@@ -122,15 +124,16 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings>; set: (p: Part
     const next = sanitizeUserTheme({ id: "custom", name: "Custom", ...custom, ...patch });
     if (!next) return;
     const { id: _id, name: _n, ...rest } = next;
-    set({ themeCustom: rest, themePack: "custom" });
+    set({ themeCustom: rest, themePack: "custom", themePackDark: "", themePackLight: "" });
   };
-  const saveToShelf = () => {
+  const saveToShelf = async () => {
     if (mine.length >= MAX_SHELF) { setMsg(i(`الحدّ الأقصى ${MAX_SHELF} ثيمًا`, `Limit is ${MAX_SHELF} themes`)); return; }
     const nm = name.trim() || `${packLabel(pack)} ${i("(نسخة)", "(copy)")}`;
     const id = newShelfId(s.myThemes);
     const e = shelfEntry(pack, id, nm);
-    set({ myThemes: [...mine, e] as unknown as Record<string, unknown>[], themePack: id });
-    setName(""); setMsg(i("حُفظ في «ثيماتي»", "Saved to My themes"));
+    const saved = await set({ myThemes: [...mine, e] as unknown as Record<string, unknown>[], themePack: id, themePackDark: "", themePackLight: "" });
+    if (saved) setName("");
+    setMsg(saved ? i("حُفظت حزمة الألوان في «ثيماتي»", "Colour pack saved to My themes") : i("تعذّر الحفظ", "Save failed"));
   };
   const doExport = () => {
     const url = URL.createObjectURL(new Blob([exportTheme(s)], { type: "application/json" }));
@@ -140,9 +143,12 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings>; set: (p: Part
   };
   const doImport = async (f?: File) => {
     if (!f) return;
-    const p = parseThemeImport(await f.text());
-    if (!p) { setMsg(i("ملف ثيم غير صالح", "Invalid theme file")); return; }
-    set(p); setMsg(i(`استُورد ${Object.keys(p).length} إعدادًا`, `Imported ${Object.keys(p).length} settings`));
+    try {
+      const p = parseThemeImport(await f.text());
+      if (!p) { setMsg(i("ملف ثيم غير صالح", "Invalid theme file")); return; }
+      const saved = await set(p);
+      setMsg(saved ? i(`استُورد ${Object.keys(p).length} إعدادًا`, `Imported ${Object.keys(p).length} settings`) : i("تعذّر الحفظ", "Save failed"));
+    } catch { setMsg(i("تعذّرت قراءة الملف", "Could not read the file")); }
   };
   const rawOpen = at("expert");
 
@@ -151,8 +157,8 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings>; set: (p: Part
       {/* ───────── معرض الحزم (أول شاشة) ───────── */}
       <section className="tp-gallery" data-testid="theme-gallery" hidden={searching}>
         <div className="tp-gal-head">
-          <div><h3 dir="auto" className="tp-gal-title">{i("معرض الحزم", "Pack gallery")}</h3><p dir="auto" className="tp-gal-sub">{i("كل حزمة ثلاث بذور لونية تُشتق منها الأسطح فوق مادة الزجاج — مرّر للمعاينة، انقر للتطبيق.", "Each pack is three colour seeds from which the surfaces are derived over the glass material — hover to preview, click to apply.")}</p></div>
-          <Segmented label={i("مستوى الإفصاح", "Disclosure level")} value={level} onChange={(v) => set({ themeDisclosure: v })}
+          <div><h3 dir="auto" className="tp-gal-title">{i("معرض الحزم", "Pack gallery")}</h3><p dir="auto" className="tp-gal-sub">{i("معاينات نموذجية بأغلفة وألوان نظام تجريبية. انقر لتطبيق الحزمة على الوضعين.", "Sample previews use example artwork and system colours. Click to apply the pack to both modes.")}</p></div>
+          <Segmented label={i("خيارات التخصيص", "Customisation options")} value={level} onChange={(v) => set({ themeDisclosure: v })}
             options={[{ value: "basic", label: i("أساسي", "Basic") }, { value: "advanced", label: i("متقدم", "Advanced") }, { value: "expert", label: i("خبير", "Expert") }]} />
         </div>
         <div className="tp-hero">
@@ -160,7 +166,7 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings>; set: (p: Part
             <MiniIsland pack={selected} dark={dark} s={s} size="lg" />
             <span className="tp-stage-name" dir="auto">{packLabel(selected)}</span>
           </div>
-          <div className="tp-stage tp-stage-split"><SplitPreview pack={selected} s={s} /></div>
+          <div className="tp-stage tp-stage-split"><SplitPreview pack={selected} s={s} previewing={!!hover} /></div>
         </div>
         {(["seed", "gradient", "craft", "editorial", "shape", "time", "art", "custom"] as PackFamily[]).map((fam) => {
           const items = allPacks.filter((x) => x.pack.family === fam && (fam !== "art" || x.pack.family === "art"));
@@ -172,7 +178,7 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings>; set: (p: Part
                 {items.map(({ pack: pk, id }) => (
                   <button key={id} role="radio" aria-checked={packId === id || (s.themePack ?? "obsidian") === id} aria-label={packLabel(pk)} data-pack={id} className="tp-card-btn"
                     onMouseEnter={() => setHover(id)} onMouseLeave={() => setHover(null)} onFocus={() => setHover(id)} onBlur={() => setHover(null)}
-                    onClick={() => set({ themePack: id })}>
+                    onClick={() => applyPack(id)}>
                     <MiniIsland pack={pk} dark={dark} s={s} size="sm" />
                     <span className="tp-card-name" dir="auto">{packLabel(pk)}</span>
                     <span className="tp-card-desc" dir="auto">{i(pk.dar, pk.den)}</span>
@@ -184,10 +190,9 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings>; set: (p: Part
         })}
       </section>
 
-      <Section title={i("تعيين الحزمة", "Pack assignment")}>
-        <Row icon={ic(Palette)} label={i("الحزمة", "Pack")} hint={i("الحزمة العامة لكلا الوضعين ما لم تُعيَّن حزمة منفصلة", "The general pack for both modes unless a separate pack is assigned")}>
-          <Select label={i("الحزمة", "Pack")} value={s.themePack ?? "obsidian"} onChange={(v) => set({ themePack: v })} options={allPacks.map((x) => ({ value: x.id, label: packLabel(x.pack) }))} />
-        </Row>
+      {at("advanced") && (
+<Section title={i("تعيين الحزمة", "Pack assignment")}>
+
         <Row icon={ic(Layers)} label={i("حزمة الوضع الداكن", "Dark-mode pack")} hint={i("تُستعمل حين يكون الوضع داكنًا (فارغ = الحزمة العامة)", "Used when the mode is dark (empty = the general pack)")}>
           <Select label={i("حزمة الوضع الداكن", "Dark-mode pack")} value={s.themePackDark ?? ""} onChange={(v) => set({ themePackDark: v })} options={[{ value: "", label: i("— مثل العامة —", "— same as general —") }, ...allPacks.map((x) => ({ value: x.id, label: packLabel(x.pack) }))]} />
         </Row>
@@ -195,6 +200,7 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings>; set: (p: Part
           <Select label={i("حزمة الوضع الفاتح", "Light-mode pack")} value={s.themePackLight ?? ""} onChange={(v) => set({ themePackLight: v })} options={[{ value: "", label: i("— مثل العامة —", "— same as general —") }, ...allPacks.map((x) => ({ value: x.id, label: packLabel(x.pack) }))]} />
         </Row>
       </Section>
+      )}
 
       {/* ───────── 1) الثيمات والحزم ───────── */}
       <Module {...modProps("packs")} icon={ic(Palette)} title={i("الثيمات والحزم", "Themes & packs")}
@@ -249,13 +255,13 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings>; set: (p: Part
             <Slider label={i("المخصصة — الحبيبات", "Custom — grain")} value={cp.grain} min={USER_RANGES.grain[0]} max={USER_RANGES.grain[1]} step={0.005} format={(v) => `${(v * 100).toFixed(1)}%`} onCommit={(v) => setCustom({ grain: v })} />
           </Row>
         </>)}
-        <Row icon={ic(Save)} label={i("ثيماتي — حفظ الحالي", "My themes — save current")} hint={msg ?? i(`احفظ الثيم الحالي كنسخة باسمك (حتى ${MAX_SHELF})`, `Save the current theme as your own copy (up to ${MAX_SHELF})`)}>
+        <Row icon={ic(Save)} label={i("ثيماتي — حفظ الحالي", "My themes — save current")} hint={msg ?? i(`احفظ حزمة الألوان باسمك؛ الخط والمادة وبقية التخصيصات تُحفظ عبر التصدير (حتى ${MAX_SHELF})`, `Save this colour pack; export a theme to keep fonts, material and other tuning (up to ${MAX_SHELF})`)}>
           <input aria-label={i("اسم الثيم", "Theme name")} dir="auto" className={`${inputCls} w-40`} value={name} maxLength={40} onChange={(e) => setName(e.target.value)} placeholder={i("اسم الثيم", "Theme name")} />
           <button className={btnPrimary} data-testid="shelf-save" onClick={saveToShelf}>{i("حفظ", "Save")}</button>
         </Row>
         {mine.map((u) => (
           <Row key={u.id} icon={ic(Palette)} label={u.name} hint={`${i("نسخة من", "Copy of")} ${packLabel(PACKS.find((p) => p.id === u.base) ?? PACKS[0])} · ${u.accent ?? ""}`}>
-            <button className={btnOutline} data-shelf-apply={u.id} aria-label={`${u.name} — ${i("تطبيق", "Apply")}`} onClick={() => set({ themePack: u.id })}>{i("تطبيق", "Apply")}</button>
+            <button className={btnOutline} data-shelf-apply={u.id} aria-label={`${u.name} — ${i("تطبيق", "Apply")}`} onClick={() => applyPack(u.id)}>{i("تطبيق", "Apply")}</button>
             <button className="st-btn" style={{ width: 36, paddingInline: 0 }} data-shelf-del={u.id} aria-label={`${u.name} — ${i("حذف", "Delete")}`} onClick={() => set({ myThemes: mine.filter((x) => x.id !== u.id) as unknown as Record<string, unknown>[], ...(s.themePack === u.id ? { themePack: "obsidian" } : {}), ...(s.themePackDark === u.id ? { themePackDark: "" } : {}), ...(s.themePackLight === u.id ? { themePackLight: "" } : {}) })}><Trash2 size={14} /></button>
           </Row>
         ))}
@@ -300,8 +306,8 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings>; set: (p: Part
           </div>
         </Row>
         {(s.themeMaterial ?? "glass") === "glass" && (
-          <Row icon={ic(Contrast)} label={i("شدة الحجاب", "Veil strength")} hint={i("لون الحجاب وعتامته فوق سطح المكتب — الأعلى أوضح للنص", "Colour and opacity of the veil over the desktop — higher is easier to read")}>
-            <Slider label={i("شدة الحجاب", "Veil strength")} value={s.glassTint ?? 45} min={0} max={80} step={1} format={pct} onLive={(v) => set({ glassTint: v })} onCommit={(v) => set({ glassTint: v })} />
+          <Row icon={ic(Contrast)} label={i("عتامة الخلفية الزجاجية", "Glass background opacity")} hint={i("لون الحجاب وعتامته فوق سطح المكتب — الأعلى أوضح للنص", "Colour and opacity of the veil over the desktop — higher is easier to read")}>
+            <Slider label={i("عتامة الخلفية الزجاجية", "Glass background opacity")} value={s.glassTint ?? 45} min={0} max={80} step={1} format={pct} onLive={(v) => set({ glassTint: v })} onCommit={(v) => set({ glassTint: v })} />
           </Row>
         )}
         {at("advanced") && (
@@ -473,4 +479,5 @@ function RawTokens({ derived, tokens, onChange }: { derived: ReturnType<typeof u
     </>
   );
 }
+
 
