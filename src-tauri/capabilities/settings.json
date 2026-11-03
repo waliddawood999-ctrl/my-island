@@ -5,9 +5,11 @@
   "windows": ["settings"],
   "permissions": [
     "core:default",
+    "allow-system-transparency", "allow-system-accent", "allow-wallpaper-color", "allow-media-now",
     "updater:allow-check",
     "allow-settings-get", "allow-settings-set", "allow-perf-status", "allow-perf-ram", "allow-webview-runtime",
     "allow-open-path", "allow-app-quit", "allow-monitors-list", "allow-today-cities", "allow-attention-clear",
     "allow-meetings-key-set", "allow-meetings-key-status", "allow-meetings-refresh"
   ]
 }
+

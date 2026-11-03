@@ -1,3 +1,4 @@
+const { expandSettings } = require("./settings-test-helpers.cjs");
 // «لا تداخل في أي مكان»: تدقيق هندسي لكل العروض (الحبة بحالاتها، اللمحة بكل بطاقاتها، اللوحة بكل تبويباتها وتخطيطات المشغّل، ونافذة الإعدادات
 // بكل أقسامها) بعناوين طويلة، RTL، ومقاسات مختلفة. القاعدة لكل عنصر نصي مرئي: (1) لا يتدفّق خارج صندوقه إلا بقطع بنقاط (ellipsis/clip)،
 // (2) لا يتقاطع صندوقه المرئي مع صندوق عنصر نصي آخر ليس سلفه/سليله، (3) لا يخرج عن حدود الجزيرة/النافذة. تشغيل:
@@ -121,8 +122,8 @@ const hoverClick = async (page) => { await page.mouse.move(400, 10); await page.
   // الإعدادات: كل الأقسام × لغتان × مقاسان
   for (const lang of ["en", "ar"]) for (const vp of [{ width: 880, height: 620 }, { width: 700, height: 500 }]) {
     const { ctx, page } = await mk(browser, "settings.html", { settings: { language: lang }, extra: { today_cities: [{ id: "riyadh", ar: "الرياض", en: "Riyadh" }, { id: "madinah", ar: "المدينة المنورة", en: "Madinah" }] } }, vp);
-    for (const g of ["general", "island", "appearance", "motion", "modules", "notifications", "shortcuts", "perf", "updates", "about"]) {
-      await page.locator(`[data-nav="${g}"]`).click(); await page.waitForTimeout(450);
+    for (const g of ["general", "island", "appearance", "motion", "modules", "shortcuts", "system"]) {
+      await page.locator(`[data-nav="${g}"]`).click(); await page.waitForTimeout(450); await expandSettings(page);
       await audit(page, ".st-root", `[${lang}] settings ${vp.width}×${vp.height} section=${g}`);
     }
     await ctx.close();
@@ -131,3 +132,4 @@ const hoverClick = async (page) => { await page.mouse.move(400, 10); await page.
   console.log(fails ? `FAILED ${fails}` : "ALL PASSED");
   process.exit(fails ? 1 : 0);
 })();
+

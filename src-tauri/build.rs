@@ -8,7 +8,7 @@ const COMMANDS: &[&str] = &[
     "battery_status", "attention_today", "attention_clear",
     "palette_apps", "palette_icon", "files_search", "files_warm", "files_held",
     "palette_recent", "run_shell", "open_path", "workspace_open",
-    "rates_get", "perf_status", "perf_ram", "mascot_active", "netspeed_active", "system_transparency", "webview_runtime",
+    "rates_get", "perf_status", "perf_ram", "mascot_active", "netspeed_active", "system_transparency", "webview_runtime", "system_accent", "wallpaper_color",
     "capture_start", "capture_frame", "capture_ready", "capture_region", "capture_cancel", "open_captures", "prtsc_taken",
     "record_begin", "record_start", "record_stop", "record_status",
     "color_pick", "color_patch", "color_history",
@@ -29,3 +29,4 @@ fn main() {
     )
     .expect("failed to run tauri-build");
 }
+

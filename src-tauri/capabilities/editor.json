@@ -5,8 +5,10 @@
   "windows": ["editor"],
   "permissions": [
     "core:default",
+    "allow-system-transparency", "allow-system-accent", "allow-wallpaper-color", "allow-media-now",
     "core:window:allow-hide",
     "allow-settings-get", "allow-settings-set", "allow-perf-status",
     "allow-editor-image", "allow-editor-save"
   ]
 }
+

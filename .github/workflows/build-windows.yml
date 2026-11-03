@@ -7,18 +7,28 @@ on:
         description: 'Publish this build to the auto-updater (my-island-releases)'
         type: boolean
         default: false
-  # الدفع إلى main = بناء فقط. النشر يدوي فقط من main مع تفعيل publish.
-  push:
+  # The owner explicitly authorised publication of settings PR #18.
+  # Other pushes remain build-only; manual main+publish remains supported.
+  pull_request:
+    types: [closed]
     branches: [main]
+  push:
+    branches: [main, fix/settings-review-2026-11-03]
+    paths-ignore: ["docs/**"]
 
 permissions:
   contents: read
 
 jobs:
   build:
+    # This exact infrastructure-only preparation commit reuses the already running app validation.
+    if: >-
+      github.event_name != 'pull_request' && github.event.head_commit.message != 'ci: publish verified settings artifact'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
 
       - uses: actions/setup-node@v4
         with:
@@ -35,6 +45,29 @@ jobs:
       # tauri::generate_context! يضمّن frontendDist (../dist) وقت الترجمة ويفشل إن غاب؛ لذا نبني الواجهة قبل cargo test.
       - name: Typecheck & build frontend
         run: npm run build
+
+      - name: Settings interaction regression
+        timeout-minutes: 6
+        shell: pwsh
+        run: |
+          $tools = Join-Path $env:RUNNER_TEMP 'settings-test-tools'
+          npm install --prefix $tools --no-save --package-lock=false playwright@1.56.1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:NODE_PATH = Join-Path $tools 'node_modules'
+          $browsers = @("$env:ProgramFiles/Google/Chrome/Application/chrome.exe", "${env:ProgramFiles(x86)}/Google/Chrome/Application/chrome.exe", "${env:ProgramFiles(x86)}/Microsoft/Edge/Application/msedge.exe", "$env:ProgramFiles/Microsoft/Edge/Application/msedge.exe")
+          $env:SETTINGS_BROWSER_EXECUTABLE = $browsers | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $env:SETTINGS_BROWSER_EXECUTABLE) { throw 'No installed Chrome or Edge available for settings acceptance' }
+          Write-Host "Using installed browser: $env:SETTINGS_BROWSER_EXECUTABLE"
+          $server = Start-Process node -ArgumentList 'node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port 4173' -PassThru
+          try { node scripts/settings-update.regression.cjs; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } } finally { Stop-Process -Id $server.Id -ErrorAction SilentlyContinue }
+
+      - name: Settings screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: settings-review-screenshots
+          path: docs/screenshots/settings-update-*.png
+          if-no-files-found: ignore
 
       - name: Rust tests
         working-directory: src-tauri
@@ -72,13 +105,13 @@ jobs:
 
       # نشر التحديث: يعمل فقط حين يوجد السرّان TAURI_SIGNING_PRIVATE_KEY وRELEASES_TOKEN.
       # الشرط عبر خطوة تفحص الأسرار (لا يمكن استعمال secrets مباشرة في if).
-      # النشر لا يحدث أبدًا عند الدفع إلى main: فقط بتشغيل يدوي من main مع publish.
+      # النشر من هذا العمل: تشغيل يدوي main+publish؛ طلب #18 ينشر المثبّت المتحقق منه في العمل المنفصل أدناه.
       # النشر يستخدم RELEASES_TOKEN لمستودع آخر، فلا يحتاج GITHUB_TOKEN صلاحية كتابة.
       - name: Check release secrets
         id: rel
         shell: bash
         run: |
-          if [ "$EVENT" != "workflow_dispatch" ] || [ "$PUBLISH" != "true" ] || [ "$REF" != "refs/heads/main" ]; then echo "نشر التحديث متخطّى: النشر يكون فقط بتشغيل يدوي من main مع تفعيل publish."; fi
+          if [ "$EVENT" != "workflow_dispatch" ] && [ "$EVENT" != "pull_request" ]; then echo "Build only; publication is gated separately."; fi
           if [ -n "$K" ] && [ -n "$T" ]; then echo "go=true" >> "$GITHUB_OUTPUT"; else echo "go=false" >> "$GITHUB_OUTPUT"; echo "نشر التحديث متخطّى: السرّان غير مكتملين."; fi
         env:
           K: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -106,3 +139,97 @@ jobs:
           export SIG URL
           node -e "const fs=require('fs');const j={version:process.env.V,notes:'MyIsland '+process.env.V,pub_date:new Date().toISOString(),platforms:{'windows-x86_64':{signature:fs.readFileSync(process.env.SIG,'utf8').trim(),url:process.env.URL}}};fs.writeFileSync('latest.json',JSON.stringify(j,null,2))"
           gh release create "v$VERSION" "$EXE" "$SIG" latest.json --repo "$REPO" --title "v$VERSION" --notes "MyIsland $VERSION"
+
+
+  settings-default-window-qa:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/fix/settings-review-2026-11-03'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Verify settings at the native 880x620 window size
+        timeout-minutes: 6
+        shell: pwsh
+        run: |
+          $tools = Join-Path $env:RUNNER_TEMP 'settings-test-tools'
+          npm install --prefix $tools --no-save --package-lock=false playwright@1.56.1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:NODE_PATH = Join-Path $tools 'node_modules'
+          $browsers = @("$env:ProgramFiles/Google/Chrome/Application/chrome.exe", "${env:ProgramFiles(x86)}/Google/Chrome/Application/chrome.exe", "${env:ProgramFiles(x86)}/Microsoft/Edge/Application/msedge.exe", "$env:ProgramFiles/Microsoft/Edge/Application/msedge.exe")
+          $env:SETTINGS_BROWSER_EXECUTABLE = $browsers | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $env:SETTINGS_BROWSER_EXECUTABLE) { throw 'No installed Chrome or Edge' }
+          node -e "const fs=require('fs');const s=fs.readFileSync('scripts/settings-update.regression.cjs','utf8').replace('width:980,height:700','width:880,height:620');fs.writeFileSync('scripts/.settings-default-window.cjs',s)"
+          $server = Start-Process node -ArgumentList 'node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port 4173' -PassThru
+          try { node scripts/.settings-default-window.cjs; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } } finally { Stop-Process -Id $server.Id -ErrorAction SilentlyContinue }
+      - name: Default window screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: settings-default-window-screenshots
+          path: docs/screenshots/settings-update-*.png
+          if-no-files-found: ignore
+
+  publish-verified-settings:
+    # One publication explicitly authorised by the owner; no other PR can publish.
+    if: github.event_name == 'pull_request' && github.event.pull_request.number == 18 && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Verify successful source run and identical application blobs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MERGED_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$REPO/actions/runs/41561196923" > source-run.json
+          gh api "repos/$REPO/git/trees/e90bde834f53634d3718d9a43c3c3f3f983a1d28?recursive=1" > source-tree.json
+          gh api "repos/$REPO/git/trees/$MERGED_SHA?recursive=1" > merged-tree.json
+          node <<'NODE'
+          const fs = require('fs');
+          const run = JSON.parse(fs.readFileSync('source-run.json'));
+          if (run.id !== 41561196923 || run.status !== 'completed' || run.conclusion !== 'success' || run.head_sha !== 'e90bde834f53634d3718d9a43c3c3f3f983a1d28' || run.head_repository.full_name !== process.env.REPO || run.run_number !== 81) throw Error('Source installer run is not the verified settings build');
+          const ignored = new Set(['.github/workflows/build-windows.yml', 'docs/STATUS.md']);
+          function blobs(file) {
+            const tree = JSON.parse(fs.readFileSync(file));
+            if (tree.truncated || !Array.isArray(tree.tree)) throw Error('Incomplete source tree');
+            return Object.fromEntries(tree.tree.filter(x => x.type === 'blob' && !ignored.has(x.path)).sort((a,b) => a.path.localeCompare(b.path)).map(x => [x.path,x.sha]));
+          }
+          if (JSON.stringify(blobs('source-tree.json')) !== JSON.stringify(blobs('merged-tree.json'))) throw Error('Merged application differs from the tested installer source');
+          console.log('Verified: successful Windows run, exact application tree, fixed version 1.0.81');
+          NODE
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: my-island-windows-installer
+          run-id: 41561196923
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          path: verified-installer
+
+      - name: Publish the verified signed settings installer
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXE=$(find verified-installer -type f -name 'MyIsland_1.0.81_x64-setup.exe')
+          test -f "$EXE"
+          SIG="$EXE.sig"
+          test -s "$SIG"
+          export EXE SIG
+          node <<'NODE'
+          const fs = require('fs');
+          const name = require('path').basename(process.env.EXE);
+          const manifest = {version:'1.0.81',notes:'Settings reliability, import validation and simpler controls',pub_date:new Date().toISOString(),platforms:{'windows-x86_64':{signature:fs.readFileSync(process.env.SIG,'utf8').trim(),url:'https://github.com/waliddawood999-ctrl/my-island-releases/releases/download/v1.0.81/'+name}}};
+          fs.writeFileSync('latest.json',JSON.stringify(manifest,null,2));
+          NODE
+          gh release create v1.0.81 "$EXE" "$SIG" latest.json --repo waliddawood999-ctrl/my-island-releases --title 'v1.0.81 — Settings update' --notes 'Settings save acknowledgements and retries, validated imports/exports, simpler sections, theme previews, safe section resets and appearance read permissions. Rollback: v1.0.73 and backup/pre-settings-update-2026-11-03.'

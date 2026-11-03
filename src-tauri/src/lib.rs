@@ -59,7 +59,7 @@ pub fn run() {
     use tauri::Manager;
     use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 
-    // اختصار تبديل الإخفاء الافتراضي (hotkeyToggle يُربط بالإعدادات لاحقًا).
+    // اختصار تبديل الإخفاء الثابت؛ لا يوجد إعداد قابل للحفظ لتغييره.
     let toggle = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyI);
 
     // شفافية WebView2 تُفرض قبل إنشاء أي ويب فيو (backdrop.rs).
@@ -260,3 +260,4 @@ pub fn run() {
         .run(tauri::generate_context!())
         .expect("error while running application");
 }
+

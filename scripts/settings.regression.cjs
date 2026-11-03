@@ -1,3 +1,4 @@
+const { expandSettings } = require("./settings-test-helpers.cjs");
 // تخطيط الإعدادات الجديد (Playwright + جسر وهمي): شريط جانبي مرتّب، «حول» وحده، زر الإغلاق الأحمر أسفل الشريط بتأكيد من خطوتين،
 // بحث حيّ، وصول كل عناصر التحكم السابقة، إعادة ضبط القسم، استيراد/تصدير، أسلوبا الزجاج، RTL. تشغيل:
 //   npm run build && npx vite preview --port 4173 &   ثم:   NODE_PATH=$(npm root -g) node scripts/settings.regression.cjs
@@ -8,24 +9,24 @@ let fails = 0;
 const ok = (n, c, extra = "") => { if (!c) fails++; console.log(`${c ? "✓" : "✗"} ${n} ${c ? "" : extra}`); };
 // عناصر التحكم (aria-label) السابقة (63) — يجب أن تبقى كلها قابلة للوصول في مكانها المنطقي الجديد.
 const BASELINE = ["Check for updates automatically", "Start with Windows", "Language", "Monitor", "Horizontal offset", "Open delay", "Auto-hide", "Hide in fullscreen", "Show clock", "Clock format", "Pill width", "Pill height", "Theme", "Background", "Opacity at rest", "Opacity when open", "Mascot eyes", "Audio spectrum & liquid pill", "Show the Today section", "City", "Prayer alerts", "Weather", "Temperature unit", "Event countdowns", "Event name", "Event date", "Mini world clock", "Alert sound", "Show battery", "“Unplug at 80%” tip", "Bluetooth device batteries", "Network speed in the pill", "Item limit", "Paste on click", "Excluded apps", "Mic & camera indicator", "High-load alert", "Volume control in System", "Show upcoming meetings", "“Upcoming meeting” window", "Private iCal link", "Show the island in captures", "Screenshots folder", "Area screenshot hotkey", "Full-screen screenshot hotkey", "Recording format", "Recording FPS", "Recording quality", "Recordings folder", "Recording hotkey", "Color picker hotkey", "Live currency rates", "Focus-time tracking", "Break reminders", "Continuous use before a break (min)", "Eco mode", "Auto-eco on battery", "Motion level"];
-const ORDER = ["general", "island", "appearance", "motion", "modules", "notifications", "shortcuts", "perf", "updates", "about"];
+const ORDER = ["general", "island", "appearance", "motion", "modules", "shortcuts", "system"];
 // خريطة مكان كل إعداد (للتقرير): قسم ← عناصره
 const where = {};
 (async () => {
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 880, height: 620 } });
   const page = await ctx.newPage();
-  await page.addInitScript(bridge({ settings: { language: "en", themeMaterial: "glass", glassStyle: "crystal", themeDisclosure: "expert" }, extra: { app_quit: null } })); // خبير: كل المقابض المتقدمة موجودة في DOM (اختبار الوصول)
+  await page.addInitScript(bridge({ settings: { language: "en", themeMaterial: "glass", glassStyle: "crystal", themeDisclosure: "expert", showMeetings: true, showWeather: true, showBattery: true, breakReminders: true }, extra: { app_quit: null } })); // خبير: كل المقابض المتقدمة موجودة في DOM (اختبار الوصول)
   const errs = []; page.on("pageerror", (e) => errs.push((e.message || "").slice(0, 120)));
   await page.goto(`${BASE}/settings.html`); await page.waitForTimeout(800);
-  const nav = (g) => page.locator(`[data-nav="${g}"]`);
+  const nav = (g) => ({ getAttribute: n => page.locator(`[data-nav="${g}"]`).getAttribute(n), click: async () => { await page.locator(`[data-nav="${g}"]`).click(); await page.waitForTimeout(220); await expandSettings(page); } });
   const calls = (n) => page.evaluate((c) => window.__calls.filter((x) => x[0] === c).map((x) => x[1]), n);
 
   // الشريط الجانبي
   const ids = await page.evaluate(() => [...document.querySelectorAll("nav[aria-label='Settings sections'] [data-nav]")].map((b) => b.dataset.nav));
   ok("sidebar order: General, Island, Appearance, Motion, Modules, Notifications, Shortcuts, Performance, Updates, About", JSON.stringify(ids) === JSON.stringify(ORDER), JSON.stringify(ids));
   ok("every item has an icon", await page.evaluate(() => [...document.querySelectorAll("[data-nav]")].every((b) => b.querySelector("svg"))));
-  ok("About is alone at the bottom of the list, after a separator", await page.evaluate(() => { const n = document.querySelector("nav[aria-label='Settings sections']"); const kids = [...n.children]; return kids[kids.length - 1].dataset.nav === "about" && kids[kids.length - 2].getAttribute("role") === "separator"; }));
+  ok("About and updates share the System destination", await page.evaluate(() => { const n = document.querySelector("nav[aria-label='Settings sections']"); const kids = [...n.children]; return kids.some(e => e.dataset.nav === "system") && !kids.some(e => e.dataset.nav === "about"); }));
   ok("default section = General (current + only its group rendered)", (await nav("general").getAttribute("aria-current")) === "true" && (await page.locator("[data-group]").count()) === 1);
 
   // زر الإغلاق: أسفل الشريط الجانبي (خارج رأس الإعدادات)، أحمر، بخطوتين
@@ -57,11 +58,11 @@ const where = {};
   ok("no setting appears in two sections", dup.length === 0, [...new Set(dup)].join("|"));
 
   // About
-  await nav("about").click(); await page.waitForTimeout(300);
+  await nav("system").click(); await page.waitForTimeout(300);
   ok("About: version + developer + What's new + GitHub", (await page.getByTestId("about-version").count()) === 1 && (await page.getByText("Developed by Walid").count()) === 1 && (await page.getByTestId("about-whatsnew").count()) === 1 && (await page.getByTestId("about-github").count()) === 1);
   ok("About: WebView2 Runtime version row present (diagnostic)", (await page.getByTestId("about-webview").count()) === 1);
-  ok("About is not mixed into other sections (no update/quit controls)", (await page.getByRole("switch").count()) === 0);
-  await nav("updates").click(); await page.waitForTimeout(300);
+  ok("System groups diagnostics and updates", (await page.getByTestId("update-check").count()) === 1);
+  await nav("system").click(); await page.waitForTimeout(300);
   ok("Updates: auto-check switch + manual check", (await page.getByRole("switch", { name: "Check for updates automatically" }).count()) === 1 && (await page.getByTestId("update-check").count()) === 1);
   await page.getByRole("switch", { name: "Check for updates automatically" }).click(); await page.waitForTimeout(150);
   ok("toggling saves instantly (no reload)", JSON.stringify(await calls("settings_set")).includes("updateAutoCheck"));
@@ -129,3 +130,4 @@ const where = {};
   console.log(fails ? `FAILED ${fails}` : "ALL PASSED");
   process.exit(fails ? 1 : 0);
 })();
+

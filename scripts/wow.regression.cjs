@@ -1,3 +1,4 @@
+const { expandSettings } = require("./settings-test-helpers.cjs");
 // فحص «جلسة الإبهار» (Playwright + جسر Tauri وهمي): النشاط الحي (كبسولة مدمجة + بطاقة + أولوية + تبديل)، ساعة الإيقاف، سرعتا الشبكة،
 // المنحنى المصغّر، وضع تبويب المتصفح، مستويات الحركة، سلامة التخطيط، وصفر كلفة الخمول. تشغيل:
 //   npm run build && npx vite preview --port 4173 &   ثم:   NODE_PATH=$(npm root -g) node scripts/wow.regression.cjs
@@ -196,13 +197,13 @@ const pxNum = (v) => parseFloat(v);
     const navLabels = await page.locator("nav[aria-label='Settings sections'] button").allTextContents();
     ok("settings nav: order = General … Updates, About last", JSON.stringify(navLabels) === JSON.stringify(["General", "Island", "Appearance", "Motion", "Modules", "Notifications", "Shortcuts", "Performance & battery", "Updates", "About"]), JSON.stringify(navLabels));
     ok("settings: default section is General, and only one section group is shown", JSON.stringify(await page.locator("h2").allTextContents()) === JSON.stringify(["General"]));
-    ok("settings: all 10 sidebar sections reachable", await (async () => { for (const g of ["general", "island", "appearance", "motion", "modules", "notifications", "shortcuts", "perf", "updates", "about"]) { await page.locator(`[data-nav="${g}"]`).click(); await page.waitForTimeout(60); if ((await page.locator("[data-group]").count()) !== 1) return false; } return true; })());
+    ok("settings: all 10 sidebar sections reachable", await (async () => { for (const g of ["general", "island", "appearance", "motion", "modules", "shortcuts", "system"]) { await page.locator(`[data-nav="${g}"]`).click(); await page.waitForTimeout(60); if ((await page.locator("[data-group]").count()) !== 1) return false; } return true; })());
     await page.locator('[data-nav="island"]').click(); await page.waitForTimeout(500);
     ok("settings: Browser tab mode option is gone", (await page.getByRole("switch", { name: "Browser tab mode" }).count()) === 0);
     await page.locator('[data-nav="modules"]').click(); await page.waitForTimeout(500);
     ok("settings: Network speed toggle sits in Modules", (await page.getByRole("switch", { name: "Network speed in the pill" }).count()) === 1);
     ok("settings: no horizontal overflow", await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth));
-    await page.locator('[data-nav="perf"]').click(); await page.waitForTimeout(500);
+    await page.locator('[data-nav="system"]').click(); await page.waitForTimeout(500);
     ok("settings nav: clicking «Performance & battery» shows only that group", JSON.stringify(await page.locator("h2").allTextContents()) === JSON.stringify(["Performance & battery"]));
     ok("settings nav: current section highlighted", (await page.locator('nav [aria-current="true"]').textContent()) === "Performance & battery");
     await shot(page, "settings-top"); 
@@ -215,3 +216,4 @@ const pxNum = (v) => parseFloat(v);
   console.log(fails ? "FAILED " + fails : "ALL PASSED");
   process.exit(fails ? 1 : 0);
 })();
+

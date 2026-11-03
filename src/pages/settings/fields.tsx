@@ -29,9 +29,9 @@ export function SubHead({ children }: { children: ReactNode }) {
   return <div role="presentation" dir="auto" className="st-note" style={{ fontWeight: 700, paddingBlock: 8, borderTop: "1px solid var(--c-border)" }}>{children}</div>;
 }
 
-export function Row({ label, hint, icon, children, col }: { label: string; hint?: string; icon?: ReactNode; children?: ReactNode; col?: boolean }) {
+export function Row({ label, hint, icon, children, col, when = true }: { label: string; hint?: string; icon?: ReactNode; children?: ReactNode; col?: boolean; when?: boolean }) {
   const q = useContext(SearchCtx).trim().toLowerCase();
-  const hit = !q || `${label} ${hint ?? ""}`.toLowerCase().includes(q);
+  const hit = (!q ? when : `${label} ${hint ?? ""}`.toLowerCase().includes(q));
   return (
     <div className={`st-row${col ? " st-col" : ""}`} hidden={!hit}>
       {icon && <span aria-hidden className="st-row-tile">{icon}</span>}
@@ -39,7 +39,7 @@ export function Row({ label, hint, icon, children, col }: { label: string; hint?
         <div dir="auto" className="st-row-title">{label}</div>
         {hint && <div dir="auto" className="st-row-hint">{hint}</div>}
       </div>
-      {children && <div className="st-row-ctl">{children}</div>}
+      {children && <fieldset disabled={!when} className="st-row-ctl" style={{ border: 0, padding: 0, margin: 0, minWidth: 0, opacity: when ? 1 : 0.5 }}>{children}</fieldset>}
     </div>
   );
 }
@@ -60,7 +60,15 @@ export function Segmented<T extends string>(p: { value: T; options: { value: T; 
   return (
     <div role="radiogroup" aria-label={p.label} className="st-seg">
       {p.options.map((o) => (
-        <button key={o.value} role="radio" aria-checked={p.value === o.value} onClick={() => p.onChange(o.value)}>
+        <button key={o.value} role="radio" tabIndex={p.value === o.value || (!p.options.some(x => x.value === p.value) && o === p.options[0]) ? 0 : -1} aria-checked={p.value === o.value} onClick={() => p.onChange(o.value)}
+          onKeyDown={(e) => {
+            const step = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0;
+            if (!step && e.key !== "Home" && e.key !== "End") return;
+            e.preventDefault();
+            const n = e.key === "Home" ? 0 : e.key === "End" ? p.options.length - 1 : (p.options.indexOf(o) + step + p.options.length) % p.options.length;
+            p.onChange(p.options[n].value);
+            (e.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>("button[role=radio]")[n])?.focus();
+          }}>
           {p.value === o.value && <motion.span layoutId={`seg-${id}`} className="st-seg-ind" transition={spring.press} />}
           <span style={{ position: "relative" }}>{o.label}</span>
         </button>
@@ -241,3 +249,4 @@ export function OrderField({ value, labels, onChange, label }: { value: string[]
     </ol>
   );
 }
+

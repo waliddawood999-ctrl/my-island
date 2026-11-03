@@ -1,3 +1,4 @@
+const { expandSettings } = require("./settings-test-helpers.cjs");
 // T02: إزالة الميزات (تبويب المتصفح/الكلمات/تحت شريط المهام)، «اليوم» فوري، الطقس (حالة خطأ + إعادة محاولة + مدينة افتراضية)، الأصوات، والأوصاف. تشغيل:
 //   npm run build && npx vite preview --port 4173 &   ثم:   NODE_PATH=$(npm root -g) node scripts/t02.regression.cjs
 const { chromium } = require("playwright");
@@ -52,7 +53,7 @@ const SPY = `(() => { window.__osc = 0; const AC = window.AudioContext; if (AC) 
   { const ctx = await browser.newContext({ viewport: { width: 880, height: 620 } }); const page = await ctx.newPage();
     await page.addInitScript(SPY); await page.addInitScript(bridge({ settings: { language: "en", soundChoice: "bell", soundVolume: 60 } }));
     await page.goto(`${BASE}/settings.html`); await page.waitForTimeout(900);
-    await page.locator('[data-nav="notifications"]').click(); await page.waitForTimeout(500);
+    await page.locator('[data-nav="modules"]').click(); await page.waitForTimeout(500);
     const opts = await page.getByLabel("Alert sound").locator("option").allTextContents();
     ok("Sound picker lists 6 sounds incl. None", opts.length === 6 && opts.includes("None"), JSON.stringify(opts));
     ok("Volume slider present", (await page.getByRole("slider", { name: "Sound volume" }).count()) === 1);
@@ -77,8 +78,8 @@ const SPY = `(() => { window.__osc = 0; const AC = window.AudioContext; if (AC) 
     await page.goto(`${BASE}/settings.html`); await page.waitForTimeout(900);
     const labels = []; const missing = [];
     const NEED = ["Spring style", "Reduce motion", "Density", "Glass tint strength", "Border strength", "Shadow strength", "Eco mode", "Opacity at rest", "Position", "Horizontal offset", "Vertical offset", "Auto-hide", "Hide in fullscreen", "Animation speed", "Corner style", "Font size"];
-    for (const g of ["general", "island", "appearance", "motion", "modules", "notifications", "shortcuts", "perf", "updates", "about"]) {
-      await page.locator(`[data-nav="${g}"]`).click(); await page.waitForTimeout(350);
+    for (const g of ["general", "island", "appearance", "motion", "modules", "shortcuts", "system"]) {
+      await page.locator(`[data-nav="${g}"]`).click(); await page.waitForTimeout(350); await expandSettings(page);
       labels.push(...await page.evaluate(() => [...document.querySelectorAll("[aria-label]")].map((e) => e.getAttribute("aria-label"))));
       const rows = await page.evaluate(() => [...document.querySelectorAll(".st-row")].map((r) => [r.querySelector(".st-row-title")?.textContent, !!r.querySelector(".st-row-hint")]));
       for (const [t, h] of rows) if (NEED.includes(t) && !h) missing.push(t);
@@ -107,3 +108,4 @@ const SPY = `(() => { window.__osc = 0; const AC = window.AudioContext; if (AC) 
   console.log(fails ? `FAILED ${fails}` : "ALL PASSED");
   process.exit(fails ? 1 : 0);
 })();
+

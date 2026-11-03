@@ -117,7 +117,6 @@ export interface Settings {
   worldClocks:string[],    // أسماء IANA (حتى 2) من قائمة today.ts::WORLD_CITIES
   prayerAlerts:boolean,  // تنبيه قبل الصلاة 10د وعند دخول الوقت (بصوت alertSound إن ضُبط)
   updateAutoCheck:boolean, // فحص صامت واحد بعد الإقلاع بثوانٍ عن تحديث موقّع (tauri-plugin-updater)؛ لا شيء يظهر عند الغياب/الفشل
-  hotkeyToggle:string,
   hotkeyPalette:string,
   hotkeyArea:string,
   hotkeyScreen:string,
@@ -125,88 +124,4 @@ export interface Settings {
   hotkeyRecord:string,
 }
 
-export const DEFAULTS: Partial<Settings> = {
-  language: "ar",
-  hoverDelayMs: 250,        // مهلة فتح اللمحة (0..800 خطوة 50)
-  clockFormat: "auto",
-  clockPosition: "auto",
-  clockX: 50,
-  clockY: 50,
-  clockScale: 100,
-  eyesAlign: "auto",
-  recordingFps: 30,
-  recordFormat: "mp4",
-  hotkeyPalette: "Alt+Space", // فارغ = شريط الأوامر معطّل
-  hotkeyArea: "Ctrl+Alt+A",   // لقطة منطقة؛ فارغ = معطّل؛ "PrintScreen" يعترض زر Print Screen
-  hotkeyScreen: "Ctrl+Alt+S", // لقطة الشاشة كاملة (تحت المؤشر)
-  hotkeyRecord: "Ctrl+Alt+R", // تسجيل منطقة (يبدّل بدء/إيقاف)؛ فارغ = معطّل
-  hotkeyColor: "Ctrl+Alt+C",  // منتقي الألوان؛ فارغ = معطّل
-  recordingQuality: "medium", // low | medium | high
-  updateAutoCheck: true,
-  attentionTracking: true, // «وقتي»: يعمل افتراضيًا ومحلي فقط؛ false = إيقاف كامل بلا مراقبة ولا كتابة
-  breakReminders: false,   // تذكير استراحة بعد استخدام متواصل (صريح من المستخدم)
-  breakMinutes: 60,        // مدة الاستخدام المتواصل قبل التذكير (دقائق)
-  btBatteries: true,       // قسم البطارية: بطاريات أجهزة البلوتوث (BLE/GATT) المتصلة؛ يعمل فقط مع showBattery
-  ecoMode: false,          // وضع التوفير اليدوي: يبطّئ الحافظة وتتبّع النافذة ويوقف بلوتوث البطارية وطيف الصوت ويخفض الحركة
-  ecoOnBattery: false,     // يفعّل Eco تلقائيًا عند فصل الشاحن ويوقفه عند توصيله (اليدوي يبقى)
-  pillWidth: 220,          // عرض الحبة المنكمشة (160..280)
-  pillHeight: 34,          // ارتفاعها (28..44)؛ المحتوى (خط/عيون/أيقونات) يتدرج k=ارتفاع/32
-  themeMode: 'system',     // system = يتبع النظام · dark · light · sun (كل النوافذ)
-  themePack: 'obsidian',   // الحزمة الافتراضية الرائدة (أزرق أردوازي)
-  themePackLight: '',
-  themePackDark: '',
-  accentSource: 'pack',
-  themeAnim: true,
-  themeTune: {},
-  themeDisclosure: 'basic',
-  themeCustom: {},
-  myThemes: [],
-  artBloom: 60,
-  themeMaterial: 'glass',  // solid = مصمت · glass = زجاج مُحاكى (سطح ملوّن شبه شفاف مرسوم في الصفحة — docs/GLASS.md)
-  glassTint: 45,           // شدة الحجاب 0..80 — لون/عتامة سطح الزجاج المُحاكى (يحدّد --glass-a)؛ لا أثر إلا مع themeMaterial=glass
-  glassStyle: 'crystal',   // crystal = زجاج بلوري · clear = زجاج شفاف
-  accentColor: '#4fd1c5',
-  borderStrength: 50,
-  shadowStrength: 50,
-  cornerStyle: 'rounded',
-  fontScale: 100,
-  density: 'comfortable',
-  pillRadius: 0,           // 0 = كبسولة كاملة (نصف الارتفاع)
-  offsetY: 0,
-  pillPosition: 'center',
-  islandDocking: 'floating',
-  motionPreset: 'calm',
-  motionSpeed: 1,
-  motionBounce: 0.1,
-  reduceMotion: 'system',
-  peekWidth: 460, peekHeight: 148, peekRadius: 30,
-  panelWidth: 520, panelHeight: 290, panelRadius: 34,
-  hoverZone: 'island',
-  peekWheelCycle: true,
-  peekCardOrder: ['player', 'today', 'weather', 'timer'],
-  panelWheelPaging: true,
-  panelTabsStyle: 'dock',
-  backgroundOpacity: 1,
-  accentMode: 'auto',
-  playerLayout: 'compact',
-  visualizer: 'bars',
-  showPlaybackTime: true, showSourceBadge: true, showProgress: true, artworkBackdrop: true,
-  settingsVersion: 4,
-  showNetSpeed: false,     // سرعتا الشبكة (تحميل/رفع) في الكبسولة المدمجة؛ القراءة من عدّادات ويندوز فقط أثناء التفعيل (netspeed_active)
-  eyesEnabled: true,       // عيون التميمة بجانب الساعة في الحبة المنكمشة (تُخفى تلقائيًا مع الميديا/التوفير/الحركة المتوقفة)
-  motionLevel: 'full',     // full = نابضة · reduced = مخففة · off = متوقفة (انظر src/motion.ts)
-  liveRates: true,         // شريط الأوامر: أسعار عملات حية (open.er-api.com) تُجلب كسولًا عند تحويل عملة وتُخزَّن 12 ساعة؛ false = المضمّنة فقط بلا شبكة
-  batteryTip: true,        // قسم البطارية: نصيحة «افصل الشاحن عند 80%» أثناء الشحن
-  loadAlert: false,
-  meetingLeadMin: 15,    // «اجتماع قريب» في الكبسولة/البطاقة: دقائق قبل البدء (1..60)؛ يعمل فقط مع showMeetings
-  showToday: true,       // محلي بلا شبكة؛ الطقس نفسه خلف showWeather (افتراضيًا معطّل)
-  prayerCity: "riyadh",
-  weatherCity: "madinah",
-  soundChoice: "chime",
-  soundVolume: 70,
-  prayerAlerts: true,
-  showCountdowns: true,
-  countdowns: [],
-  showWorldClock: false,
-  worldClocks: [],
-};
+export { schemaDefaults as DEFAULTS } from "./settingsValidation";

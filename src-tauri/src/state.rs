@@ -22,108 +22,30 @@ impl Default for PlacementSettings {
     }
 }
 
-/// مرآة DEFAULTS من src/settings.ts — أبقِهما متطابقتين.
+/// Shared defaults and validation with the frontend (no parallel hand-written defaults).
+fn schema() -> &'static Map<String, Value> {
+    static SCHEMA: std::sync::OnceLock<Map<String, Value>> = std::sync::OnceLock::new();
+    SCHEMA.get_or_init(|| serde_json::from_str(include_str!("../../src/settingsSchema.json")).expect("settings schema"))
+}
 pub fn defaults() -> Map<String, Value> {
-    let Value::Object(m) = json!({
-        "language": "ar",
-        "hoverDelayMs": 250,
-        "clockFormat": "auto",
-        "clockPosition": "auto",
-        "clockX": 50,
-        "clockY": 50,
-        "clockScale": 100,
-        "eyesAlign": "auto",
-        "recordingFps": 30,
-        "recordFormat": "mp4",
-        "hotkeyPalette": "Alt+Space",
-        "hotkeyArea": "Ctrl+Alt+A",
-        "hotkeyScreen": "Ctrl+Alt+S",
-        "hotkeyRecord": "Ctrl+Alt+R",
-        "hotkeyColor": "Ctrl+Alt+C",
-        "recordingQuality": "medium",
-        "attentionTracking": true,
-        "breakReminders": false,
-        "breakMinutes": 60,
-        "btBatteries": true,
-        "batteryTip": true,
-        "liveRates": true,
-        "ecoMode": false,
-        "ecoOnBattery": false,
-        "motionLevel": "full",
-        "eyesEnabled": true,
-        "pillWidth": 220,
-        "pillHeight": 34,
-        "themeMode": "system",
-        "themePack": "obsidian",
-        "themePackLight": "",
-        "themePackDark": "",
-        "accentSource": "pack",
-        "artBloom": 60,
-        "themeAnim": true,
-        "themeTune": {},
-        "themeDisclosure": "basic",
-        "themeCustom": {},
-        "myThemes": [],
-        "themeMaterial": "glass",
-        "glassStyle": "crystal",
-        "accentColor": "#4fd1c5",
-        "borderStrength": 50,
-        "shadowStrength": 50,
-        "cornerStyle": "rounded",
-        "fontScale": 100,
-        "density": "comfortable",
-        "pillRadius": 0,
-        "offsetY": 0,
-        "pillPosition": "center",
-        "islandDocking": "floating",
-        "motionPreset": "calm",
-        "motionSpeed": 1.0,
-        "motionBounce": 0.1,
-        "reduceMotion": "system",
-        "peekWidth": 460,
-        "peekHeight": 148,
-        "peekRadius": 30,
-        "panelWidth": 520,
-        "panelHeight": 290,
-        "panelRadius": 34,
-        "hoverZone": "island",
-        "peekWheelCycle": true,
-        "peekCardOrder": ["player", "today", "weather", "timer"],
-        "panelWheelPaging": true,
-        "panelTabsStyle": "dock",
-        "backgroundOpacity": 1.0,
-        "accentMode": "auto",
-        "playerLayout": "compact",
-        "visualizer": "bars",
-        "showPlaybackTime": true,
-        "showSourceBadge": true,
-        "showProgress": true,
-        "artworkBackdrop": true,
-        "glassTint": 45,
-        "browserTabMode": false,
-        "showNetSpeed": false,
-        "meetingLeadMin": 15,
-        "loadAlert": false,
-        "showToday": true,
-        "prayerCity": "riyadh",
-        "weatherCity": "madinah",
-        "soundChoice": "chime",
-        "soundVolume": 70,
-        "prayerAlerts": true,
-        "updateAutoCheck": true,
-        "settingsVersion": 4,
-        "showCountdowns": true,
-        "countdowns": [],
-        "showWorldClock": false,
-        "worldClocks": []
-    }) else { unreachable!() };
-    m
+    schema().iter().filter_map(|(k,r)| r.get("default").map(|v| (k.clone(),v.clone()))).collect()
+}
+fn valid_value(v: &Value, r: &Value) -> bool {
+    if r.get("enum").and_then(Value::as_array).is_some_and(|opts| !opts.contains(v)) { return false; }
+    match r.get("type").and_then(Value::as_str).unwrap_or("") {
+        "boolean" => v.is_boolean(),
+        "number" => v.as_f64().is_some_and(|n| n.is_finite() && (r.get("integer") != Some(&Value::Bool(true)) || n.fract() == 0.0) && r.get("min").and_then(Value::as_f64).is_none_or(|m| n >= m) && r.get("max").and_then(Value::as_f64).is_none_or(|m| n <= m)),
+        "string" => v.as_str().is_some_and(|s| s.chars().count() <= r.get("maxLength").and_then(Value::as_u64).unwrap_or(4096) as usize && r.get("pattern").and_then(Value::as_str).is_none_or(|p| match p { "^#[0-9a-fA-F]{6}$" => s.len() == 7 && s.starts_with('#') && s[1..].bytes().all(|b| b.is_ascii_hexdigit()), "^\\d{4}-\\d{2}-\\d{2}$" => s.len() == 10 && s.bytes().enumerate().all(|(i,b)| if i == 4 || i == 7 { b == b'-' } else { b.is_ascii_digit() }), _ => false })),
+        "array" => v.as_array().is_some_and(|a| a.len() <= r.get("maxItems").and_then(Value::as_u64).unwrap_or(1000) as usize && (r.get("unique") != Some(&Value::Bool(true)) || a.iter().enumerate().all(|(i,x)| !a[..i].contains(x))) && r.get("items").is_none_or(|item| a.iter().all(|x| valid_value(x,item)))),
+        "object" => v.as_object().is_some_and(|o| r.get("required").and_then(Value::as_array).is_none_or(|req| req.iter().all(|k| k.as_str().is_some_and(|k| o.contains_key(k)))) && r.get("properties").and_then(Value::as_object).is_none_or(|props| o.iter().all(|(k,x)| props.get(k).is_some_and(|rule| valid_value(x,rule))))),
+        _ => false,
+    }
 }
 
 /// مفاتيح إعدادات أُزيلت ميزاتها؛ تُحذف عند فتح القاعدة ولا تعود للواجهة.
 pub const OBSOLETE_KEYS: &[&str] = &[ // + مفاتيح بلا واجهة ولا مستهلك (ARCH-UI): تُحذف من kv عند الإقلاع
     "agentsAsk", "agentsStatus", "aiBaseUrl", "aiModels", "character", "characterMusic", "checkUpdates", "controlsNet", "dictatePaste", "gpuAcceleration", "hideForApps", "hideForAppsMode", "homePlayer", "hotkeyChat", "hotkeyClipboard", "hotkeyDictate", "hotkeyMic", "hotkeyOcr", "hotkeyPlainPaste", "hotkeyQr", "hotkeyThrough", "hotkeyVpn", "keepForApps", "moduleControls", "moduleWeather", "notifyMuted", "obsPort", "obsStatus", "opacityThrough", "showCaps", "showLayout", "showNotifications", "showOnDesktop", "showPrivacy", "showVpn", "sttBaseUrl", "sttLanguage", "sttModel", "uploadKey", "uploadService", "vpnLookupIp", "weatherAlerts", "weatherLat", "weatherLon",
-    "browserTabMode", "underTaskbar", "lyricsInHome", "lyricsInPlayer", "collapseDelayMs", "animSpeed", "springStyle", "glassBlur", "glassSaturation"];
+    "hotkeyToggle", "browserTabMode", "underTaskbar", "lyricsInHome", "lyricsInPlayer", "collapseDelayMs", "animSpeed", "springStyle", "glassBlur", "glassSaturation"];
 // glassBlur/glassSaturation: منزلقا تمويه/تشبّع وهميان (لا أثر على ويندوز) — حُذفا نهائيًا مع إزالة SWCA؛ يُنظَّف kv القديم عند الفتح (docs/GLASS.md).
 
 /// ترحيل T03 في kv (idempotent): springStyle ⇒ motionPreset (snappy⇒snappy وغيره⇒calm مع ارتداد النمط) · animSpeed(50..150) ⇒ motionSpeed(0.5..2)
@@ -152,57 +74,17 @@ pub fn migrate_t03(conn: &Connection) {
     }
 }
 
-/// مفاتيح واجهة Settings في src/settings.ts التي لا افتراضي لها في DEFAULTS — (المفتاح، نوع JSON). uploadKey مستثنى عمدًا (الأسرار لا تدخل الإعدادات).
-const EXTRA_KEYS: &[(&str, &str)] = &[
-    ("autostart", "bool"), ("monitor", "number"), ("offsetX", "number"), ("style", "string"),
-    ("opacityRest", "number"), ("opacityOpen", "number"), ("autoHide", "bool"), ("hideInFullscreen", "bool"),
-    ("through", "bool"),
-    ("captureVisible", "bool"), ("showClock", "bool"), ("showBattery", "bool"), ("mediaPill", "string"),
-    ("liquidSpectrum", "bool"), ("mascot", "string"), ("screenshotDir", "string"), ("recordingDir", "string"), ("clipLimit", "number"), ("clipExcludedApps", "array"), ("pasteOnClick", "bool"),
-    ("moduleMedia", "bool"), ("moduleShelf", "bool"), ("moduleLauncher", "bool"), ("showVolume", "bool"), ("privacyIndicator", "bool"), ("showMeetings", "bool"),
-    ("paletteFiles", "bool"), ("paletteFolders", "bool"), ("searchEngine", "string"), ("searchUrl", "string"),
-    ("workspaces", "array"), ("weatherUnits", "string"),
-    ("showWeather", "bool"), ("hotkeyToggle", "string"),
-];
-
-fn json_kind(v: &Value) -> &'static str {
-    match v {
-        Value::Null => "null",
-        Value::Bool(_) => "bool",
-        Value::Number(_) => "number",
-        Value::String(_) => "string",
-        Value::Array(_) => "array",
-        Value::Object(_) => "object",
-    }
-}
-
-/// يرشّح مقطع إعدادات مفتاحًا مفتاحًا: يُبقي المعروف (DEFAULTS + EXTRA_KEYS) بنفس نوع JSON فقط.
-/// ما فيه ':' (kv مشترك مع بيانات أخرى) أو المجهول أو سيّئ النوع يُسقَط ويُسجَّل بـ eprintln! دون رفض بقية المقطع.
+/// Accept only schema keys with valid ranges, enums and nested values.
 pub fn filter_patch(patch: Map<String, Value>) -> Map<String, Value> {
-    let defs = defaults();
     let mut ok = Map::new();
-    for (k, v) in patch {
-        let want = if k.contains(':') {
-            eprintln!("settings: مفتاح مرفوض (يحوي ':'): {k}");
-            continue;
-        } else if let Some(d) = defs.get(&k) {
-            json_kind(d)
-        } else if let Some((_, t)) = EXTRA_KEYS.iter().find(|(n, _)| *n == k) {
-            *t
-        } else {
-            eprintln!("settings: مفتاح غير معروف أُسقط: {k}");
-            continue;
-        };
-        if want != json_kind(&v) {
-            eprintln!("settings: {k} أُسقط (النوع {} بدل {want})", json_kind(&v));
-            continue;
-        }
-        ok.insert(k, v);
+    for (k,v) in patch {
+        if schema().get(&k).is_some_and(|r| valid_value(&v,r)) { ok.insert(k,v); }
     }
     ok
 }
 
 pub struct AppState {
+    pub settings_write: Mutex<()>,
     pub placement: Mutex<PlacementSettings>,
     pub hidden: Mutex<bool>,
     /// آخر مستطيل للحبة أبلغت عنه الواجهة (بوحدات CSS: عرض، ارتفاع).
@@ -218,6 +100,7 @@ pub struct AppState {
 impl Default for AppState {
     fn default() -> Self {
         Self {
+            settings_write: Mutex::new(()),
             placement: Mutex::default(),
             hidden: Mutex::default(),
             island_size: Mutex::default(),
@@ -257,7 +140,7 @@ impl AppState {
                 // كاش أسعار العملات (rates.rs) ليس إعدادًا.
                 if k == crate::rates::KV_KEY { continue; }
                 if let Ok(val) = serde_json::from_str::<Value>(&v) {
-                    merged.insert(k, val);
+                    if schema().get(&k).is_some_and(|r| valid_value(&val,r)) { merged.insert(k, val); }
                 }
             }
         }
@@ -282,7 +165,9 @@ impl AppState {
     pub fn apply_patch(&self, patch: Map<String, Value>) -> Result<Map<String, Value>, String> {
         let patch = filter_patch(patch);
         if patch.is_empty() { return Ok(patch); }
-        if let Some(conn) = self.db.lock().unwrap().as_mut() {
+        {
+            let mut db = self.db.lock().unwrap();
+            let conn = db.as_mut().ok_or("Settings storage is unavailable")?;
             let tx = conn.transaction().map_err(|e| e.to_string())?;
             for (k, v) in &patch {
                 tx.execute(
@@ -307,6 +192,31 @@ mod tests {
     fn patch(v: Value) -> Map<String, Value> {
         let Value::Object(m) = v else { panic!("object expected") };
         m
+    }
+
+    #[test]
+    fn shared_schema_defaults_and_bounds() {
+        assert_eq!(filter_patch(defaults()), defaults());
+        for bad in [json!({"motionSpeed":999}), json!({"pillWidth":-1}), json!({"themeMode":"invalid"}), json!({"monitor":0.5}), json!({"workspaces":["wrong"]}), json!({"themeTune":{"pillScale":999}}), json!({"fx":{}})] { assert!(filter_patch(patch(bad)).is_empty()); }
+    }
+    #[test]
+    fn unavailable_storage_never_claims_success() {
+        let s = AppState::default();
+        assert!(s.apply_patch(patch(json!({"language":"en"}))).is_err());
+        assert_eq!(s.settings.lock().unwrap().get("language"),Some(&json!("ar")));
+    }
+    #[test]
+    fn persistence_round_trip_and_invalid_stored_values() {
+        let dir = std::env::temp_dir().join(format!("island-settings-{}-{}",std::process::id(),std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+        let s = AppState::default(); s.init_db(dir.clone()).unwrap();
+        s.apply_patch(patch(json!({"language":"en","clockScale":120}))).unwrap();
+        s.db.lock().unwrap().as_ref().unwrap().execute("INSERT OR REPLACE INTO kv(key,value) VALUES('motionSpeed','999')",[]).unwrap();
+        let next = AppState::default(); next.init_db(dir.clone()).unwrap();
+        let got = next.settings.lock().unwrap();
+        assert_eq!(got.get("language"),Some(&json!("en")));
+        assert_eq!(got.get("clockScale"),Some(&json!(120)));
+        assert_eq!(got.get("motionSpeed"),Some(&json!(1)));
+        drop(got); drop(next); drop(s); let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]
@@ -349,3 +259,4 @@ mod tests {
         assert!(filter_patch(patch(json!({ "uploadKey": "k" }))).is_empty());
     }
 }
+
