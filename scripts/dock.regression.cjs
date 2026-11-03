@@ -18,6 +18,7 @@ const open = async (browser, settings, media) => {
   const browser = await chromium.launch();
   let { ctx, page, errs } = await open(browser, { panelTabsStyle: "dock", hotkeyArea: "Ctrl+Alt+A", hotkeyRecord: "Ctrl+Alt+R" });
   const ids = () => page.evaluate(() => [...document.querySelectorAll('[data-testid^="dock-"]')].map((e) => e.dataset.testid.slice(5)));
+  const activeId = () => page.evaluate(() => { const a = document.querySelector('[data-testid^="dock-"][aria-selected="true"]'); return a ? a.dataset.testid.slice(5) : null; });
   const activeLabel = () => page.evaluate(() => { const a = document.querySelector('[data-testid^="dock-"][aria-selected="true"]'); return a ? a.getAttribute("aria-label") : null; });
   ok("dock shows five pages in order", JSON.stringify(await ids()) === JSON.stringify(["home", "capture", "clip", "apps", "work"]), JSON.stringify(await ids()));
   ok("home is active and the old top tab bar is gone", (await activeLabel()) === "Home" && (await page.locator('[role="tablist"]:not([data-testid])').count()) === 0);
@@ -39,6 +40,11 @@ const open = async (browser, settings, media) => {
   ok("no media ⇒ merged idle home (greeting + suggestions) instead of the empty player", (await page.getByTestId("idle-home").count()) === 1 && (await page.getByTestId("idle-greeting").innerText()).length > 3);
   await page.getByTestId("idle-captures").click(); await page.waitForTimeout(200);
   ok("'Recent captures' opens the captures folder", await page.evaluate(() => window.__calls.some((c) => c[0] === "open_captures")));
+  // العجلة تتنقل بنفس ترتيب الدوك بلا قفز (capture → clip → apps → work)
+  await page.click('[data-testid="dock-capture"]'); await page.waitForTimeout(600);
+  const seq = [await activeId()];
+  for (let n = 0; n < 6; n++) { await page.mouse.move(400, 200); await page.mouse.wheel(0, -120); await page.waitForTimeout(900); const a = await activeId(); if (a !== seq[seq.length - 1]) seq.push(a); }
+  ok("wheel order follows the dock exactly (no skipping)", JSON.stringify(seq.slice(0, 4)) === JSON.stringify(["capture", "clip", "apps", "work"]), JSON.stringify(seq));
   ok("no page errors", errs.length === 0, errs.join("|"));
   await page.screenshot({ path: process.env.SHOT || "/tmp/dock.png" });
   await ctx.close();
