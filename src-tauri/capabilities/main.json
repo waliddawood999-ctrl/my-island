@@ -5,6 +5,7 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
+    "allow-system-accent", "allow-wallpaper-color",
     "updater:default",
     "process:allow-restart",
     "allow-set-island-hidden", "allow-report-island-rect", "allow-settings-get", "allow-settings-set",
@@ -31,3 +32,4 @@
     "allow-meetings-list", "allow-meetings-refresh", "allow-meetings-join"
   ]
 }
+

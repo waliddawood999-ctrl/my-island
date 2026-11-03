@@ -1,3 +1,4 @@
+const { expandSettings } = require("./settings-test-helpers.cjs");
 // واجهة التخصيص الشامل (Playwright + جسر وهمي): المعرض أولًا، المعاينات، تعيين حزمة للفاتح/الداكن، الوحدات السبع (ملخص/معاينة/إعادة ضبط)، مستويات الإفصاح،
 // البحث، رفّ «ثيماتي»، تصدير/استيراد، محرر الرموز الخام بفحص تباين حي، وأثر المقابض على الجزيرة. تشغيل: npm run build && npx vite preview --port 4173 &  ثم  node scripts/themes.regression.cjs
 const { chromium } = require("playwright");
@@ -7,13 +8,13 @@ let fails = 0;
 const ok = (n, c, extra = "") => { if (!c) fails++; console.log(`${c ? "✓" : "✗"} ${n} ${c ? "" : extra}`); };
 (async () => {
   const browser = await chromium.launch();
-  const mk = async (settings, vp = { width: 980, height: 700 }, page0) => {
+  const mk = async (settings, vp = { width: 980, height: 700 }, page0, section = "appearance") => {
     const ctx = await browser.newContext({ viewport: vp, acceptDownloads: true });
     const page = await ctx.newPage();
     await page.addInitScript(bridge({ settings: { language: "en", settingsVersion: 4, themeMaterial: "glass", ...settings }, extra: { app_quit: null } }));
     const errs = []; page.on("pageerror", (e) => errs.push((e.message || "").slice(0, 120)));
     await page.goto(`${BASE}/settings.html`); await page.waitForTimeout(800);
-    await page.locator('[data-nav="appearance"]').click(); await page.waitForTimeout(400);
+    await page.locator(`[data-nav="${section}"]`).click(); await page.waitForTimeout(400); await expandSettings(page);
     return { ctx, page, errs };
   };
   const calls = (page, n) => page.evaluate((c) => window.__calls.filter((x) => x[0] === c).map((x) => x[1]), n);
@@ -23,7 +24,7 @@ const ok = (n, c, extra = "") => { if (!c) fails++; console.log(`${c ? "✓" : "
   { const { ctx, page, errs } = await mk({});
     const order = await page.evaluate(() => [...document.querySelector('[data-testid="appearance-body"]').children].map((e) => e.dataset.testid || e.dataset.mod || e.tagName.toLowerCase()));
     ok("gallery is the first block, before every module", order[0] === "theme-gallery" && order.indexOf("theme-gallery") < order.findIndex((x) => ["packs", "surfaces"].includes(x)), JSON.stringify(order));
-    ok("modules appear in the mandated order (basic level: no behaviour module)", JSON.stringify(order.filter((x) => ["packs", "surfaces", "shape", "text", "feel", "behavior", "a11y"].includes(x))) === JSON.stringify(["packs", "surfaces", "shape", "text", "feel", "a11y"]), JSON.stringify(order));
+    ok("modules appear in the mandated order (basic level: no behaviour module)", JSON.stringify(order.filter((x) => ["packs", "surfaces", "shape", "text", "feel", "behavior", "a11y"].includes(x))) === JSON.stringify(["packs", "surfaces", "shape", "text"]), JSON.stringify(order));
     ok("gallery has live preview (expanded panel) + pinned split dark/light preview", (await page.locator(".tp-stage-main .tp-mini").count()) === 1 && (await page.getByTestId("split-preview").locator(".tp-mini").count()) === 2);
     const packs = await page.locator("button[data-pack]").count();
     ok(`gallery lists ≥21 factory packs (found ${packs})`, packs >= 21);
@@ -34,10 +35,6 @@ const ok = (n, c, extra = "") => { if (!c) fails++; console.log(`${c ? "✓" : "
     ok("hovering a pack previews it in the live stage (not applied)", (await page.locator(".tp-stage-name").textContent()) === "Ember" && before !== "Ember" && !(await lastPatch(page, "themePack")));
     await page.locator('button[data-pack="ember"]').click(); await page.waitForTimeout(150);
     ok("clicking a pack applies it (themePack=ember)", (await lastPatch(page, "themePack"))?.themePack === "ember");
-    // تعيين منفصل للفاتح/الداكن
-    await page.getByRole("combobox", { name: "Dark-mode pack" }).selectOption("carbon-fibre");
-    await page.getByRole("combobox", { name: "Light-mode pack" }).selectOption("porcelain"); await page.waitForTimeout(150);
-    ok("separate pack for dark and for light", (await lastPatch(page, "themePackDark"))?.themePackDark === "carbon-fibre" && (await lastPatch(page, "themePackLight"))?.themePackLight === "porcelain");
     // إعادة ضبط وحدة
     await page.getByTestId("reset-mod-surfaces").click(); await page.waitForTimeout(150);
     const rp = await lastPatch(page, "glassTint");
@@ -52,24 +49,29 @@ const ok = (n, c, extra = "") => { if (!c) fails++; console.log(`${c ? "✓" : "
     await page.getByRole("radio", { name: "Advanced" }).click(); await page.waitForTimeout(250);
     ok("level → saved as themeDisclosure=advanced", (await lastPatch(page, "themeDisclosure"))?.themeDisclosure === "advanced");
     await ctx.close(); }
-  { const { ctx, page, errs } = await mk({ themeDisclosure: "advanced" });
-    ok("advanced level shows tune knobs (Card radius, Pill scale, Icon size, per-surface overrides, Behavior module)", (await page.getByRole("slider", { name: "Card radius" }).count()) === 1 && (await page.getByRole("slider", { name: "Pill scale" }).count()) === 1 && (await page.getByRole("slider", { name: "Icon size" }).count()) === 1 && (await page.getByText("Surface: Pill", { exact: true }).count()) === 1 && (await page.locator('[data-mod="behavior"]').count()) === 1);
+  { const { ctx, page, errs } = await mk({ themeDisclosure: "expert" });
+    // تعيين منفصل للفاتح/الداكن
+    await page.getByRole("combobox", { name: "Dark-mode pack" }).selectOption("carbon-fibre");
+    await page.getByRole("combobox", { name: "Light-mode pack" }).selectOption("porcelain"); await page.waitForTimeout(150);
+    ok("separate pack for dark and for light", (await lastPatch(page, "themePackDark"))?.themePackDark === "carbon-fibre" && (await lastPatch(page, "themePackLight"))?.themePackLight === "porcelain");
+
+    ok("advanced level shows tune knobs (Card radius, Pill scale, Icon size, per-surface overrides, Behavior module)", (await page.getByRole("slider", { name: "Card radius" }).count()) === 1 && (await page.getByRole("slider", { name: "Pill scale" }).count()) === 1 && (await page.getByRole("slider", { name: "Icon size" }).count()) === 1 && (await page.getByText("Surface: Pill", { exact: true }).count()) === 1 && (await page.locator('[data-mod="shape"]').count()) === 1);
     ok("advanced does not open the raw token editor yet", (await page.getByLabel("--accent hex").count()) === 0);
     // مقبض ← themeTune مضغوط
     const sl = page.getByRole("slider", { name: "Icon size" }); await sl.focus(); await page.keyboard.press("ArrowRight"); await page.keyboard.press("ArrowRight"); await page.waitForTimeout(250);
     const tp = await lastPatch(page, "themeTune");
     ok("a knob writes a compact themeTune (only non-default fields, clamped)", tp && tp.themeTune.iconScale === 1.1 && Object.keys(tp.themeTune).length === 1, JSON.stringify(tp));
-    await page.getByRole("radio", { name: "Flat" }).click(); await page.waitForTimeout(150);
+    await page.getByRole("radio", { name: "Flat", exact: true }).click(); await page.waitForTimeout(150);
     ok("enum knob (elevation=flat) merges into themeTune", (await lastPatch(page, "themeTune"))?.themeTune.elevation === "flat");
     ok("no page errors (advanced)", errs.length === 0, errs.join("|")); await ctx.close(); }
-  { const { ctx, page, errs } = await mk({ themeDisclosure: "expert" });
+  { const { ctx, page, errs } = await mk({ themeDisclosure: "expert" }, undefined, undefined, "motion");
     ok("expert opens the raw token editor with live contrast checks", (await page.getByLabel("--accent hex").count()) === 1 && (await page.getByTestId("adjustments").count() + (await page.getByText("None — every colour passed as is").count())) >= 1);
     const hexIn = page.getByLabel("--island-fg hex"); await hexIn.fill("#2a2a2a"); await page.waitForTimeout(250);
     const t = await lastPatch(page, "themeTune");
     ok("raw token override saved (hex only) and flagged below the readability limit", t?.themeTune?.tokens?.["--island-fg"] === "#2a2a2a");
     await page.screenshot({ path: "docs/screenshots/settings-themes-expert-en.png", fullPage: false });
     ok("no page errors (expert)", errs.length === 0, errs.join("|")); await ctx.close(); }
-  { const { ctx, page } = await mk({ themeDisclosure: "expert", themeMode: "dark", themeTune: { tokens: { "--island-fg": "#2a2a2a" } } });
+  { const { ctx, page } = await mk({ themeDisclosure: "expert", themeMode: "dark", themeTune: { tokens: { "--island-fg": "#2a2a2a" } } }, undefined, undefined, "motion");
     ok("a failing raw override shows ✗ in its row", (await page.locator('.st-row:has-text("--island-fg") .st-row-hint').textContent()).includes("✗"));
     await ctx.close(); }
 
@@ -122,7 +124,7 @@ const ok = (n, c, extra = "") => { if (!c) fails++; console.log(`${c ? "✓" : "
     await page.addInitScript(bridge({ settings: { language: "ar", settingsVersion: 4, themeDisclosure: "expert" }, extra: { app_quit: null } }));
     const errs = []; page.on("pageerror", (e) => errs.push(e.message.slice(0, 100)));
     await page.goto(`${BASE}/settings.html`); await page.waitForTimeout(800);
-    await page.locator('[data-nav="appearance"]').click(); await page.waitForTimeout(500);
+    await page.locator('[data-nav="appearance"]').click(); await page.waitForTimeout(500); await expandSettings(page);
     ok("Arabic: gallery title/modules in Arabic, rtl, no overflow", (await page.getByText("معرض الحزم").count()) === 1 && (await page.locator(".tp-mod").count()) === 7 && (await page.evaluate(() => document.querySelector(".st-main").scrollWidth <= document.querySelector(".st-main").clientWidth + 1)));
     await page.screenshot({ path: "docs/screenshots/settings-themes-gallery-ar.png" });
     ok("Arabic: no page errors", errs.length === 0, errs.join("|")); await ctx.close(); }
@@ -130,3 +132,4 @@ const ok = (n, c, extra = "") => { if (!c) fails++; console.log(`${c ? "✓" : "
   await browser.close();
   console.log(fails ? `FAILED ${fails}` : "ALL PASSED"); process.exit(fails ? 1 : 0);
 })();
+

@@ -1,5 +1,5 @@
 import { build } from "esbuild";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -22,3 +22,13 @@ assert.deepEqual(a.parseImport(a.exportSettings(a.FULL_DEFAULTS),{}),a.FULL_DEFA
 const keys=Object.values(a.SECTION_KEYS).flat();assert.equal(new Set(keys).size,keys.length);
 assert(keys.every(k=>a.resetPatch([k])[k]!==undefined));
 console.log("OK settings contract: round trip, runtime-field exclusion, ranges, enums, optional keys, nested objects, reset coverage");
+
+const manifest=readFileSync("src-tauri/build.rs","utf8");
+for (const command of ["system_transparency","system_accent","wallpaper_color","media_now"]) {
+  assert(manifest.includes(`"${command}"`), `Missing manifest command ${command}`);
+  for (const window of ["main","settings","overlay","editor"]) {
+    const cap=JSON.parse(readFileSync(`src-tauri/capabilities/${window}.json`,"utf8"));
+    assert(cap.permissions.includes(`allow-${command.replaceAll("_","-")}`), `Missing ${command} permission for ${window}`);
+  }
+}
+console.log("OK appearance IPC manifest and four-window permissions");

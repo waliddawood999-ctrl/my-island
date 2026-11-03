@@ -24,7 +24,7 @@ const BASE = process.env.BASE || 'http://127.0.0.1:4173';
       };
     });
     for(let n=0;;n++){try { await page.goto(BASE+'/settings.html'); break; }catch(e){if(n>=10)throw e;await new Promise(r=>setTimeout(r,500));}}
-    await page.getByRole('switch',{name:'Start with Windows',exact:true}).waitFor();
+    await page.getByRole('switch',{name:settings.language === 'ar' ? 'التشغيل مع ويندوز' : 'Start with Windows',exact:true}).waitFor();
     return {ctx,page,errors};
   };
   const nav=async(p,id)=>{await p.locator(`[data-nav="${id}"]`).click();await p.locator(`[data-group="${id}"]`).waitFor();};

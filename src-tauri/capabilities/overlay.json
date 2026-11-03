@@ -5,8 +5,10 @@
   "windows": ["overlay"],
   "permissions": [
     "core:default",
+    "allow-system-transparency", "allow-system-accent", "allow-wallpaper-color", "allow-media-now",
     "allow-settings-get", "allow-settings-set", "allow-perf-status",
     "allow-capture-frame", "allow-capture-ready", "allow-capture-region", "allow-capture-cancel",
     "allow-record-start", "allow-color-pick"
   ]
 }
+

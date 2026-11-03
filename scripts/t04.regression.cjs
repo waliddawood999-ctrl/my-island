@@ -1,3 +1,4 @@
+const { expandSettings } = require("./settings-test-helpers.cjs");
 // الزجاج المُحاكى (Tier A — docs/GLASS.md): الأسلوبان × الثيمان يرسمان سطحًا بألفا glassAlpha فعليًا (لا SWCA ولا backdrop-filter)، والاحتياط
 // (Eco / «تأثيرات الشفافية» مطفأة) معتم بالكامل، والحبيبات والحدّ والظل موجودة في الزجاج ومفقودة في الاحتياط. تشغيل:
 //   npm run build && npx vite preview --port 4173 &   ثم:   NODE_PATH=$(npm root -g) node scripts/t04.regression.cjs
@@ -61,10 +62,10 @@ const EXPECT = { "crystal/dark/45": 0.779, "crystal/light/45": 0.819, "clear/dar
   { const ctx = await browser.newContext({ viewport: { width: 880, height: 620 } }); const page = await ctx.newPage();
     await page.addInitScript(bridge({ settings: { language: "en" } }));
     await page.goto(`${BASE}/settings.html`); await page.waitForTimeout(900);
-    await page.locator('[data-nav="appearance"]').click(); await page.waitForTimeout(500);
+    await page.locator('[data-nav="appearance"]').click(); await page.waitForTimeout(500); await expandSettings(page);
     ok("exactly 4 presets: Frosted, Smoked, Clear, Minimal Dark", JSON.stringify(await page.locator("[data-preset]").allTextContents()) === JSON.stringify(["Frosted", "Smoked", "Clear", "Minimal Dark"]));
     ok("no Blur / Saturation sliders", (await page.getByRole("slider", { name: /blur|saturation/i }).count()) === 0);
-    ok("tint row is honest: 'Veil strength', no mention of blur", await page.evaluate(() => { const rows = [...document.querySelectorAll(".st-row")].filter((r) => /Veil strength/.test(r.textContent)); return rows.length === 1 && !/blur/i.test(rows[0].textContent); }));
+    ok("tint row is honest: 'Glass background opacity', no mention of blur", await page.evaluate(() => { const rows = [...document.querySelectorAll(".st-row")].filter((r) => /Glass background opacity/.test(r.textContent)); return rows.length === 1 && !/blur/i.test(rows[0].textContent); }));
     ok("no 'native/Acrylic' claim anywhere in Appearance", !/acrylic|native windows blur/i.test(await page.evaluate(() => document.body.innerText)));
     ok("Background cards: Solid / Simulated glass ×2 radios", (await page.getByRole("radio", { name: /Simulated frosted|Simulated clear|Solid/ }).count()) === 3);
     await page.locator('[data-preset="smoked"]').click(); await page.waitForTimeout(200);
@@ -76,3 +77,4 @@ const EXPECT = { "crystal/dark/45": 0.779, "crystal/light/45": 0.819, "clear/dar
   console.log(fails ? `FAILED ${fails}` : "ALL PASSED");
   process.exit(fails ? 1 : 0);
 })();
+

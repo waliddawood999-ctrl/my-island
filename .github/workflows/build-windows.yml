@@ -19,6 +19,18 @@ permissions:
   contents: read
 
 jobs:
+  cancel-obsolete-settings-tests:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/fix/settings-review-2026-11-03'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Stop superseded settings test runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run cancel 41557862752 --repo "${{ github.repository }}" || true
+          gh run cancel 41558498812 --repo "${{ github.repository }}" || true
   build:
     if: github.event_name != 'pull_request' || (github.event.pull_request.number == 18 && github.event.pull_request.merged == true)
     runs-on: windows-latest
@@ -44,12 +56,25 @@ jobs:
         run: npm run build
 
       - name: Settings interaction regression
+        timeout-minutes: 6
         shell: pwsh
         run: |
-          npm install --no-save --package-lock=false playwright@1.56.1
-          npx playwright install chromium
+          $tools = Join-Path $env:RUNNER_TEMP 'settings-test-tools'
+          npm install --prefix $tools --no-save --package-lock=false playwright@1.56.1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:NODE_PATH = Join-Path $tools 'node_modules'
+          & (Join-Path $tools 'node_modules/.bin/playwright.cmd') install chromium
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $server = Start-Process node -ArgumentList 'node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port 4173' -PassThru
           try { node scripts/settings-update.regression.cjs; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } } finally { Stop-Process -Id $server.Id -ErrorAction SilentlyContinue }
+
+      - name: Settings screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: settings-review-screenshots
+          path: docs/screenshots/settings-update-*.png
+          if-no-files-found: ignore
 
       - name: Rust tests
         working-directory: src-tauri
