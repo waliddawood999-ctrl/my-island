@@ -141,6 +141,7 @@ function useAppearance(s: Partial<Settings>, env: Env) {
     for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
     root.dataset.glassStyle = attrs.glass;
   }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { document.documentElement.dataset.pstyle = (s.progressStyle ?? "line") as string; }, [s.progressStyle]);
 }
 
 /** الاشتقاق الحيّ للإعدادات الحالية (للإعدادات: قياسات التباين وسجل التعديلات الآلية). */
