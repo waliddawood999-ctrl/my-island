@@ -275,14 +275,3 @@ svg.lucide { scale: var(--icon-k, 1); }
 /* شارة المدّة: سطح داكن شبه شفاف + حلقة ولمعة علوية (بلا backdrop-filter كبقية الجزيرة) */
 .th-badge { position: absolute; right: 5px; bottom: 5px; z-index: 2; padding: 1px 7px; border-radius: 999px; font-size: 10px; font-weight: 700; line-height: 1.5; color: #fff;
   font-variant-numeric: tabular-nums; background: rgb(12 13 18 / .58); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .16), inset 0 1px 0 rgb(255 255 255 / .2); text-shadow: none; }
-
-/* ───────── شكل شريط التقدم (progressStyle) — حسب concept-U ───────── */
-:root[data-pstyle="shimmer"] .sk-fill { background-image: linear-gradient(90deg, transparent 0, rgb(255 255 255 / .55) 45%, transparent 60%) !important; background-size: 220% 100%; background-repeat: no-repeat; animation: sk-shim 3s linear infinite; background-blend-mode: overlay; }
-@keyframes sk-shim { from { background-position: 220% 0; } to { background-position: -120% 0; } }
-:root[data-pstyle="wave"] .sk-track, :root[data-pstyle="dashes"] .sk-track { background: rgb(255 255 255 / .14); }
-:root[data-pstyle="wave"] .sk-track { height: 16px !important; border-radius: 0 !important; -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 3px, transparent 3px 6px); mask-image: repeating-linear-gradient(90deg, #000 0 3px, transparent 3px 6px); clip-path: polygon(0 55%, 8% 25%, 16% 60%, 24% 15%, 32% 50%, 40% 5%, 48% 45%, 56% 20%, 64% 65%, 72% 10%, 80% 50%, 88% 25%, 96% 55%, 100% 40%, 100% 100%, 0 100%); }
-:root[data-pstyle="dashes"] .sk-track { height: 6px !important; border-radius: 0 !important; -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 7px, transparent 7px 10px); mask-image: repeating-linear-gradient(90deg, #000 0 7px, transparent 7px 10px); }
-:root[data-pstyle="liquid"] .sk-track { height: 9px !important; border-radius: 999px !important; }
-:root[data-pstyle="liquid"] .sk-knob { opacity: 1; width: 15px; height: 15px; margin: -7.5px 0 0 -7.5px; }
-:root[data-theme="light"][data-pstyle="wave"] .sk-track, :root[data-theme="light"][data-pstyle="dashes"] .sk-track { background: rgb(13 16 23 / .14); }
-:root[data-motion="reduced"] .sk-fill, :root[data-motion="off"] .sk-fill { animation: none; }

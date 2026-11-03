@@ -34,9 +34,10 @@ eq("grain: SVG feTurbulence data-URI tile at 3.5% on ::before, glass only", /isl
 eq("no gradient rim mask (old acrylic-era rim) left", css.includes("mask-composite"), false);
 eq("inner cards flat: .i-card and .i-glass both use the engine card level (--t-card-a of the foreground ink) with per-surface veil/edge overrides", css.includes('.i-card { background: rgb(from var(--t-fg, #fff) r g b / calc(var(--t-card-a, .05) * var(--sf-cards-veil, 1)))') && css.includes('.i-glass { background: rgb(from var(--t-fg, #fff) r g b / calc(var(--t-card-a, .05) * var(--sf-pop-veil, 1)))') && css.includes("var(--sf-cards-edge, 1)") && css.includes("var(--sf-pop-edge, 1)"), true);
 // ── الإعدادات المسبقة: أربعة فقط
-eq("presets = frosted/solid (مادتان فقط)", A.STYLE_PRESETS.map((p) => p.id), ["frosted", "solid"]);
-eq("frosted preset: crystal tint 45", [A.STYLE_PRESETS[0].values.glassStyle, A.STYLE_PRESETS[0].values.glassTint], ["crystal", 45]);
-eq("solid preset is solid", A.STYLE_PRESETS[1].values.themeMaterial, "solid");
+eq("presets = frosted/smoked/clear/minimal", A.STYLE_PRESETS.map((p) => p.id), ["frosted", "smoked", "clear", "minimal"]);
+eq("presets: veil styles/tints", A.STYLE_PRESETS.slice(0, 3).map((p) => [p.values.glassStyle, p.values.glassTint]), [["crystal", 45], ["crystal", 68], ["clear", 25]]);
+eq("presets give distinct veil alphas (dark): frosted < smoked, clear < frosted", (() => { const [f, s, c] = A.STYLE_PRESETS.slice(0, 3).map((p) => A.glassAlpha(p.values.glassStyle, false, p.values.glassTint)); return f < s && c < f; })(), true);
+eq("minimal is solid dark", [A.STYLE_PRESETS[3].values.themeMaterial, A.STYLE_PRESETS[3].values.themeMode], ["solid", "dark"]);
 eq("GLASS_STYLE_VALUES = veil only", A.GLASS_STYLE_VALUES, { crystal: { glassStyle: "crystal", themeMaterial: "glass", glassTint: 45 }, clear: { glassStyle: "clear", themeMaterial: "glass", glassTint: 25 } });
 // ── مفاتيح وهمية محذوفة
 const settingsSrc = readFileSync("src/settings.ts", "utf8"), rs = readFileSync("src-tauri/src/state.rs", "utf8");

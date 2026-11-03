@@ -95,7 +95,6 @@ pub fn defaults() -> Map<String, Value> {
         "accentMode": "auto",
         "playerLayout": "compact",
         "visualizer": "bars",
-        "progressStyle": "line",
         "showPlaybackTime": true,
         "showSourceBadge": true,
         "showProgress": true,
