@@ -20,6 +20,18 @@ permissions:
   contents: read
 
 jobs:
+  stop-superseded-settings-builds:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/fix/settings-review-2026-11-03'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Stop obsolete installer builds after their Rust checks
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run cancel 41560263567 --repo "${{ github.repository }}" || true
+          gh run cancel 41560543140 --repo "${{ github.repository }}" || true
   build:
     # This exact infrastructure-only preparation commit reuses the already running app validation.
     if: >-
