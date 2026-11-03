@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const BASE = process.env.BASE || 'http://127.0.0.1:4173';
 (async () => {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({ executablePath: process.env.SETTINGS_BROWSER_EXECUTABLE || undefined });
   let checks = 0;
   const ok = (name, value) => { assert(value, name); checks++; console.log('OK '+name); };
   const open = async (settings={}) => {

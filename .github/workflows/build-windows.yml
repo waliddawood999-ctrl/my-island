@@ -31,6 +31,7 @@ jobs:
         run: |
           gh run cancel 41557862752 --repo "${{ github.repository }}" || true
           gh run cancel 41558498812 --repo "${{ github.repository }}" || true
+          gh run cancel 41559306008 --repo "${{ github.repository }}" || true
   build:
     if: github.event_name != 'pull_request' || (github.event.pull_request.number == 18 && github.event.pull_request.merged == true)
     runs-on: windows-latest
@@ -63,8 +64,10 @@ jobs:
           npm install --prefix $tools --no-save --package-lock=false playwright@1.56.1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $env:NODE_PATH = Join-Path $tools 'node_modules'
-          & (Join-Path $tools 'node_modules/.bin/playwright.cmd') install chromium
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $browsers = @("$env:ProgramFiles/Google/Chrome/Application/chrome.exe", "${env:ProgramFiles(x86)}/Google/Chrome/Application/chrome.exe", "${env:ProgramFiles(x86)}/Microsoft/Edge/Application/msedge.exe", "$env:ProgramFiles/Microsoft/Edge/Application/msedge.exe")
+          $env:SETTINGS_BROWSER_EXECUTABLE = $browsers | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $env:SETTINGS_BROWSER_EXECUTABLE) { throw 'No installed Chrome or Edge available for settings acceptance' }
+          Write-Host "Using installed browser: $env:SETTINGS_BROWSER_EXECUTABLE"
           $server = Start-Process node -ArgumentList 'node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port 4173' -PassThru
           try { node scripts/settings-update.regression.cjs; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } } finally { Stop-Process -Id $server.Id -ErrorAction SilentlyContinue }
 
