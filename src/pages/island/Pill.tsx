@@ -593,7 +593,7 @@ export function Pill() {
       {/* غلاف يتبع مقاس الجسم؛ الهالة (ظل+توهّج) طبقة مُعدّة مسبقًا بمقاس الهدف تتحرّك بالتحويل/العتامة فقط — لا box-shadow ولا blur حيّ (Halo.tsx · GLASS.md). */}
       <div className="island-wrap">
       <IslandHalo
-        w={(palette || !animSize ? size : animSize).w} h={(palette || !animSize ? size : animSize).h} opacity={opacity}
+        w={(palette || !animSize ? size : animSize).w} h={(palette || !animSize ? size : animSize).h} radius={targetR} opacity={opacity}
         align={settings.pillPosition === "left" ? "left" : settings.pillPosition === "right" ? "right" : "center"}
         transition={kind === "close" ? islandSpring.close : kind === "panel" ? islandSpring.panel : islandSpring.open}
         opacityTransition={{ duration: reduceUI ? 0.15 : dur.base, ease: ease.out }}

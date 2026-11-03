@@ -6,6 +6,7 @@ import { THUMB } from "../../tokens";
 import { thumbKind, type ThumbKind } from "../../coverImage";
 import { classifySource } from "../../mediaSource";
 import { fmtTime } from "../../seek";
+import { fitThumb } from "./thumbSize";
 
 // المصغّرة الاحترافية (P · docs/MOTION.md §المصغّرة): نسبة أصلية بلا مطّ (16:9 فيديو / مربّعة صوت) بارتفاع واحد THUMB.h في الإطلالة واللوحة،
 // عنصر نائب بنفس الأبعاد، تلاشٍ متقاطع عند تبدّل الصورة، وميض هيكلي أثناء التحميل، شارة مدّة زجاجية، وهالة محيطية من لون الإبراز.
@@ -26,15 +27,17 @@ export interface ThumbProps {
   cover: string | null; coverW: number; coverH: number;
   session: boolean; trackKey: string; source: string; sourceName: string;
   duration: number; accent: string; reduce: boolean; h?: number;
+  /** أقصى عرض للإطار (px): يقيّد الفيديو 16:9 بنسبة من عرض الجزيرة فيصغر ارتفاعه تناسبيًا. */
+  maxW?: number;
 }
 
-export const Thumb = memo(function Thumb({ cover, coverW, coverH, session, trackKey, source, sourceName, duration, accent, reduce, h = THUMB.h }: ThumbProps) {
+export const Thumb = memo(function Thumb({ cover, coverW, coverH, session, trackKey, source, sourceName, duration, accent, reduce, h: h0 = THUMB.h, maxW }: ThumbProps) {
   // النوع: الصورة الواصلة تحسم؛ قبلها آخر نوع معروف لنفس المصدر ثم تخمين المصدر ⇒ لا قفزة عند الغياب/التبدّل.
   const guess = guessKind(source, sourceName);
   const lastKind = useRef<{ src: string; kind: ThumbKind } | null>(null);
   const kind: ThumbKind = cover && coverW > 0 ? thumbKind(coverW, coverH) : lastKind.current && lastKind.current.src === source ? lastKind.current.kind : guess;
   useEffect(() => { if (cover && coverW > 0) lastKind.current = { src: source, kind }; }, [cover, coverW, kind, source]);
-  const w = kind === "video" ? Math.round(h * THUMB.videoRatio) : h;
+  const { w, h } = fitThumb(kind, h0, maxW);
   const slotRatio = w / h;
 
   // تلاشٍ متقاطع: الصورة الجديدة تتلاشى فوق القديمة ثم تُزال القديمة (بلا وميض).

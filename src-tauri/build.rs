@@ -11,7 +11,7 @@ const COMMANDS: &[&str] = &[
     "rates_get", "perf_status", "perf_ram", "mascot_active", "netspeed_active", "system_transparency", "webview_runtime",
     "capture_start", "capture_frame", "capture_ready", "capture_region", "capture_cancel", "open_captures", "prtsc_taken",
     "record_begin", "record_start", "record_stop", "record_status",
-    "color_pick", "color_patch", "color_history",
+    "color_pick", "color_patch", "color_history", "color_delete", "color_clear",
     "editor_open", "editor_image", "editor_save",
     "shelf_list", "shelf_add", "shelf_remove", "shelf_clear", "shelf_copy", "shelf_drag",
     "launcher_list", "launcher_add", "launcher_remove", "launcher_launch", "launcher_pick_icon", "launcher_add_link",

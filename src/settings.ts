@@ -153,8 +153,8 @@ export const DEFAULTS: Partial<Settings> = {
   pillHeight: 34,          // ارتفاعها (28..44)؛ المحتوى (خط/عيون/أيقونات) يتدرج k=ارتفاع/32
   themeMode: 'system',     // system = يتبع النظام · dark · light · sun (كل النوافذ)
   themePack: 'obsidian',   // الحزمة الافتراضية الرائدة (أزرق أردوازي)
-  themePackLight: '',
-  themePackDark: '',
+  themePackLight: 'ivory',
+  themePackDark: 'noir-gold',
   accentSource: 'pack',
   themeAnim: true,
   themeTune: {},

@@ -11,6 +11,7 @@ import { classifySource, vibrant } from "../../mediaSource";
 import { THUMB } from "../../tokens";
 import { canSeekNow, clampFrac, fmtTime, fracFromPointer, keySeek, secondsFromFrac } from "../../seek";
 import { Thumb } from "./Thumb";
+import { panelThumb, peekThumb } from "./thumbSize";
 
 // المشغّل (T03): عناصر مشتركة بين اللمحة واللوحة والحبة — غلاف، شارة مصدر، شريط تقدّم، أزرار، مؤشر صوتي، لون إبراز من الغلاف.
 // البيانات من GSMTC عبر media.rs (media_now/media:update/media:cover/media_control/media_seek) — لا أوامر جديدة.
@@ -245,11 +246,12 @@ export function PlayerPeek({ media, s, accent, reduce, visible }: PlayerProps) {
   const pos = usePos(media, visible);
   if (!info.session) return <Empty />;
   const viz = s.visualizer ?? "bars";
+  const pk = peekThumb(s.peekWidth, s.peekHeight);
   const narrow = (s.peekWidth ?? 460) < 360; // إطلالة ضيّقة: بلا مصغّرة ولا مؤشر كي لا يتداخل شيء مع الأزرار
   return (
     <div data-testid="player-peek" style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 8, height: "100%", ["--player-accent" as string]: accent }}>
       <div style={{ display: "flex", alignItems: "center", gap: 14, minHeight: 0 }}>
-        {layout !== "minimal" && !narrow && <Thumb cover={cover} coverW={media.coverW} coverH={media.coverH} session={info.session} trackKey={tkey(info)} source={info.source} sourceName={info.source_name} duration={info.duration} accent={accent} reduce={reduce} h={thumbH(layout)} />}
+        {layout !== "minimal" && !narrow && <Thumb cover={cover} coverW={media.coverW} coverH={media.coverH} session={info.session} trackKey={tkey(info)} source={info.source} sourceName={info.source_name} duration={info.duration} accent={accent} reduce={reduce} h={pk.h} maxW={pk.maxW} />}
         <div style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: 3 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
             {(s.showSourceBadge ?? true) ? <SourceBadge aumid={info.source} name={info.source_name} /> : <span />}
@@ -276,7 +278,7 @@ export function PlayerPanel({ media, s, accent, reduce, visible, wide = false }:
     return (
       <div data-testid="player-panel" data-wide="true" style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 8, height: "100%", ["--player-accent" as string]: accent }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          {layout !== "minimal" && <Thumb cover={cover} coverW={media.coverW} coverH={media.coverH} session={info.session} trackKey={tkey(info)} source={info.source} sourceName={info.source_name} duration={info.duration} accent={accent} reduce={reduce} h={Math.min(thumbH(layout), 64)} />}
+          {layout !== "minimal" && <Thumb cover={cover} coverW={media.coverW} coverH={media.coverH} session={info.session} trackKey={tkey(info)} source={info.source} sourceName={info.source_name} duration={info.duration} accent={accent} reduce={reduce} h={Math.min(thumbH(layout), 64)} maxW={panelThumb(s.panelWidth, s.panelHeight).maxW} />}
           <div style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
             <div dir="auto" className="truncate" style={{ fontSize: 18, fontWeight: 650, lineHeight: 1.2 }}>{mediaTitle(info)}</div>
             <div dir="auto" className="truncate" style={{ fontSize: 12.5, opacity: 0.65 }}>{sub(info) || " "}</div>
@@ -284,6 +286,25 @@ export function PlayerPanel({ media, s, accent, reduce, visible, wide = false }:
           <Controls info={info} />
         </div>
         {(s.showProgress ?? true) && <SeekBar pos={pos} info={info} accent={accent} h={5} reduce={reduce} showTimes={s.showPlaybackTime ?? true} />}
+      </div>
+    );
+  }
+  if ((s.panelTabsStyle ?? "dock") === "dock") {
+    // بطاقة المشغّل (التصميم المتفق عليه): غلاف/مصغّرة فيديو كبيرة بحجم يتبع مقاس اللوحة + شارة المصدر + موجة + عنوان + شريط + أزرار.
+    const pt = panelThumb(s.panelWidth, s.panelHeight);
+    return (
+      <div data-testid="player-panel" data-card="true" className="i-card" style={{ display: "flex", alignItems: "center", gap: 16, padding: 12, borderRadius: 26, height: "100%", minHeight: 0, ["--player-accent" as string]: accent }}>
+        {layout !== "minimal" && <Thumb cover={cover} coverW={media.coverW} coverH={media.coverH} session={info.session} trackKey={tkey(info)} source={info.source} sourceName={info.source_name} duration={info.duration} accent={accent} reduce={reduce} h={pt.h} maxW={pt.maxW} />}
+        <div style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: 5 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+            {(s.showSourceBadge ?? true) ? <SourceBadge aumid={info.source} name={info.source_name} /> : <span />}
+            <Visualizer kind={s.visualizer ?? "bars"} count={14} playing={info.playing} visible={visible} reduce={reduce} accent={accent} w={3} h={20} />
+          </div>
+          <div dir="auto" className="truncate" style={{ fontSize: 21, fontWeight: 700, lineHeight: 1.2 }}>{mediaTitle(info)}</div>
+          <div dir="auto" className="truncate" style={{ fontSize: 13, opacity: 0.65 }}>{sub(info) || " "}</div>
+          {(s.showProgress ?? true) && <SeekBar pos={pos} info={info} accent={accent} h={5} reduce={reduce} showTimes={s.showPlaybackTime ?? true} />}
+          <div style={{ display: "flex", justifyContent: "center" }}><Controls info={info} /></div>
+        </div>
       </div>
     );
   }

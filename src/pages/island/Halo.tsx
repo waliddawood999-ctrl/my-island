@@ -4,10 +4,8 @@
 import { animate, motion, useMotionValue, type Transition } from "motion/react";
 import { useLayoutEffect, useRef } from "react";
 
-export const HALO_PAD = 24; // يطابق inset في island.css (.island-halo) وشريحة القناع
-
-export function IslandHalo({ w, h, opacity, align, transition, opacityTransition }: {
-  w: number; h: number; opacity: number; align: "left" | "center" | "right"; transition: Transition; opacityTransition: Transition;
+export function IslandHalo({ w, h, radius, opacity, align, transition, opacityTransition }: {
+  w: number; h: number; radius: number; opacity: number; align: "left" | "center" | "right"; transition: Transition; opacityTransition: Transition;
 }) {
   const sx = useMotionValue(1), sy = useMotionValue(1);
   const prev = useRef({ w, h });
@@ -23,12 +21,12 @@ export function IslandHalo({ w, h, opacity, align, transition, opacityTransition
     return () => { a.stop(); b.stop(); };
   }, [w, h, sx, sy]);
   const pos = align === "left" ? { left: 0 } : align === "right" ? { right: 0 } : { left: "50%", x: "-50%" };
-  const originX = align === "left" ? HALO_PAD : align === "right" ? `calc(100% - ${HALO_PAD}px)` : "50%";
+  const originX = align === "left" ? "0%" : align === "right" ? "100%" : "50%";
   return (
     <motion.span
       aria-hidden className="island-halo" initial={false}
       animate={{ opacity }} transition={{ opacity: opacityTransition }}
-      style={{ width: w + HALO_PAD * 2, height: h + HALO_PAD * 2, ...pos, scaleX: sx, scaleY: sy, transformOrigin: `${originX} ${HALO_PAD}px` }}
+      style={{ width: w, height: h, borderRadius: radius, ...pos, scaleX: sx, scaleY: sy, transformOrigin: `${originX} 0px` }}
     />
   );
 }

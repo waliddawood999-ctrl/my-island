@@ -17,7 +17,7 @@
     "allow-rates-get", "allow-perf-status", "allow-mascot-active", "allow-netspeed-active", "allow-system-transparency",
     "allow-capture-start", "allow-open-captures",
     "allow-record-begin", "allow-record-stop", "allow-record-status",
-    "allow-color-pick", "allow-color-patch", "allow-color-history",
+    "allow-color-pick", "allow-color-patch", "allow-color-history", "allow-color-delete", "allow-color-clear",
     "allow-editor-open",
     "allow-shelf-list", "allow-shelf-add", "allow-shelf-remove", "allow-shelf-clear", "allow-shelf-copy", "allow-shelf-drag",
     "allow-launcher-list", "allow-launcher-add", "allow-launcher-remove", "allow-launcher-launch", "allow-launcher-pick-icon",

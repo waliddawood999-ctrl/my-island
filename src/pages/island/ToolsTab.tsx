@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { FolderOpen, Monitor, NotebookPen, Pencil, Pipette, Square, Video } from "lucide-react";
+import { FolderOpen, Monitor, NotebookPen, Pencil, Pipette, Square, Trash2, Video } from "lucide-react";
 import { i } from "../../i18n";
 import { fmtElapsed, useRecording } from "../../useRecording";
 import type { Settings } from "../../settings";
@@ -35,6 +35,9 @@ export function ToolsTab({ settings, wide = false, onOpenTab }: { settings?: Par
   const run = (cmd: string, args?: Record<string, unknown>) => () => {
     invoke(cmd, args).catch((e) => say(String(e)));
   };
+  // حذف لون واحد / مسح السجل: الخلفية تعيد القائمة المحدَّثة (الاستجابة تكفي؛ وإن تعذّرت نعيد التحميل).
+  const delColor = (c: ColorEntry) => invoke<ColorEntry[] | null>("color_delete", { hex: c.hex }).then((l) => (Array.isArray(l) ? setColors(l) : loadColors())).catch(() => loadColors());
+  const clearColors = () => invoke<ColorEntry[] | null>("color_clear").then((l) => (Array.isArray(l) ? setColors(l) : loadColors())).catch(() => loadColors());
   const copy = (c: ColorEntry, fmt: "hex" | "rgb" | "hsl") => {
     invoke("color_patch", { hex: c.hex, format: fmt })
       .then(() => say(i(`نُسخ ${fmt.toUpperCase()}`, `Copied ${fmt.toUpperCase()}`)))
@@ -90,6 +93,7 @@ export function ToolsTab({ settings, wide = false, onOpenTab }: { settings?: Par
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="mb-1 flex shrink-0 items-center gap-2 text-xs text-white/60">
           <Pipette size={12} /><span dir="auto">{i("آخر الألوان", "Recent colors")}</span>
+          {colors.length > 0 && <button data-testid="colors-clear" onClick={clearColors} className="ms-2 rounded bg-white/10 px-1.5 py-0.5 text-[10px] hover:bg-white/20">{i("مسح الكل", "Clear all")}</button>}
           {toast && <span dir="auto" className="ms-auto inline-flex items-center gap-1.5"><span aria-hidden className="h-1.5 w-1.5 rounded-full bg-[var(--app-accent)]" />{toast}</span>}
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto">
@@ -119,6 +123,7 @@ export function ToolsTab({ settings, wide = false, onOpenTab }: { settings?: Par
                       {f}
                     </button>
                   ))}
+                  <button data-testid="color-delete" aria-label={`${i("حذف", "Delete")} ${c.hex}`} title={i("حذف اللون", "Delete color")} onClick={() => delColor(c)} className="ms-auto rounded p-1 text-white/40 hover:bg-white/10 hover:text-white"><Trash2 size={12} /></button>
                 </li>
               ))}
             </ul>

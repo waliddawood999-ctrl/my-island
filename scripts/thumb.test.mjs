@@ -1,0 +1,25 @@
+// حجم المصغّرة حسب مقاس الجزيرة + الثيمان الافتراضيان. node scripts/thumb.test.mjs
+import { build } from "esbuild";
+import { pathToFileURL } from "node:url";
+import { mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+const out = join(mkdtempSync(join(tmpdir(), "thumb-")), "m.mjs");
+await build({ entryPoints: ["src/pages/island/thumbSize.ts"], bundle: true, format: "esm", outfile: out, logLevel: "silent", platform: "node" });
+const m = await import(pathToFileURL(out).href);
+let fail = 0, n = 0;
+const eq = (name, got, want) => { n++; if (JSON.stringify(got) !== JSON.stringify(want)) { fail++; console.log(`✗ ${name}\n  got:  ${JSON.stringify(got)}\n  want: ${JSON.stringify(want)}`); } };
+eq("peek baseline preserved: default 460×148 ⇒ 72px (pre-redesign value)", m.peekThumb(460, 148).h, 72);
+eq("peek scales with its height and clamps 56..110", [m.peekThumb(460, 100).h, m.peekThumb(460, 300).h, m.peekThumb(460, 40).h], [56, 110, 56]);
+eq("peek max width is 40% of the peek width", m.peekThumb(500, 148).maxW, 200);
+eq("panel thumb: ≈40% of panel height, clamped 72..184", [m.panelThumb(520, 290).h, m.panelThumb(720, 420).h, m.panelThumb(420, 220).h, m.panelThumb(720, 900).h], [116, 168, 88, 184]);
+eq("panel max width is 44% of panel width", m.panelThumb(720, 420).maxW, 317);
+eq("invalid sizes fall back to the defaults", [m.panelThumb(NaN, undefined), m.peekThumb("x", -3)], [{ h: 116, maxW: 229 }, { h: 72, maxW: 184 }]);
+eq("video is 16:9 at the given height when it fits", m.fitThumb("video", 72, 400), { w: 128, h: 72 });
+eq("audio is square", m.fitThumb("audio", 116, 400), { w: 116, h: 116 });
+eq("video wider than maxW shrinks proportionally (never overflows the island)", m.fitThumb("video", 116, 150), { w: 150, h: 84 });
+eq("no maxW ⇒ unconstrained", m.fitThumb("video", 90), { w: 160, h: 90 });
+const settings = readFileSync("src/settings.ts", "utf8"), rs = readFileSync("src-tauri/src/state.rs", "utf8"), packs = readFileSync("src/themePacks.ts", "utf8");
+eq("defaults: light = ivory, dark = noir-gold (TS and Rust mirror)", [/themePackLight: 'ivory'/.test(settings), /themePackDark: 'noir-gold'/.test(settings), /"themePackLight": "ivory"/.test(rs), /"themePackDark": "noir-gold"/.test(rs)], [true, true, true, true]);
+eq("both packs exist and the existing packs are untouched (obsidian still the general default)", [/id: "ivory"/.test(packs), /id: "noir-gold"/.test(packs), /id: "obsidian"/.test(packs), /themePack: 'obsidian'/.test(settings)], [true, true, true, true]);
+console.log(fail ? `FAIL (${fail}/${n})` : `OK thumb (${n})`); process.exit(fail ? 1 : 0);

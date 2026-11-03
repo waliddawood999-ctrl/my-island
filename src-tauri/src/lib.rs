@@ -210,6 +210,8 @@ pub fn run() {
             color::color_pick,
             color::color_patch,
             color::color_history,
+            color::color_delete,
+            color::color_clear,
             editor::editor_open,
             editor::editor_image,
             editor::editor_save,
