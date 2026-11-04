@@ -1,11 +1,13 @@
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { motion } from "motion/react";
+import { progressMotion, useMotionLevel } from "../../motion";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { FastAverageColor } from "fast-average-color";
 import { Music, Pause, Play, SkipBack, SkipForward } from "lucide-react";
 import { LottieIcon } from "../../lottie";
 import { i } from "../../i18n";
-import type { Settings } from "../../settings";
+import { progressStyle, type Settings } from "../../settings";
 import { mediaTitle, type MediaView } from "../../useMedia";
 import { classifySource, vibrant } from "../../mediaSource";
 import { THUMB } from "../../tokens";
@@ -161,7 +163,13 @@ export function SourceBadge({ aumid, name }: { aumid: string; name: string }) {
  * يستعمل خط زمن GSMTC عبر media_seek (الموضع يُقرأ من usePos). المصدر الذي لا يدعم البحث ⇒ الشريط معطَّل بصريًا (لا مؤشر ولا استجابة ولا وعد كاذب).
  * لا rAF ولا مؤقّت دائم: المؤقّت الوحيد = تثبيت 1.5ث بعد الإفلات كي لا يرتدّ الشريط قبل وصول الموضع الجديد.
  */
-export function SeekBar({ pos, info, accent, h, reduce, showBar = true, showTimes = true }: { pos: number; info: MediaView["info"]; accent: string; h: number; reduce: boolean; showBar?: boolean; showTimes?: boolean }) {
+export function SeekBar({ pos, info, accent, h, reduce, showBar = true, showTimes = true, style = "line", animateProgress = false, scrubTime = true, buffered, chapters = [] }: { style?: string; animateProgress?: boolean; scrubTime?: boolean; buffered?: number; chapters?: readonly number[]; pos: number; info: MediaView["info"]; accent: string; h: number; reduce: boolean; showBar?: boolean; showTimes?: boolean }) {
+  const fullMotion = useMotionLevel() === "full";
+  const moving = animateProgress && !reduce && fullMotion && info.playing;
+  // GSMTC الحالي لا يرسل بيانات مخزّن/فصول؛ نعرض فقط بيانات حقيقية اختيارية إن وصلت.
+  const timeline = info as MediaView["info"] & { buffered?: number; chapters?: readonly number[] };
+  buffered ??= timeline.buffered;
+  if (chapters.length === 0) chapters = timeline.chapters ?? [];
   const dur = info.duration;
   const can = canSeekNow(info);
   const [drag, setDrag] = useState<number | null>(null);
@@ -183,7 +191,7 @@ export function SeekBar({ pos, info, accent, h, reduce, showBar = true, showTime
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
   const title = can ? undefined : i("هذا المصدر لا يدعم التقديم والتأخير", "This source doesn't support seeking");
   return (
-    <div data-testid="seekbar" data-can-seek={can ? "true" : "false"} title={title} dir="ltr" onClick={stop} onMouseDown={stop} style={{ display: "flex", flexDirection: "column", gap: 0, opacity: can ? 1 : 0.55 }}>
+    <div data-testid="seekbar" data-can-seek={can ? "true" : "false"} data-progress-style={style} data-progress-moving={moving ? "true" : "false"} title={title} dir="ltr" onClick={stop} onMouseDown={stop} style={{ display: "flex", flexDirection: "column", gap: 0, opacity: can ? 1 : 0.55 }}>
       {showBar && (
         <div
           ref={box} className="sk" data-drag={drag !== null ? "true" : "false"}
@@ -196,16 +204,21 @@ export function SeekBar({ pos, info, accent, h, reduce, showBar = true, showTime
           onKeyDown={(e) => { if (!can) return; const t = keySeek(e.key, shown, dur); if (t != null) { e.preventDefault(); e.stopPropagation(); commit(t); } }}
         >
           <div className="sk-track" style={{ height: h, borderRadius: h }}>
-            <div className="sk-fill" style={{ background: accent, transform: `scaleX(${p})`, transition: can && info.playing && !reduce && drag === null && held === null ? "transform 1s linear" : "none" }} />
+            {style === "shimmer" && dur > 0 && typeof buffered === "number" && Number.isFinite(buffered) && <span aria-hidden className="sk-buffer" style={{ width: `${clampFrac(buffered / dur) * 100}%` }} />}
+            <div className="sk-fill" style={{ background: accent, transform: `scaleX(${p})`, transition: can && moving && drag === null && held === null ? "transform 1s linear" : "none" }}>
+              {style === "shimmer" && moving && <motion.span aria-hidden className="sk-shimmer" initial={{ x: "-100%" }} animate={{ x: "100%" }} transition={progressMotion.shimmer} />}
+            </div>
+            {style === "shimmer" && chapters.filter(t => Number.isFinite(t) && t > 0 && t < dur).map(t => <span aria-hidden key={t} className="sk-chapter" style={{ left: `${t / dur * 100}%` }} />)}
+            {style === "wave" && <span aria-hidden className="sk-wave">{Array.from({ length: 40 }, (_, n) => <motion.span key={n} data-played={n / 40 < p} style={{ height: 5 + Math.abs(Math.sin(n * 1.7)) * 15 }} animate={{ scaleY: moving ? [1, .45, 1] : 1 }} transition={moving ? progressMotion.wave : { duration: 0 }} />)}</span>}
           </div>
-          {can && <span aria-hidden className="sk-knob" style={{ left: `${p * 100}%`, background: "#fff", boxShadow: `0 0 0 3px color-mix(in srgb, ${accent} 45%, transparent)` }} />}
+          {can && style === "liquid" ? <motion.span aria-hidden className="sk-knob" animate={{ scale: moving && drag !== null ? 1.15 : 1 }} transition={moving ? progressMotion.settle : { duration: 0 }} style={{ left: `${p * 100}%` }} /> : can && <span aria-hidden className="sk-knob" style={{ left: `${p * 100}%`, background: "#fff", boxShadow: `0 0 0 3px color-mix(in srgb, ${accent} 45%, transparent)` }} />}
         </div>
       )}
-      {showTimes && (
+      {(showTimes || (drag !== null && scrubTime)) && (
         <div data-testid="times" style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", fontSize: 10.5, opacity: 0.62, fontVariantNumeric: "tabular-nums" }}>
-          <span data-testid="time-now">{fmt(drag !== null ? pos : shown)}</span>
-          <span data-testid="time-target" aria-live="polite" style={{ color: accent, fontWeight: 700 }}>{drag !== null ? `← ${fmt(shown)}` : ""}</span>
-          <span data-testid="time-total" style={{ textAlign: "right" }}>{dur > 0 ? fmt(dur) : "--:--"}</span>
+          <span data-testid="time-now">{showTimes ? fmt(drag !== null ? pos : shown) : ""}</span>
+          <span data-testid="time-target" aria-live="polite" style={{ color: accent, fontWeight: 700 }}>{drag !== null && scrubTime ? `← ${fmt(shown)}` : ""}</span>
+          <span data-testid="time-total" style={{ textAlign: "right" }}>{showTimes ? (dur > 0 ? fmt(dur) : "--:--") : ""}</span>
         </div>
       )}
     </div>
@@ -213,16 +226,19 @@ export function SeekBar({ pos, info, accent, h, reduce, showBar = true, showTime
 }
 
 /** أزرار التحكم (LTR، gap 14): سابق/تشغيل-إيقاف/تالٍ — الضغط لا يفتح الجزيرة ولا يغلقها. */
-export function Controls({ info, accent, compact = false, single = false }: { info: MediaView["info"]; accent?: string; compact?: boolean; single?: boolean }) {
+export function Controls({ info, accent, compact = false, single = false, ring }: { ring?: { pos: number; duration: number }; info: MediaView["info"]; accent?: string; compact?: boolean; single?: boolean }) {
   const ctl = (e: React.MouseEvent, action: string) => { e.stopPropagation(); invoke("media_control", { action }).catch(() => {}); };
   void accent;
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
   return (
     <div dir="ltr" data-testid="player-controls" onClick={stop} onMouseDown={stop} style={{ display: "flex", alignItems: "center", gap: compact ? 6 : 14 }}>
       {!single && <button className={`pl-btn pl-ghost${compact ? " pl-sm" : ""}`} disabled={!info.can_prev} onClick={(e) => ctl(e, "prev")} aria-label={i("السابق", "Previous")} title={i("السابق", "Previous")}><SkipBack size={16} fill="currentColor" /></button>}
+      <div className={ring ? "progress-ring-control" : undefined}>
+        {ring && <svg aria-hidden data-testid="progress-ring" viewBox="0 0 44 44"><circle cx="22" cy="22" r="20" fill="none" stroke="var(--c-border)" strokeWidth="3" /><circle cx="22" cy="22" r="20" fill="none" stroke="var(--accent)" strokeWidth="3" pathLength="1" strokeDasharray={`${ring.duration > 0 ? clampFrac(ring.pos / ring.duration) : 0} 1`} strokeLinecap="round" /></svg>}
       <button className={`pl-btn pl-play${compact ? " pl-sm" : ""}`} disabled={info.kind === "audio"} onClick={(e) => ctl(e, "toggle")} aria-label={info.playing ? i("إيقاف مؤقت", "Pause") : i("تشغيل", "Play")} title={info.playing ? i("إيقاف مؤقت", "Pause") : i("تشغيل", "Play")}>
         {info.playing ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" style={{ marginInlineStart: 2 }} />}
       </button>
+      </div>
       {!single && <button className={`pl-btn pl-ghost${compact ? " pl-sm" : ""}`} disabled={!info.can_next} onClick={(e) => ctl(e, "next")} aria-label={i("التالي", "Next")} title={i("التالي", "Next")}><SkipForward size={16} fill="currentColor" /></button>}
     </div>
   );
@@ -261,8 +277,8 @@ export function PlayerPeek({ media, s, accent, reduce, visible, hover = false }:
           <div dir="auto" className="truncate pill-hover-sub">{sub(info) || " "}</div>
         </div>
       </div>
-      {(s.showProgress ?? true) && <SeekBar pos={pos} info={info} accent="var(--accent)" h={4} reduce={reduce} showTimes={s.showPlaybackTime ?? true} />}
-      <div className="pill-hover-controls"><Controls info={info} compact={narrow} /></div>
+      {(s.showProgress ?? true) && <SeekBar animateProgress={s.progressMotion !== false} style={progressStyle(s.progressStyle)} scrubTime={s.progressScrubTime !== false} pos={pos} info={info} accent="var(--accent)" h={4} reduce={reduce} showTimes={s.showPlaybackTime ?? true} />}
+      <div className="pill-hover-controls"><Controls ring={s.showProgress !== false && s.progressStyle === "ring" ? { pos, duration: info.duration } : undefined} info={info} compact={narrow} /></div>
     </div>
   );
   return (
@@ -277,9 +293,9 @@ export function PlayerPeek({ media, s, accent, reduce, visible, hover = false }:
           <div dir="auto" className="truncate" style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.25 }}>{mediaTitle(info)}</div>
           <div dir="auto" className="truncate" style={{ fontSize: 12, opacity: 0.62 }}>{sub(info) || " "}</div>
         </div>
-        <Controls info={info} compact />
+        <Controls ring={s.showProgress !== false && s.progressStyle === "ring" ? { pos, duration: info.duration } : undefined} info={info} compact />
       </div>
-      {(s.showProgress ?? true) && <SeekBar pos={pos} info={info} accent={accent} h={4} reduce={reduce} showTimes={s.showPlaybackTime ?? true} />}
+      {(s.showProgress ?? true) && <SeekBar animateProgress={s.progressMotion !== false} style={progressStyle(s.progressStyle)} scrubTime={s.progressScrubTime !== false} pos={pos} info={info} accent={accent} h={4} reduce={reduce} showTimes={s.showPlaybackTime ?? true} />}
     </div>
   );
 }
@@ -298,9 +314,9 @@ export function PlayerPanel({ media, s, accent, reduce, visible, wide = false }:
         <div className="wide-player-info">
           <div dir="auto" className="truncate wide-player-title">{mediaTitle(info)}</div>
           <div dir="auto" className="truncate wide-player-sub">{sub(info) || " "}</div>
-          {(s.showProgress ?? true) && <SeekBar pos={pos} info={info} accent="var(--accent)" h={4} reduce={reduce} showTimes={s.showPlaybackTime ?? true} />}
+          {(s.showProgress ?? true) && <SeekBar animateProgress={s.progressMotion !== false} style={progressStyle(s.progressStyle)} scrubTime={s.progressScrubTime !== false} pos={pos} info={info} accent="var(--accent)" h={4} reduce={reduce} showTimes={s.showPlaybackTime ?? true} />}
         </div>
-        <Controls info={info} single />
+        <Controls ring={s.showProgress !== false && s.progressStyle === "ring" ? { pos, duration: info.duration } : undefined} info={info} single />
       </div>
     );
   }
@@ -315,8 +331,8 @@ export function PlayerPanel({ media, s, accent, reduce, visible, wide = false }:
           <div dir="auto" className="home-player-title truncate">{mediaTitle(info)}</div>
           <div dir="auto" className="home-player-sub truncate">{sub(info) || " "}</div>
           {(cover && media.coverW > 0 ? thumbKind(media.coverW, media.coverH) : guessKind(info.source, info.source_name)) === "audio" && <Visualizer kind={s.visualizer ?? "bars"} count={12} playing={info.playing} visible={visible} reduce={reduce} accent="var(--accent)" w={5} h={16} />}
-          {(s.showProgress ?? true) && <SeekBar pos={pos} info={info} accent="var(--accent)" h={4} reduce={reduce} showTimes={s.showPlaybackTime ?? true} />}
-          <div style={{ display: "flex", justifyContent: "center" }}><Controls info={info} /></div>
+          {(s.showProgress ?? true) && <SeekBar animateProgress={s.progressMotion !== false} style={progressStyle(s.progressStyle)} scrubTime={s.progressScrubTime !== false} pos={pos} info={info} accent="var(--accent)" h={4} reduce={reduce} showTimes={s.showPlaybackTime ?? true} />}
+          <div style={{ display: "flex", justifyContent: "center" }}><Controls ring={s.showProgress !== false && s.progressStyle === "ring" ? { pos, duration: info.duration } : undefined} info={info} /></div>
         </div>
       </div>
     );
@@ -334,8 +350,8 @@ export function PlayerPanel({ media, s, accent, reduce, visible, wide = false }:
           <div dir="auto" className="truncate" style={{ fontSize: 13, opacity: 0.65 }}>{sub(info) || " "}</div>
         </div>
       </div>
-      {(s.showProgress ?? true) && <SeekBar pos={pos} info={info} accent={accent} h={5} reduce={reduce} showTimes={s.showPlaybackTime ?? true} />}
-      <div style={{ display: "flex", justifyContent: "center" }}><Controls info={info} /></div>
+      {(s.showProgress ?? true) && <SeekBar animateProgress={s.progressMotion !== false} style={progressStyle(s.progressStyle)} scrubTime={s.progressScrubTime !== false} pos={pos} info={info} accent={accent} h={5} reduce={reduce} showTimes={s.showPlaybackTime ?? true} />}
+      <div style={{ display: "flex", justifyContent: "center" }}><Controls ring={s.showProgress !== false && s.progressStyle === "ring" ? { pos, duration: info.duration } : undefined} info={info} /></div>
       {sources.length > 1 && (
         <div className="flex flex-wrap items-center justify-center gap-1.5" style={{ fontSize: 11 }}>
           <button onClick={(e) => { e.stopPropagation(); invoke("media_pick", { id: null }).catch(() => {}); }} className="i-btn px-2.5 py-0.5">{i("تلقائي", "Auto")}</button>

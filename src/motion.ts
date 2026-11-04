@@ -261,3 +261,10 @@ export function useMotionSync(chosen: unknown) {
 }
 
 buildVariants();
+
+/** المهمة 4: لمعان كل ثلاث ثوانٍ، وتعبئة/موجة؛ يستدعيها المشغّل عند الحركة الفعلية فقط. */
+export const progressMotion = {
+  shimmer: { duration: 3, repeat: Infinity, ease: "linear" } as Transition,
+  wave: { duration: 1.2, repeat: Infinity, ease: "easeInOut" } as Transition,
+  settle: { type: "spring", stiffness: 300, damping: 30 } as Transition,
+};

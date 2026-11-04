@@ -21,6 +21,7 @@ import { manualCheck } from "../../useUpdater";
 import type { ManualStatus } from "../../updater";
 import { AppearanceBody } from "./Appearance";
 import { SECTION_KEYS, exportSettings, parseImport, resetPatch } from "../../appearance";
+import { PROGRESS_STYLES, progressStyle } from "../../settings";
 import { spring } from "../../motion";
 import { MOTION_PRESETS, MOTION_PRESET_KEYS, migrateReduce, normBounce, normPreset, normSpeed } from "../../islandMotion";
 import { normCardOrder } from "../../islandMachine";
@@ -427,6 +428,24 @@ function App() {
           </Row>
           <Row icon={ic(Gauge)} label={i("شريط التقدم", "Progress bar")} hint={i("الخط اللي يبيّن وين وصلت في الأغنية", "The line that shows how far into the song you are")}>
             <Toggle label={i("شريط التقدم", "Progress bar")} value={s.showProgress ?? true} onChange={(v) => set({ showProgress: v })} />
+          </Row>
+          <div className="px-4 py-3">
+            <h3>{i("شكل شريط التقدم", "Progress bar style")}</h3>
+            <div className="progress-style-grid" role="radiogroup" aria-label={i("شكل شريط التقدم", "Progress bar style")}>
+              {PROGRESS_STYLES.map((style, n) => {
+                const labels = [i("خط رفيع + مقبض", "Line + knob"), i("لمعان + فصول", "Shimmer + chapters"), i("موجة صوتية", "Wave"), i("سائل", "Liquid"), i("شُرَيطات", "Dashes"), i("حلقة حول زر التشغيل", "Ring around play")];
+                return <button key={style} type="button" role="radio" aria-checked={progressStyle(s.progressStyle) === style} data-testid={`progress-option-${style}`} className="progress-style-card" onClick={() => set({ progressStyle: style })}>
+                  <span className="progress-preview" data-style={style} aria-hidden>{style === "ring" ? <span className="progress-preview-ring"><Play size={14} /></span> : <span className="progress-preview-track">{style === "wave" ? <span className="progress-preview-wave">{Array.from({ length: 28 }, (_, n) => <span key={n} style={{ height: 5 + Math.abs(Math.sin(n * 1.7)) * 15, background: n < 11 ? "var(--accent)" : undefined }} />)}</span> : <span className="progress-preview-fill" />}{style === "shimmer" && <span className="progress-preview-chapters" />}</span>}</span>
+                  <span>{labels[n]}</span><small>{i("يُطبّق على الحبة واللوحة", "Applies to the pill and panel")}</small>
+                </button>;
+              })}
+            </div>
+          </div>
+          <Row icon={ic(Waves)} label={i("حركة الشريط", "Progress animation")} hint={i("اللمعان والنبض؛ يتوقفان مع تقليل الحركة", "Shimmer and pulse stop with reduced motion")}>
+            <Toggle label={i("حركة الشريط", "Progress animation")} value={s.progressMotion !== false} onChange={(v) => set({ progressMotion: v })} />
+          </Row>
+          <Row icon={ic(Clock)} label={i("الوقت أثناء السحب", "Time while scrubbing")} hint={i("يعرض الوقت المستهدف داخل صف الأوقات", "Shows the target time inside the time row")}>
+            <Toggle label={i("الوقت أثناء السحب", "Time while scrubbing")} value={s.progressScrubTime !== false} onChange={(v) => set({ progressScrubTime: v })} />
           </Row>
           <Row icon={ic(Palette)} label={i("خلفية من الغلاف", "Artwork backdrop")} hint={i("خلفية ضبابية بلون غلاف الأغنية", "A blurred backdrop in the album art's colors")}>
             <Toggle label={i("خلفية من الغلاف", "Artwork backdrop")} value={s.artworkBackdrop ?? true} onChange={(v) => set({ artworkBackdrop: v })} />

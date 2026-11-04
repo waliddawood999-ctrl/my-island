@@ -3,6 +3,10 @@
 /** مساحة عمل لشريط الأوامر: تُفتح كل عناصرها (تطبيق/مجلد/ملف كمسار، أو رابط http(s)) دفعة واحدة. */
 export interface Workspace { id:string, name:string, items:string[] }
 
+export const PROGRESS_STYLES = ["line", "shimmer", "wave", "liquid", "dashes", "ring"] as const;
+export type ProgressStyle = typeof PROGRESS_STYLES[number];
+export const progressStyle = (v: unknown): ProgressStyle => PROGRESS_STYLES.includes(v as ProgressStyle) ? v as ProgressStyle : "line";
+
 export type MotionLevelSetting = 'full'|'reduced'|'off';
 
 export interface Settings {
@@ -101,6 +105,9 @@ export interface Settings {
   backgroundOpacity:number,       // 0.3..1.0
   accentMode:'auto'|'fixed',      // auto = من غلاف الأغنية
   playerLayout:'compact'|'large'|'minimal',
+  progressStyle:ProgressStyle,
+  progressMotion:boolean,
+  progressScrubTime:boolean,
   visualizer:'bars'|'wave'|'off',
   showPlaybackTime:boolean, showSourceBadge:boolean, showProgress:boolean, artworkBackdrop:boolean,
   settingsVersion:number,         // ترحيل الإعدادات (appearance.ts::migrateSettings)
@@ -189,6 +196,9 @@ export const DEFAULTS: Partial<Settings> = {
   backgroundOpacity: 1,
   accentMode: 'auto',
   playerLayout: 'compact',
+  progressStyle: 'line',
+  progressMotion: true,
+  progressScrubTime: true,
   visualizer: 'bars',
   showPlaybackTime: true, showSourceBadge: true, showProgress: true, artworkBackdrop: true,
   settingsVersion: 4,

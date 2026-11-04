@@ -1,6 +1,6 @@
 // منطق المظهر الخالص (بلا واجهة): تحويل الإعدادات إلى متغيرات CSS على <html>، الإعدادات المسبقة، ترحيل الإعدادات القديمة،
 // وحساب التباين (WCAG). يُختبر بـ scripts/glass.test.mjs. الواجهة: useSettings.ts::useAppearance.
-import { DEFAULTS, type Settings } from "./settings";
+import { DEFAULTS, PROGRESS_STYLES, type Settings } from "./settings";
 import { PILL } from "./tokens";
 import { migratePreset, migrateReduce, migrateSpeed, normSpeed, resolveReduce } from "./islandMotion";
 import { contrast, deriveTheme, hex6, hexToRgb, luminance, over, type Derived } from "./themeEngine";
@@ -174,7 +174,7 @@ export const SECTION_KEYS: Record<string, (keyof Settings)[]> = {
   island: ["clockPosition", "clockX", "clockY", "clockScale", "eyesAlign", "pillWidth", "pillHeight", "pillRadius", "peekWidth", "peekHeight", "peekRadius", "panelWidth", "panelHeight", "panelRadius", "hoverDelayMs", "hoverZone", "peekWheelCycle", "peekCardOrder", "panelWheelPaging", "panelTabsStyle", "offsetX", "offsetY", "pillPosition", "islandDocking", "autoHide", "hideInFullscreen", "opacityRest", "opacityOpen", "showClock", "clockFormat", "eyesEnabled", "captureVisible"],
   appearance: ["themeMode", "themePack", "artBloom", "themeAnim", "themeCustom", "themeTune", "themeDisclosure", "themePackLight", "themePackDark", "accentSource", "themeMaterial", "glassStyle", "glassTint", "backgroundOpacity", "accentMode", "accentColor", "borderStrength", "shadowStrength", "cornerStyle", "fontScale", "density"],
   motion: ["motionLevel", "motionPreset", "motionSpeed", "motionBounce", "reduceMotion"],
-  modules: ["showToday", "prayerCity", "showWeather", "weatherCity", "weatherUnits", "showCountdowns", "showWorldClock", "showBattery", "batteryTip", "btBatteries", "showNetSpeed", "clipLimit", "pasteOnClick", "clipExcludedApps", "privacyIndicator", "showVolume", "showMeetings", "screenshotDir", "recordFormat", "recordingFps", "recordingQuality", "recordingDir", "liveRates", "liquidSpectrum", "playerLayout", "visualizer", "showPlaybackTime", "showSourceBadge", "showProgress", "artworkBackdrop", "attentionTracking"],
+  modules: ["showToday", "prayerCity", "showWeather", "weatherCity", "weatherUnits", "showCountdowns", "showWorldClock", "showBattery", "batteryTip", "btBatteries", "showNetSpeed", "clipLimit", "pasteOnClick", "clipExcludedApps", "privacyIndicator", "showVolume", "showMeetings", "screenshotDir", "recordFormat", "recordingFps", "recordingQuality", "recordingDir", "liveRates", "liquidSpectrum", "playerLayout", "progressStyle", "progressMotion", "progressScrubTime", "visualizer", "showPlaybackTime", "showSourceBadge", "showProgress", "artworkBackdrop", "attentionTracking"],
   notifications: ["soundChoice", "soundVolume", "prayerAlerts", "loadAlert", "meetingLeadMin", "breakReminders", "breakMinutes"],
   shortcuts: ["hotkeyPalette", "hotkeyArea", "hotkeyScreen", "hotkeyRecord", "hotkeyColor"],
   perf: ["ecoMode", "ecoOnBattery"],
@@ -215,6 +215,7 @@ export function parseImport(text: string, current: P): P | null {
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(j.settings)) {
       if (!(k in known)) continue;
+      if (k === "progressStyle" && !(PROGRESS_STYLES as readonly unknown[]).includes(v)) continue;
       const d = known[k];
       if (Array.isArray(d) ? Array.isArray(v) : typeof d === typeof v) out[k] = v;
     }

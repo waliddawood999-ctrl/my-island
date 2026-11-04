@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { DEFAULTS, type Settings } from "./settings";
+import { DEFAULTS, progressStyle, type Settings } from "./settings";
 import { setLang } from "./i18n";
 import { setMotionTuning, setPressTap, useMotionSync, useEco } from "./motion";
 import { PRESS, normTune } from "./themeTune";
@@ -134,12 +134,14 @@ function useEnv(s: Partial<Settings>): Env {
 /** يطبّق المظهر كله على <html> (data-* + متغيرات CSS من tokens.css) حيًّا بلا إعادة تحميل. */
 function useAppearance(s: Partial<Settings>, env: Env) {
   const { attrs, vars } = appearanceVars(s, env);
-  const key = JSON.stringify([attrs, vars]);
+  const pstyle = progressStyle(s.progressStyle);
+  const key = JSON.stringify([attrs, vars, pstyle]);
   useEffect(() => {
     const root = document.documentElement;
     for (const [k, v] of Object.entries(attrs)) { if (v) root.dataset[k] = v; else delete root.dataset[k]; }
     for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
     root.dataset.glassStyle = attrs.glass;
+    root.dataset.pstyle = pstyle;
   }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
