@@ -98,7 +98,7 @@ export const glassAllowed = (s: Partial<Settings>, env: Env) => (s.themeMaterial
 export function appearanceVars(s: Partial<Settings>, env: Env): { attrs: Record<string, string>; vars: Record<string, string> } {
   const { derived, packId, theme, pack } = deriveFor(s, env);
   const glass = glassAllowed(s, env);
-  const style = s.glassStyle === "clear" ? "clear" : "crystal";
+  const style = "crystal";
   const pw = num(s.pillWidth, PILL.minW, PILL.maxW, PILL.w), ph = num(s.pillHeight, PILL.minH, PILL.maxH, PILL.h);
   const sp = shapeRadius(s.pillRadius ?? 0, 0, SHAPES[pack.shape ?? "default"].pillR);
   const pr = sp !== null ? sp : num(s.pillRadius, 0, 22, 0);
@@ -143,27 +143,28 @@ export function effectiveMotion(s: Partial<Settings>, env: Env): "full" | "reduc
 }
 
 type P = Partial<Settings>;
-/** إعدادات مسبقة: أربعة فقط، كلٌّ منها يرسم فعلًا بشكل مختلف (T04) — الزجاج أكريليك أصلي بصبغة مختلفة، لا blur/saturation (غير فعّالين على ويندوز). */
+/** مواد العرض: مصمت أو مثلّج فقط، بلا تغيير الثيم أو لون التمييز. */
 export const STYLE_PRESETS: { id: string; ar: string; en: string; values: P }[] = [
   { id: "frosted", ar: "زجاج مثلّج", en: "Frosted", values: { themeMaterial: "glass", glassStyle: "crystal", glassTint: 45 } },
-  { id: "smoked", ar: "زجاج مدخّن", en: "Smoked", values: { themeMaterial: "glass", glassStyle: "crystal", glassTint: 68 } },
-  { id: "clear", ar: "شفاف", en: "Clear", values: { themeMaterial: "glass", glassStyle: "clear", glassTint: 25 } },
-  { id: "minimal", ar: "داكن بسيط", en: "Minimal Dark", values: { themeMode: "dark", themeMaterial: "solid", borderStrength: 30, shadowStrength: 30, cornerStyle: "rounded", accentColor: "#94a3b8" } },
+  { id: "solid", ar: "مصمت", en: "Solid", values: { themeMaterial: "solid" } },
 ];
-/** قيم الأسلوب عند اختيار «مثلّج/شفاف» وحدهما (الصبغة فقط). */
+/** clear اسم قديم مقبول؛ اختياره عبر أي مستهلك قديم يطبّق المادة المثلّجة نفسها. */
 export const GLASS_STYLE_VALUES: Record<"crystal" | "clear", P> = {
   crystal: { glassStyle: "crystal", themeMaterial: "glass", glassTint: 45 },
-  clear: { glassStyle: "clear", themeMaterial: "glass", glassTint: 25 },
+  clear: { glassStyle: "crystal", themeMaterial: "glass", glassTint: 45 },
 };
+
+/** اختيار حزمة من المعرض يطبّقها على الوضعين؛ مفاتيح التعيين القديمة تبقى قابلة للقراءة. */
+export const themeSelection = (id: string): P => ({ themePack: id, themePackLight: id, themePackDark: id });
 
 /**
  * عتامة الحجاب (0..0.97) من الأسلوب والثيم وglassTint (0–80) وكثافة backgroundOpacity (0.3–1، تضرب النتيجة).
  * crystal: داكن 0.50 + 0.0062·t · فاتح 0.54 + 0.0062·t  ⇒ عند 45: 0.78 / 0.82 (نقطة البداية المعتمدة).
- * clear:   داكن 0.425 + 0.007·t · فاتح 0.465 + 0.007·t ⇒ عند 25: 0.60 / 0.64.   سقف 0.97 (لا مصمت كامل من الشريط).
+ * clear اسم تخزين قديم يُحسب كـcrystal مع حفظ tint وdensity؛ السقف 0.97.
  */
-export function glassAlpha(style: "crystal" | "clear", light: boolean, tint: number, density: unknown = 1): number {
+export function glassAlpha(_style: "crystal" | "clear", light: boolean, tint: number, density: unknown = 1): number {
   const t = Math.min(80, Math.max(0, Number.isFinite(tint) ? tint : 45));
-  const a = style === "clear" ? (light ? 0.465 : 0.425) + 0.007 * t : (light ? 0.54 : 0.5) + 0.0062 * t;
+  const a = (light ? 0.54 : 0.5) + 0.0062 * t;
   const k = typeof density === "number" && Number.isFinite(density) ? Math.min(1, Math.max(0.3, density)) : 1;
   return Math.round(Math.min(0.97, a) * k * 1000) / 1000;
 }

@@ -1,12 +1,12 @@
-// قسم «المظهر» الشامل (docs/THEMES.md §التخصيص): معرض الحزم أولًا (معاينة حيّة للوحة الموسّعة + معاينة فاتح/داكن منقسمة + تعيين حزمة منفصل لكل وضع)،
-// ثم وحدات منظّمة (أيقونة + ملخص سطر + معاينة مصغّرة + إعادة ضبط لكل وحدة). مستويات إفصاح (أساسي/متقدم/خبير)، رفّ «ثيماتي»، تصدير/استيراد، بحث (SearchCtx).
+// المهمة 5: ستة أقسام أساسية وفق S.png؛ بقية التخصيص ومعاينة الوضعين والرفّ والاستيراد خلف خيارات متقدمة.
+// معرض واحد بلا عناوين عائلات؛ اختيار حزمة يحدّث مفاتيح الوضعين والعامة معًا.
 // كل المقابض ضمن نطاقات مصمَّمة (themeTune.ts / themePacks.USER_RANGES) والمحرك يفرض المقروئية — لا مقبض ينتج ثيمًا كاسرًا للقراءة.
 import { useContext, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Accessibility, Brush, ChevronDown, Contrast, Download, Eye, Hand, Layers, MousePointer2, Palette, Percent, RotateCcw, Ruler, Save, Sparkles, SunMoon, Trash2, Type, Upload, Waves, Zap, Check, X, Square, SlidersHorizontal } from "lucide-react";
 import { i } from "../../i18n";
 import type { Settings } from "../../settings";
 import { useDerivedTheme } from "../../useSettings";
-import { GLASS_STYLE_VALUES, MAX_SHELF, STYLE_PRESETS, exportTheme, glassAlpha, newShelfId, parseThemeImport, resetPatch, shelfEntry } from "../../appearance";
+import { GLASS_STYLE_VALUES, MAX_SHELF, themeSelection, exportTheme, glassAlpha, newShelfId, parseThemeImport, resetPatch, shelfEntry } from "../../appearance";
 import { PACKS, SHAPES, WASH_DIRS, resolvePack, sanitizeUserTheme, packInput, USER_RANGES, type Pack, type PackFamily, type UserTheme } from "../../themePacks";
 import { deriveTheme, describeAdjustment, hexToRgb, type RGB } from "../../themeEngine";
 import { TOKEN_KEYS, TUNE_MODULE_FIELDS, TUNE_NUM, checkTokens, compactTune, normTune, resetTuneFields, type TokenKey } from "../../themeTune";
@@ -23,14 +23,11 @@ const x100 = (v: number) => `${Math.round(v * 100)}%`;
 const SAMPLE_ART: ArtSwatches = { vibrant: "#ff7a14", darkMuted: "#2a2438", muted: "#6a6480", avg: "#403850" };
 const SAMPLE_WIN = "#0078d4";
 
-const FAMILY_LABEL: Record<PackFamily, [string, string]> = {
-  seed: ["مشتقة من بذور", "Seed-derived"], gradient: ["تدرّج قائد", "Gradient-led"], craft: ["حرفة وملمس", "Craft & texture"], editorial: ["ثنائية تحريرية", "Editorial duotone"],
-  shape: ["الشكل قائد", "Shape-led"], time: ["واعية بالوقت", "Time-aware"], art: ["فن قائد", "Art-led"], custom: ["ثيماتي", "My themes"],
-};
+const FAMILY_ORDER: PackFamily[] = ["seed", "gradient", "craft", "editorial", "shape", "time", "art", "custom"];
 
 /** معاينة مصغّرة حيّة للوحة الموسّعة بحزمة ووضع محدّدين (متغيرات الرصّة محصورة بعنصر المعاينة نفسه). */
 function MiniIsland({ pack, dark, s, size = "md", label }: { pack: Pack; dark: boolean; s: Partial<Settings>; size?: "sm" | "md" | "lg"; label?: string }) {
-  const style = s.glassStyle === "clear" ? "clear" : "crystal";
+  const style = "crystal";
   const tune = normTune(s.themeTune);
   const accent = s.accentSource === "custom" && typeof s.accentColor === "string" ? s.accentColor : undefined;
   const d = useMemo(
@@ -89,7 +86,8 @@ function Module(p: { id: string; icon: ReactNode; title: string; summary: string
 export function AppearanceBody({ s, set }: { s: Partial<Settings>; set: (p: Partial<Settings>) => void }) {
   const q = useContext(SearchCtx);
   const searching = q.trim().length > 0;
-  const level: Lvl = s.themeDisclosure === "advanced" || s.themeDisclosure === "expert" ? s.themeDisclosure : "basic";
+  const [advanced, setAdvanced] = useState(false);
+  const level: Lvl = !advanced && !searching ? "basic" : s.themeDisclosure === "advanced" || s.themeDisclosure === "expert" ? s.themeDisclosure : "advanced";
   const at = (min: Lvl) => searching || RANK[level] >= RANK[min];
   const { derived, packId, pack, theme } = useDerivedTheme(s);
   const tune = normTune(s.themeTune);
@@ -105,7 +103,8 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings>; set: (p: Part
   const file = useRef<HTMLInputElement>(null);
 
   const allPacks: { pack: Pack; id: string }[] = [...PACKS.map((p) => ({ pack: p, id: p.id })), ...mine.map((u) => ({ pack: resolvePack(u.id, null, mine), id: u.id }))];
-  const selected = hover ? resolvePack(hover, s.themeCustom, mine) : resolvePack(s.themePack ?? "obsidian", s.themeCustom, mine);
+  const galleryPacks = FAMILY_ORDER.flatMap((family) => allPacks.filter((x) => x.pack.family === family));
+  const selected = hover ? resolvePack(hover, s.themeCustom, mine) : pack;
   const dark = theme === "dark";
   const packLabel = (p: Pack) => i(p.ar, p.en);
   const resetKeys = (keys: (keyof Settings)[], tuneFields: string[] = []) => set({ ...resetPatch(keys), ...(tuneFields.length ? { themeTune: resetTuneFields(s.themeTune, tuneFields) } : {}) });
@@ -122,14 +121,14 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings>; set: (p: Part
     const next = sanitizeUserTheme({ id: "custom", name: "Custom", ...custom, ...patch });
     if (!next) return;
     const { id: _id, name: _n, ...rest } = next;
-    set({ themeCustom: rest, themePack: "custom" });
+    set({ themeCustom: rest, ...themeSelection("custom") });
   };
   const saveToShelf = () => {
     if (mine.length >= MAX_SHELF) { setMsg(i(`الحدّ الأقصى ${MAX_SHELF} ثيمًا`, `Limit is ${MAX_SHELF} themes`)); return; }
     const nm = name.trim() || `${packLabel(pack)} ${i("(نسخة)", "(copy)")}`;
     const id = newShelfId(s.myThemes);
     const e = shelfEntry(pack, id, nm);
-    set({ myThemes: [...mine, e] as unknown as Record<string, unknown>[], themePack: id });
+    set({ myThemes: [...mine, e] as unknown as Record<string, unknown>[], ...themeSelection(id) });
     setName(""); setMsg(i("حُفظ في «ثيماتي»", "Saved to My themes"));
   };
   const doExport = () => {
@@ -147,71 +146,62 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings>; set: (p: Part
   const rawOpen = at("expert");
 
   return (
-    <div className="tp-root" data-level={level} data-testid="appearance-body">
-      {/* ───────── معرض الحزم (أول شاشة) ───────── */}
-      <section className="tp-gallery" data-testid="theme-gallery" hidden={searching}>
-        <div className="tp-gal-head">
-          <div><h3 dir="auto" className="tp-gal-title">{i("معرض الحزم", "Pack gallery")}</h3><p dir="auto" className="tp-gal-sub">{i("كل حزمة ثلاث بذور لونية تُشتق منها الأسطح فوق مادة الزجاج — مرّر للمعاينة، انقر للتطبيق.", "Each pack is three colour seeds from which the surfaces are derived over the glass material — hover to preview, click to apply.")}</p></div>
-          <Segmented label={i("مستوى الإفصاح", "Disclosure level")} value={level} onChange={(v) => set({ themeDisclosure: v })}
-            options={[{ value: "basic", label: i("أساسي", "Basic") }, { value: "advanced", label: i("متقدم", "Advanced") }, { value: "expert", label: i("خبير", "Expert") }]} />
-        </div>
-        <div className="tp-hero">
-          <div className="tp-stage tp-stage-main" aria-live="polite">
-            <MiniIsland pack={selected} dark={dark} s={s} size="lg" />
-            <span className="tp-stage-name" dir="auto">{packLabel(selected)}</span>
+    <div className="tp-root tp-simple" data-level={level} data-testid="appearance-body">
+      <div className="tp-hero" hidden={searching}>
+        <div className="tp-stage tp-stage-main" aria-live="polite"><MiniIsland pack={selected} dark={dark} s={s} size="lg" /><span className="tp-stage-name" dir="auto">{packLabel(selected)}</span></div>
+      </div>
+      <div className="tp-basic" data-testid="appearance-basic">
+        <section className="tp-basic-group st-card" data-basic="mode">
+          <Row icon={ic(SunMoon)} label={i("النمط", "Theme mode")} hint={i("فاتح أو داكن", "Light or dark")}>
+            <Segmented label={i("النمط", "Theme mode")} value={dark ? "dark" : "light"} onChange={(v) => set({ themeMode: v })} options={[{ value: "light", label: i("فاتح", "Light") }, { value: "dark", label: i("داكن", "Dark") }]} />
+          </Row>
+        </section>
+        <section className="tp-gallery tp-basic-group" data-basic="theme" data-testid="theme-gallery" hidden={searching}>
+          <h3 dir="auto" className="tp-gal-title">{i("الثيم", "Theme")}</h3>
+          <div className="tp-grid" role="radiogroup" aria-label={i("الثيم", "Theme")}>
+            {galleryPacks.map(({ pack: pk, id }) => (
+              <button key={id} role="radio" aria-checked={packId === id} aria-label={packLabel(pk)} data-pack={id} className="tp-card-btn"
+                onMouseEnter={() => setHover(id)} onMouseLeave={() => setHover(null)} onFocus={() => setHover(id)} onBlur={() => setHover(null)} onClick={() => set(themeSelection(id))}>
+                <MiniIsland pack={pk} dark={dark} s={s} size="sm" />
+                <span className="tp-card-name" dir="auto">{packLabel(pk)}</span><span className="tp-card-desc" dir="auto">{i(pk.dar, pk.den)}</span>
+              </button>
+            ))}
           </div>
-          <div className="tp-stage tp-stage-split"><SplitPreview pack={selected} s={s} /></div>
-        </div>
-        {(["seed", "gradient", "craft", "editorial", "shape", "time", "art", "custom"] as PackFamily[]).map((fam) => {
-          const items = allPacks.filter((x) => x.pack.family === fam && (fam !== "art" || x.pack.family === "art"));
-          if (!items.length) return null;
-          return (
-            <div key={fam} className="tp-fam">
-              <div className="tp-fam-title" dir="auto">{i(FAMILY_LABEL[fam][0], FAMILY_LABEL[fam][1])}</div>
-              <div className="tp-grid" role="radiogroup" aria-label={i(FAMILY_LABEL[fam][0], FAMILY_LABEL[fam][1])}>
-                {items.map(({ pack: pk, id }) => (
-                  <button key={id} role="radio" aria-checked={packId === id || (s.themePack ?? "obsidian") === id} aria-label={packLabel(pk)} data-pack={id} className="tp-card-btn"
-                    onMouseEnter={() => setHover(id)} onMouseLeave={() => setHover(null)} onFocus={() => setHover(id)} onBlur={() => setHover(null)}
-                    onClick={() => set({ themePack: id })}>
-                    <MiniIsland pack={pk} dark={dark} s={s} size="sm" />
-                    <span className="tp-card-name" dir="auto">{packLabel(pk)}</span>
-                    <span className="tp-card-desc" dir="auto">{i(pk.dar, pk.den)}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </section>
-
-      <Section title={i("تعيين الحزمة", "Pack assignment")}>
-        <Row icon={ic(Palette)} label={i("الحزمة", "Pack")} hint={i("الحزمة العامة لكلا الوضعين ما لم تُعيَّن حزمة منفصلة", "The general pack for both modes unless a separate pack is assigned")}>
-          <Select label={i("الحزمة", "Pack")} value={s.themePack ?? "obsidian"} onChange={(v) => set({ themePack: v })} options={allPacks.map((x) => ({ value: x.id, label: packLabel(x.pack) }))} />
-        </Row>
-        <Row icon={ic(Layers)} label={i("حزمة الوضع الداكن", "Dark-mode pack")} hint={i("تُستعمل حين يكون الوضع داكنًا (فارغ = الحزمة العامة)", "Used when the mode is dark (empty = the general pack)")}>
-          <Select label={i("حزمة الوضع الداكن", "Dark-mode pack")} value={s.themePackDark ?? ""} onChange={(v) => set({ themePackDark: v })} options={[{ value: "", label: i("— مثل العامة —", "— same as general —") }, ...allPacks.map((x) => ({ value: x.id, label: packLabel(x.pack) }))]} />
-        </Row>
-        <Row icon={ic(Layers)} label={i("حزمة الوضع الفاتح", "Light-mode pack")} hint={i("تُستعمل حين يكون الوضع فاتحًا (فارغ = الحزمة العامة)", "Used when the mode is light (empty = the general pack)")}>
-          <Select label={i("حزمة الوضع الفاتح", "Light-mode pack")} value={s.themePackLight ?? ""} onChange={(v) => set({ themePackLight: v })} options={[{ value: "", label: i("— مثل العامة —", "— same as general —") }, ...allPacks.map((x) => ({ value: x.id, label: packLabel(x.pack) }))]} />
-        </Row>
-      </Section>
-
+        </section>
+        <section className="tp-basic-group st-card" data-basic="accent">
+          <Row icon={ic(Brush)} label={i("لون التمييز", "Accent colour")} hint={i("من الثيم، أو ويندوز، أو لون تختاره", "From the theme, Windows, or a colour you choose")}>
+            <div className="tp-basic-controls"><Select label={i("مصدر لون التمييز", "Accent colour source")} value={s.accentSource ?? "pack"} onChange={(v) => set({ accentSource: v })} options={[{ value: "pack", label: i("من الثيم", "From theme") }, { value: "custom", label: i("لون مخصص", "Custom colour") }, { value: "windows", label: i("أكسنت ويندوز", "Windows accent") }, { value: "wallpaper", label: i("لون الخلفية الغالب", "Wallpaper colour") }]} />
+            <ColorField label={i("لون ثابت", "Fixed color")} value={s.accentSource === "custom" ? s.accentColor ?? derived.vars["--accent"] : derived.vars["--accent"]} onChange={(v) => set({ accentColor: v, accentSource: "custom" })} /></div>
+          </Row>
+        </section>
+        <section className="tp-basic-group st-card" data-basic="material">
+          <Row icon={ic(Layers)} label={i("الزجاج", "Material")} hint={i("مصمت أو زجاج مثلّج", "Solid or frosted glass")}>
+            <Segmented label={i("الزجاج", "Material")} value={s.themeMaterial === "solid" ? "solid" : "glass"} onChange={(v) => set(v === "solid" ? { themeMaterial: "solid" } : GLASS_STYLE_VALUES.crystal)} options={[{ value: "solid", label: i("مصمت", "Solid") }, { value: "glass", label: i("مثلّج", "Frosted") }]} />
+          </Row>
+        </section>
+        <section className="tp-basic-group st-card" data-basic="density">
+          <Row icon={ic(Percent)} label={i("كثافة الخلفية", "Background density")} hint={i("الأقل يُظهر ما خلف الجزيرة أكثر", "Lower shows more behind the island")}>
+            <Slider label={i("كثافة الخلفية", "Background density")} value={s.backgroundOpacity ?? 1} min={0.3} max={1} step={0.05} format={x100} onLive={(v) => set({ backgroundOpacity: v })} onCommit={(v) => set({ backgroundOpacity: v })} />
+          </Row>
+        </section>
+        <section className="tp-basic-group st-card" data-basic="edges">
+          <Row icon={ic(Square)} label={i("الحدود والظل", "Borders & shadow")}>
+            <div className="tp-basic-controls"><div className="tp-basic-slider"><span>{i("الحدود", "Borders")}</span><Slider label={i("قوة الحدود", "Border strength")} value={s.borderStrength ?? 50} min={0} max={100} step={5} format={pct} onLive={(v) => set({ borderStrength: v })} onCommit={(v) => set({ borderStrength: v })} /></div>
+            <div className="tp-basic-slider"><span>{i("الظل", "Shadow")}</span><Slider label={i("قوة الظلال", "Shadow strength")} value={s.shadowStrength ?? 50} min={0} max={100} step={5} format={pct} onLive={(v) => set({ shadowStrength: v })} onCommit={(v) => set({ shadowStrength: v })} /></div></div>
+          </Row>
+        </section>
+      </div>
+      <button className="tp-advanced-toggle" data-testid="appearance-advanced-toggle" aria-expanded={advanced || searching} aria-controls="appearance-advanced" onClick={() => setAdvanced(!advanced)}>
+        <SlidersHorizontal size={16} /><span>{i("خيارات متقدمة", "Advanced options")}</span><ChevronDown size={16} />
+      </button>
+      {(advanced || searching) && <div id="appearance-advanced" data-testid="appearance-advanced" className="tp-advanced">
+      <div className="tp-stage tp-stage-split"><SplitPreview pack={selected} s={s} /></div>
+      <Segmented label={i("مستوى التفاصيل", "Detail level")} value={level === "expert" ? "expert" : "advanced"} onChange={(v) => set({ themeDisclosure: v })} options={[{ value: "advanced", label: i("متقدم", "Advanced") }, { value: "expert", label: i("خبير", "Expert") }]} />
       {/* ───────── 1) الثيمات والحزم ───────── */}
       <Module {...modProps("packs")} icon={ic(Palette)} title={i("الثيمات والحزم", "Themes & packs")}
         summary={`${packLabel(pack)} · ${theme === "dark" ? i("داكن", "Dark") : i("فاتح", "Light")} · ${i("أكسنت", "accent")} ${derived.vars["--accent"]}`}
         preview={<span className="tp-dots"><i style={{ background: derived.vars["--accent"] }} /><i style={{ background: derived.vars["--t-wash-c"] }} /><i style={{ background: derived.vars["--t-base"] }} /></span>}
         onReset={() => resetKeys(["themeMode", "themePack", "themePackLight", "themePackDark", "accentSource", "accentColor", "accentMode", "artBloom", "themeAnim", "themeCustom"])}>
-        <Row icon={ic(SunMoon)} label={i("النمط", "Theme")} hint={i("فاتح أو داكن", "Light or dark")}>
-          <Segmented label={i("النمط", "Theme")} value={s.themeMode === "light" || s.themeMode === "dark" ? s.themeMode : theme} onChange={(v) => set({ themeMode: v })}
-            options={[{ value: "light", label: i("فاتح", "Light") }, { value: "dark", label: i("داكن", "Dark") }]} />
-        </Row>
-        <Row icon={ic(Brush)} label={i("مصدر لون الأكسنت", "Accent colour source")} hint={i("اختياري ومحلي بالكامل: لا يُرفع شيء خارج جهازك", "Optional and fully local: nothing leaves your device")}>
-          <Select label={i("مصدر لون الأكسنت", "Accent colour source")} value={s.accentSource ?? "pack"} onChange={(v) => set({ accentSource: v })}
-            options={[{ value: "pack", label: i("من الحزمة", "From the pack") }, { value: "custom", label: i("لون مخصص", "Custom colour") }, { value: "windows", label: i("أكسنت ويندوز", "Windows accent") }, { value: "wallpaper", label: i("لون الخلفية الغالب", "Wallpaper's dominant colour") }]} />
-        </Row>
-        <Row icon={ic(Brush)} label={i("لون ثابت", "Fixed color")} hint={i("يُستعمل حين يكون المصدر «لون مخصص»؛ اختياره يفعّل ذلك تلقائيًا. المحرك يعدّل إضاءته إن لزم لتبقى القراءة مريحة", "Used when the source is “Custom colour”; picking one switches to it. The engine adjusts its lightness when needed so reading stays comfortable")}>
-          <ColorField label={i("لون ثابت", "Fixed color")} value={s.accentColor ?? "#6d8dff"} onChange={(v) => set({ accentColor: v, accentSource: "custom" })} />
-        </Row>
         {at("advanced") && (
           <Row icon={ic(Brush)} label={i("لون التمييز", "Accent source")} hint={i("لمشغّل الوسائط: تلقائي من غلاف الأغنية أو لون ثابت", "For the media player: automatic from the cover, or a fixed colour")}>
             <Segmented label={i("لون التمييز", "Accent source")} value={s.accentMode ?? "auto"} onChange={(v) => set({ accentMode: v })}
@@ -255,7 +245,7 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings>; set: (p: Part
         </Row>
         {mine.map((u) => (
           <Row key={u.id} icon={ic(Palette)} label={u.name} hint={`${i("نسخة من", "Copy of")} ${packLabel(PACKS.find((p) => p.id === u.base) ?? PACKS[0])} · ${u.accent ?? ""}`}>
-            <button className={btnOutline} data-shelf-apply={u.id} aria-label={`${u.name} — ${i("تطبيق", "Apply")}`} onClick={() => set({ themePack: u.id })}>{i("تطبيق", "Apply")}</button>
+            <button className={btnOutline} data-shelf-apply={u.id} aria-label={`${u.name} — ${i("تطبيق", "Apply")}`} onClick={() => set(themeSelection(u.id))}>{i("تطبيق", "Apply")}</button>
             <button className="st-btn" style={{ width: 36, paddingInline: 0 }} data-shelf-del={u.id} aria-label={`${u.name} — ${i("حذف", "Delete")}`} onClick={() => set({ myThemes: mine.filter((x) => x.id !== u.id) as unknown as Record<string, unknown>[], ...(s.themePack === u.id ? { themePack: "obsidian" } : {}), ...(s.themePackDark === u.id ? { themePackDark: "" } : {}), ...(s.themePackLight === u.id ? { themePackLight: "" } : {}) })}><Trash2 size={14} /></button>
           </Row>
         ))}
@@ -272,49 +262,14 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings>; set: (p: Part
 
       {/* ───────── 2) الأسطح والمادة ───────── */}
       <Module {...modProps("surfaces")} icon={ic(Layers)} title={i("الأسطح والمادة", "Surfaces & material")}
-        summary={`${(s.themeMaterial ?? "glass") === "glass" ? (s.glassStyle === "clear" ? i("زجاج شفاف", "Clear glass") : i("زجاج مثلّج", "Frosted glass")) : i("مصمت", "Solid")} · ${i("الحجاب", "veil")} ${s.glassTint ?? 45}% · ${i("ظل", "shadow")} ${tune.en.elevation}`}
+        summary={`${(s.themeMaterial ?? "glass") === "glass" ? i("زجاج مثلّج", "Frosted glass") : i("مصمت", "Solid")} · ${i("الحجاب", "veil")} ${s.glassTint ?? 45}% · ${i("ظل", "shadow")} ${tune.en.elevation}`}
         preview={<span className="tp-mp tp-mp-surf"><i /><b /></span>}
         onReset={() => resetKeys(["themeMaterial", "glassStyle", "glassTint", "backgroundOpacity", "borderStrength", "shadowStrength"], TUNE_MODULE_FIELDS.surfaces)}>
-        <Row icon={ic(Sparkles)} label={i("أنماط جاهزة", "Style presets")} hint={i("نقرة واحدة تطبّق مجموعة كاملة من القيم", "One click applies a full set of values")} col>
-          <div className="st-chips" data-testid="presets">
-            {STYLE_PRESETS.map((p) => <button key={p.id} className="st-chip" data-preset={p.id} onClick={() => set(p.values)}>{i(p.ar, p.en)}</button>)}
-          </div>
-        </Row>
-        <Row icon={ic(Layers)} label={i("الخلفية", "Background")} hint={i("الزجاج سطح ملوّن شبه شفاف مرسوم في الجزيرة (ليس تمويهًا حقيقيًا لما خلفها)، ويصير معتمًا تلقائيًا في التوفير أو مع «تقليل الشفافية»", "Glass is a tinted translucent surface drawn in the island (not a real blur of what is behind it); it turns opaque automatically in Eco mode or with “reduce transparency”")} col>
-          <div className="st-gstyles st-gstyles3" role="radiogroup" aria-label={i("الخلفية", "Background")}>
-            {([
-              { id: "solid", ar: "مصمت", en: "Solid", dar: "سطح معتم بلا شفافية", den: "An opaque surface, no see-through" },
-              { id: "crystal", ar: "زجاج مُحاكى — مثلّج", en: "Simulated frosted glass", dar: "حجاب ملوّن كثيف بحدّ ولمعة وحبيبات — الموصى به", den: "A dense tinted veil with border, highlight and grain — recommended" },
-              { id: "clear", ar: "زجاج مُحاكى — شفاف", en: "Simulated clear glass", dar: "حجاب أخفّ يُظهر ما خلفه أكثر (بلا تمويه)", den: "A lighter veil that shows more of what is behind (no blur)" },
-            ] as const).map((g) => {
-              const glassOn = (s.themeMaterial ?? "glass") === "glass";
-              return (
-                <button key={g.id} role="radio" aria-label={i(g.ar, g.en)} aria-checked={(!glassOn ? "solid" : (s.glassStyle ?? "crystal")) === g.id} data-bg={g.id} className="st-gstyle"
-                  onClick={() => set(g.id === "solid" ? { themeMaterial: "solid" } : GLASS_STYLE_VALUES[g.id])}>
-                  <span className={`st-gprev ${g.id}`} />
-                  <span className="st-row-title">{i(g.ar, g.en)}</span>
-                  <span className="st-row-hint">{i(g.dar, g.den)}</span>
-                </button>
-              );
-            })}
-          </div>
-        </Row>
         {(s.themeMaterial ?? "glass") === "glass" && (
           <Row icon={ic(Contrast)} label={i("شدة الحجاب", "Veil strength")} hint={i("لون الحجاب وعتامته فوق سطح المكتب — الأعلى أوضح للنص", "Colour and opacity of the veil over the desktop — higher is easier to read")}>
             <Slider label={i("شدة الحجاب", "Veil strength")} value={s.glassTint ?? 45} min={0} max={80} step={1} format={pct} onLive={(v) => set({ glassTint: v })} onCommit={(v) => set({ glassTint: v })} />
           </Row>
         )}
-        {at("advanced") && (
-          <Row icon={ic(Percent)} label={i("الكثافة", "Density of background")} hint={i("العتامة الكلية للحجاب — الأقل يُظهر ما خلف الجزيرة أكثر", "Overall opacity of the veil — lower shows more of what is behind the island")}>
-            <Slider label={i("الكثافة", "Density of background")} value={s.backgroundOpacity ?? 1} min={0.3} max={1} step={0.05} format={x100} onLive={(v) => set({ backgroundOpacity: v })} onCommit={(v) => set({ backgroundOpacity: v })} />
-          </Row>
-        )}
-        <Row icon={ic(Square)} label={i("قوة الحدود", "Border strength")} hint={i("الحدّ الرفيع 1px بنسبة 6–10٪ (0 = بلا حدّ)", "The 1px edge at 6–10% (0 = none)")}>
-          <Slider label={i("قوة الحدود", "Border strength")} value={s.borderStrength ?? 50} min={0} max={100} step={5} format={pct} onLive={(v) => set({ borderStrength: v })} onCommit={(v) => set({ borderStrength: v })} />
-        </Row>
-        <Row icon={ic(Layers)} label={i("قوة الظلال", "Shadow strength")} hint={i("عمق الظل تحت العناصر", "How deep the shadows under things are")}>
-          <Slider label={i("قوة الظلال", "Shadow strength")} value={s.shadowStrength ?? 50} min={0} max={100} step={5} format={pct} onLive={(v) => set({ shadowStrength: v })} onCommit={(v) => set({ shadowStrength: v })} />
-        </Row>
         {at("advanced") && (<>
           <Row icon={ic(Layers)} label={i("أسلوب الظل والارتفاع", "Shadow & elevation style")} hint={i("مسطّح بلا ظل · ناعم (الافتراضي) · مرفوع أعمق", "Flat with no shadow · soft (default) · lifted and deeper")}>
             <Segmented label={i("أسلوب الظل والارتفاع", "Shadow & elevation style")} value={tune.en.elevation as "soft"} onChange={(v) => setTune({ elevation: v })}
@@ -448,6 +403,7 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings>; set: (p: Part
             onBlur={() => setArmed(false)}>{armed ? i("متأكد؟ إعادة ضبط", "Sure? Reset") : i("إعادة ضبط الكل", "Reset all")}</button>
         </Row>
       </Section>
+      </div>}
     </div>
   );
 }
