@@ -504,7 +504,7 @@ export function Pill() {
     return () => window.removeEventListener("keydown", h);
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   const cf = crossfade(speed, reduceUI);
-  const referenceHome = dockStyle && !wide && curTab === "home";
+  const referenceHome = dockStyle && curTab === "home";
   // reduced لا يذكر filter/transform؛ امسح قيم الحالة المخفية السابقة كي تبقى الرئيسية المرجعية حادّة بعد تحميل الإعدادات.
   const homeCf = referenceHome && reduceUI ? {
     hidden: { ...cf.hidden, filter: "none", y: 0, scale: 1 },
@@ -570,10 +570,10 @@ export function Pill() {
       ) : (
       // بطاقة النشاط الحي الأعلى أولوية تتصدّر الرئيسية (أو حالة الميديا الفارغة)؛ تحتها صف بلاطات «لمحة» الشرطية. لا شيء آخر.
       // الرئيسية: عمود يمرّر داخليًا إن لم يتّسع المحتوى (لا تداخل أبدًا): بطاقة النشاط/المشغّل بحدّ أدنى لمحتواها، وتحتها البلاطات.
-      <div data-layout={wide ? "wide" : "tall"} className={`flex min-h-0 flex-1 overflow-y-auto overflow-x-hidden ${wide ? "flex-row items-stretch" : "flex-col"}`} style={{ gap: "var(--island-section-gap)", ...(dockStyle ? { WebkitMaskImage: "linear-gradient(to bottom, #000 calc(100% - 16px), transparent)", maskImage: "linear-gradient(to bottom, #000 calc(100% - 16px), transparent)" } : {}) }}>
+      <div data-layout={wide ? "wide" : "tall"} className={`flex min-h-0 flex-1 overflow-y-auto overflow-x-hidden ${wide ? "wide-home flex-col" : "flex-col"}`} style={{ gap: "var(--island-section-gap)", ...(dockStyle ? { WebkitMaskImage: "linear-gradient(to bottom, #000 calc(100% - 16px), transparent)", maskImage: "linear-gradient(to bottom, #000 calc(100% - 16px), transparent)" } : {}) }}>
         {(shownPanel || moduleMedia) && (
-          <motion.div custom={0} variants={sectionVariants} initial="initial" animate="animate" className="min-w-0 flex-1 shrink-0 [min-height:min-content]">
-            {shownPanel ? (
+          <motion.div custom={0} variants={sectionVariants} initial="initial" animate="animate" className={`min-w-0 shrink-0 [min-height:min-content] ${wide ? "" : "flex-1"}`}>
+            {shownPanel && !(wide && shownPanel === "media") ? (
               <ActivityStack kinds={panelKinds} shown={shownPanel} onPin={setPinPanel} data={liveDataW} />
             ) : dockStyle && !media.info.session ? (
               <IdleHome settings={settings} attention={attention} onOpenTab={setTabId} />
@@ -702,7 +702,7 @@ export function Pill() {
             {privacy.mic && <span className="h-2 w-2 rounded-full bg-[var(--c-warning)] shadow-[0_0_6px_var(--c-warning)]" />}
           </div>
         )}
-        {media.cover && (settings.artworkBackdrop ?? true) && (settings.playerLayout ?? "compact") !== "minimal" && !(open && dockStyle && !wide && curTab === "home") && (
+        {media.cover && (settings.artworkBackdrop ?? true) && (settings.playerLayout ?? "compact") !== "minimal" && !(open && dockStyle && curTab === "home") && (
           <>
             <div aria-hidden data-testid="artwork-backdrop" style={{
               position: "absolute", inset: settings.fx?.hero ? "-24px -24px auto -24px" : -40, height: settings.fx?.hero ? "58%" : undefined, backgroundImage: `url(${media.cover})`, backgroundSize: "cover", backgroundPosition: "center", filter: `blur(${settings.fx?.hero ? 18 : 30}px) saturate(1.5)`, pointerEvents: "none",

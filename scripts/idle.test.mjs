@@ -24,7 +24,7 @@ eq("suggestions: note and clip take the two reference slots", full.map((s) => s.
 eq("suggestions: empty sources vanish, captures always present", m.buildSuggestions({ note: "", clip: "", workspace: "", workspaceItems: 0, lang: "en" }).map((s) => s.id), ["captures"]);
 eq("suggestions: maximum two", m.buildSuggestions({ note: "a", clip: "b", workspace: "c", workspaceItems: 1, lang: "en" }).length, 2);
 eq("suggestions: workspace fills an available slot with its real item count", m.buildSuggestions({ note: "", clip: "", workspace: "my-island", workspaceItems: 4, lang: "ar" })[0].sub, "مساحة عمل · 4 عناصر");
-eq("wide layout: short+wide panels yes, default/tall no", [lm.isWideLayout(720, 300), lm.isWideLayout(720, 260), lm.isWideLayout(520, 290), lm.isWideLayout(720, 420), lm.isWideLayout(480, 220)], [true, true, false, false, true]);
-eq("wide layout boundary: height 320 and ratio 2.1", [lm.isWideLayout(672, 320), lm.isWideLayout(671, 320), lm.isWideLayout(800, 321)], [true, false, false]);
+eq("wide layout: short panels yes regardless of aspect, tall no", [lm.isWideLayout(720, 300), lm.isWideLayout(720, 260), lm.isWideLayout(520, 290), lm.isWideLayout(720, 420), lm.isWideLayout(480, 220)], [true, true, true, false, true]);
+eq("wide layout boundary: strictly below 340", [lm.isWideLayout(520, 339), lm.isWideLayout(720, 340), lm.isWideLayout(800, 341)], [true, false, false]);
 eq("wide layout: invalid input is never wide", [lm.isWideLayout(NaN, 300), lm.isWideLayout(720, 0), lm.isWideLayout(-1, -1)], [false, false, false]);
 console.log(fail ? `FAIL (${fail}/${n})` : `OK idle (${n})`); process.exit(fail ? 1 : 0);

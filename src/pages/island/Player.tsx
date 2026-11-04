@@ -213,17 +213,17 @@ export function SeekBar({ pos, info, accent, h, reduce, showBar = true, showTime
 }
 
 /** أزرار التحكم (LTR، gap 14): سابق/تشغيل-إيقاف/تالٍ — الضغط لا يفتح الجزيرة ولا يغلقها. */
-export function Controls({ info, accent, compact = false }: { info: MediaView["info"]; accent?: string; compact?: boolean }) {
+export function Controls({ info, accent, compact = false, single = false }: { info: MediaView["info"]; accent?: string; compact?: boolean; single?: boolean }) {
   const ctl = (e: React.MouseEvent, action: string) => { e.stopPropagation(); invoke("media_control", { action }).catch(() => {}); };
   void accent;
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
   return (
     <div dir="ltr" data-testid="player-controls" onClick={stop} onMouseDown={stop} style={{ display: "flex", alignItems: "center", gap: compact ? 6 : 14 }}>
-      <button className={`pl-btn pl-ghost${compact ? " pl-sm" : ""}`} disabled={!info.can_prev} onClick={(e) => ctl(e, "prev")} aria-label={i("السابق", "Previous")} title={i("السابق", "Previous")}><SkipBack size={16} fill="currentColor" /></button>
+      {!single && <button className={`pl-btn pl-ghost${compact ? " pl-sm" : ""}`} disabled={!info.can_prev} onClick={(e) => ctl(e, "prev")} aria-label={i("السابق", "Previous")} title={i("السابق", "Previous")}><SkipBack size={16} fill="currentColor" /></button>}
       <button className={`pl-btn pl-play${compact ? " pl-sm" : ""}`} disabled={info.kind === "audio"} onClick={(e) => ctl(e, "toggle")} aria-label={info.playing ? i("إيقاف مؤقت", "Pause") : i("تشغيل", "Play")} title={info.playing ? i("إيقاف مؤقت", "Pause") : i("تشغيل", "Play")}>
         {info.playing ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" style={{ marginInlineStart: 2 }} />}
       </button>
-      <button className={`pl-btn pl-ghost${compact ? " pl-sm" : ""}`} disabled={!info.can_next} onClick={(e) => ctl(e, "next")} aria-label={i("التالي", "Next")} title={i("التالي", "Next")}><SkipForward size={16} fill="currentColor" /></button>
+      {!single && <button className={`pl-btn pl-ghost${compact ? " pl-sm" : ""}`} disabled={!info.can_next} onClick={(e) => ctl(e, "next")} aria-label={i("التالي", "Next")} title={i("التالي", "Next")}><SkipForward size={16} fill="currentColor" /></button>}
     </div>
   );
 }
@@ -285,7 +285,7 @@ export function PlayerPeek({ media, s, accent, reduce, visible, hover = false }:
 }
 
 /** المشغّل في اللوحة (تبويب الرئيسية): نفس المصغّرة (THUMB) + عنوان 20/650 + «فنان · ألبوم» + شريط تقديم + أزرار. */
-/** wide ⇒ تخطيط مدمج بصفّين (غلاف+عنوان+أزرار / شريط التقدّم) لمقاسات اللوحة العريضة القليلة الارتفاع (layoutMode.ts). */
+/** wide ⇒ بطاقة بعرض اللوحة: مصغّرة 96×54، معلومات وشريط، وزر تشغيل واحد (مرجع U). */
 export function PlayerPanel({ media, s, accent, reduce, visible, wide = false }: PlayerProps & { wide?: boolean }) {
   const { info, cover, sources } = media;
   const layout = s.playerLayout ?? "compact";
@@ -293,16 +293,14 @@ export function PlayerPanel({ media, s, accent, reduce, visible, wide = false }:
   if (!info.session) return <Empty />;
   if (wide) {
     return (
-      <div data-testid="player-panel" data-wide="true" style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 8, height: "100%", ["--player-accent" as string]: accent }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          {layout !== "minimal" && <Thumb cover={cover} coverW={media.coverW} coverH={media.coverH} session={info.session} trackKey={tkey(info)} source={info.source} sourceName={info.source_name} duration={info.duration} accent={accent} reduce={reduce} h={Math.min(thumbH(layout), 64)} maxW={panelThumb(s.panelWidth, s.panelHeight).maxW} />}
-          <div style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
-            <div dir="auto" className="truncate" style={{ fontSize: 18, fontWeight: 650, lineHeight: 1.2 }}>{mediaTitle(info)}</div>
-            <div dir="auto" className="truncate" style={{ fontSize: 12.5, opacity: 0.65 }}>{sub(info) || " "}</div>
-          </div>
-          <Controls info={info} />
+      <div data-testid="player-panel" data-wide="true" className="i-card wide-player" dir={s.language === "en" ? "ltr" : "rtl"}>
+        {layout !== "minimal" && <div className="wide-thumb" data-testid="wide-thumb"><Thumb cover={cover} coverW={media.coverW} coverH={media.coverH} session={info.session} trackKey={tkey(info)} source={info.source} sourceName={info.source_name} duration={info.duration} accent={accent} reduce={reduce} h={54} maxW={96} /></div>}
+        <div className="wide-player-info">
+          <div dir="auto" className="truncate wide-player-title">{mediaTitle(info)}</div>
+          <div dir="auto" className="truncate wide-player-sub">{sub(info) || " "}</div>
+          {(s.showProgress ?? true) && <SeekBar pos={pos} info={info} accent="var(--accent)" h={4} reduce={reduce} showTimes={s.showPlaybackTime ?? true} />}
         </div>
-        {(s.showProgress ?? true) && <SeekBar pos={pos} info={info} accent={accent} h={5} reduce={reduce} showTimes={s.showPlaybackTime ?? true} />}
+        <Controls info={info} single />
       </div>
     );
   }
