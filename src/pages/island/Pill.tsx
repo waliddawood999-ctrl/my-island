@@ -5,7 +5,7 @@ import { LottieIcon, LottieShownProvider } from "../../lottie";
 import { Coffee, Settings as SettingsIcon, Timer as TimerIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { IslandHalo } from "./Halo";
-import { alertShake, dur, ease, islandSpring, paletteVariants, useMotionLevel, sectionVariants, spring, swapVariants, tap } from "../../motion";
+import { alertShake, dur, ease, islandSpring, pillHoverSpring, paletteVariants, useMotionLevel, sectionVariants, spring, swapVariants, tap } from "../../motion";
 import { i } from "../../i18n";
 import { useResolvedTheme, useSettings } from "../../useSettings";
 import { shapeRadius } from "../../appearance";
@@ -33,7 +33,7 @@ import { normSound, normVolume, playSound } from "../../sounds";
 import { IslandMachine, normCardOrder, realSched } from "../../islandMachine";
 import { crossfade, normSpeed, resolveReduce } from "../../islandMotion";
 import { PeekView } from "./PeekView";
-import { PillMedia, PlayerPanel, useAccent } from "./Player";
+import { PillMedia, PlayerPeek, PlayerPanel, useAccent } from "./Player";
 import { scrollsFurther } from "./wheel";
 import { Bell as BellIcon, Calendar as CalendarIcon, Camera as CameraIcon, ClipboardList, Grid2x2, Home as HomeIcon, Layers as LayersIcon, Notebook, Wrench, Cpu as CpuIcon, MessageCircle, Rocket, Users } from "lucide-react";
 import { fmtCountdown, TIMER_NEAR_MS, useNoteAlert, useTimer } from "../../useNote";
@@ -166,6 +166,8 @@ export function Pill() {
   const ic = (n: number) => Math.round(n * k);
   const [time, setTime] = useState(() => fmtTime(fmt));
   const [hover, setHover] = useState(false);
+  const hoverRef = useRef(false);
+  const bodyRef = useRef<HTMLDivElement>(null);
   const [hidden, setHidden] = useState(false);
   // آلة الحالات (pill/peek/panel): المؤقتات والعجلة والخنق في islandMachine.ts؛ هنا فقط ربط بالواجهة.
   const [, bump] = useState(0);
@@ -193,9 +195,9 @@ export function Pill() {
   const trackKey = `${media.info.source}|${media.info.title}|${media.info.artist}|${media.info.album}`;
   const accent = useAccent(media.cover, trackKey, settings);
   const reduceUI = motion_level !== "full" || resolveReduce(settings.reduceMotion, false);
-  // mediaPill: "off"/"clock" = تبقى الساعة؛ غير ذلك (الافتراضي) = العنوان المتحرك أثناء التشغيل فقط.
+  // mediaPill: "off"/"clock" = الساعة؛ جلسة الميديا تبقى في الحبة عند الإيقاف المؤقت كي لا تختفي أزرار استئنافها أثناء الهوفر.
   const pillTitle =
-    moduleMedia && !["off", "clock"].includes(settings.mediaPill ?? "") && media.info.session && media.info.playing
+    moduleMedia && !["off", "clock"].includes(settings.mediaPill ?? "") && media.info.session
       ? [mediaTitle(media.info), media.info.artist].filter(Boolean).join(" — ")
       : null;
   const shelfOn = settings.moduleShelf ?? true;
@@ -293,6 +295,7 @@ export function Pill() {
   lastInGroup.current[groups[groupIdx]?.id ?? "home"] = curTab;
   // الإطلالة التفاعلية: جسم الرئيسية = peekHeight + شريط التبويبات؛ أي تبويب آخر ⇒ جسم أطول قابل للتمرير. سقف مطلق PEEK.maxW×maxH (docs/MOTION.md §الإطلالة).
   const peekBase = { w: clampN(settings.peekWidth, 240, PEEK.maxW, 460), h: clampN(settings.peekHeight, 72, 200, 148) };
+  const mediaHover = shownCap === "media" && peekTabId === "home" && M.currentCard === "player";
   const peekSz = { w: peekBase.w, h: Math.min(PEEK.maxH, peekTabId === "home" ? peekBase.h + PEEK.tabsH : Math.max(peekBase.h + PEEK.tabsH, PEEK.tabBodyH)) };
   const peekR = shapeRadius(settings.peekRadius, 30, settings.fx?.shape.peekR ?? null) ?? clampN(settings.peekRadius, 12, 60, 30);
   const panelR = shapeRadius(settings.panelRadius, 34, settings.fx?.shape.panelR ?? null) ?? clampN(settings.panelRadius, 16, 60, 34);
@@ -411,16 +414,36 @@ export function Pill() {
   }, []);
 
   const onEnter = () => {
+    hoverRef.current = true;
     setHover(true);
     if (paletteRef.current) return;
     window.clearTimeout(collapseT.current);
     M.enter(); // لمحة بعد hoverDelayMs؛ الأحداث تصل فقط من شكل الجزيرة نفسه (منطقة النافذة)
   };
   const onLeave = () => {
+    hoverRef.current = false;
     setHover(false);
     if (paletteRef.current) return;
     M.leave(); // إغلاق بعد 300ms (لمحة) / 500ms (لوحة)؛ العودة تلغيه
   };
+
+  // قد يُستبدل العنصر تحت المؤشر (Pause→Play) قبل وصول mouseleave الاصطناعي.
+  // حارس حدثي أثناء إطلالة الميديا فقط؛ لا استطلاع، ولا إغلاق أثناء سحب الشريط مع زر مضغوط.
+  useEffect(() => {
+    if (!peek || !mediaHover) return;
+    const check = (e: PointerEvent) => {
+      if (e.buttons || !hoverRef.current) return;
+      const r = bodyRef.current?.getBoundingClientRect();
+      if (r && (e.clientX < r.left || e.clientX >= r.right || e.clientY < r.top || e.clientY >= r.bottom)) {
+        hoverRef.current = false;
+        setHover(false);
+        M.leave();
+      }
+    };
+    document.addEventListener("pointermove", check, { passive: true });
+    document.addEventListener("pointerup", check, { passive: true });
+    return () => { document.removeEventListener("pointermove", check); document.removeEventListener("pointerup", check); };
+  }, [peek, mediaHover, M]);
 
   // الحالة الاستراحية: تنبيه/نشاط مدمج/ارتفاع الشريط عند الإرساء.
   const alertShown = !!alert && !open && shownCap !== "rec";
@@ -481,11 +504,22 @@ export function Pill() {
     return () => window.removeEventListener("keydown", h);
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   const cf = crossfade(speed, reduceUI);
+  const referenceHome = dockStyle && !wide && curTab === "home";
+  // reduced لا يذكر filter/transform؛ امسح قيم الحالة المخفية السابقة كي تبقى الرئيسية المرجعية حادّة بعد تحميل الإعدادات.
+  const homeCf = referenceHome && reduceUI ? {
+    hidden: { ...cf.hidden, filter: "none", y: 0, scale: 1 },
+    shown: { ...cf.shown, filter: "none", y: 0, scale: 1 },
+  } : cf;
+  const hoverCf = mediaHover && reduceUI ? {
+    hidden: { ...cf.hidden, filter: "none", y: 0, scale: 1 },
+    shown: { ...cf.shown, filter: "none", y: 0, scale: 1 },
+  } : cf;
   // نابض الحجم: فتح لمحة (d,b) · فتح لوحة (d×1.1,b) · أي إغلاق (d×0.9، بلا ارتداد). التقليل ⇒ قفز فوري + تلاشٍ 150ms.
   const rank = { pill: 0, peek: 1, panel: 2 } as const;
   const prevMode = useRef<"pill" | "peek" | "panel">("pill");
   const kind = palette ? "open" : rank[mode] > rank[prevMode.current] ? (mode === "panel" ? "panel" : "open") : rank[mode] < rank[prevMode.current] ? "close" : "open";
   useEffect(() => { prevMode.current = mode; }, [mode]);
+  const sizeSpring = mediaHover && !open && !palette ? pillHoverSpring(kind === "close") : kind === "close" ? islandSpring.close : kind === "panel" ? islandSpring.panel : islandSpring.open;
   M.setPages(tabs.length); M.page = tab; // الصفحة = التبويب الحالي (العجلة في اللوحة)
   // حارس التبديل: AnimatePresence(mode="wait") لا يركّب التبويب الجديد إلا بعد اكتمال حركة خروج القديم؛ إن لم تكتمل (إطارات متوقفة/نافذة
   // مخنوقة) بقي العرض القديم رغم تحديد التبويب الجديد. بعد tabSwitchGuard نعيد تركيب AnimatePresence فيُسقَط الخارج ويُركَّب الجديد.
@@ -520,6 +554,20 @@ export function Pill() {
   const renderTab = (id: string, where: "panel" | "peek") => (
     <>
     {id === "home" && where === "panel" && (
+      dockStyle && !wide ? (
+        <div data-layout="tall" data-testid="home-reference" className="home-reference">
+          {shownPanel && shownPanel !== "media" ? (
+            <ActivityStack kinds={panelKinds} shown={shownPanel} onPin={setPinPanel} data={liveData} />
+          ) : moduleMedia && media.info.session ? (
+            <PlayerPanel media={media} s={settings} accent={accent} reduce={reduceUI} visible={open} />
+          ) : (
+            <IdleHome settings={settings} attention={attention} time={time} onOpenTab={setTabId}>
+              <HomeTiles settings={settings} meetings={meetings.snap.items} battery={battery} liveShown={shownPanel} reference="idle" />
+            </IdleHome>
+          )}
+          {(shownPanel || (moduleMedia && media.info.session)) && <HomeTiles settings={settings} meetings={meetings.snap.items} battery={battery} liveShown={shownPanel} reference="media" />}
+        </div>
+      ) : (
       // بطاقة النشاط الحي الأعلى أولوية تتصدّر الرئيسية (أو حالة الميديا الفارغة)؛ تحتها صف بلاطات «لمحة» الشرطية. لا شيء آخر.
       // الرئيسية: عمود يمرّر داخليًا إن لم يتّسع المحتوى (لا تداخل أبدًا): بطاقة النشاط/المشغّل بحدّ أدنى لمحتواها، وتحتها البلاطات.
       <div data-layout={wide ? "wide" : "tall"} className={`flex min-h-0 flex-1 overflow-y-auto overflow-x-hidden ${wide ? "flex-row items-stretch" : "flex-col"}`} style={{ gap: "var(--island-section-gap)", ...(dockStyle ? { WebkitMaskImage: "linear-gradient(to bottom, #000 calc(100% - 16px), transparent)", maskImage: "linear-gradient(to bottom, #000 calc(100% - 16px), transparent)" } : {}) }}>
@@ -536,6 +584,7 @@ export function Pill() {
         )}
         <HomeTiles settings={settings} meetings={meetings.snap.items} battery={battery} liveShown={shownPanel} wide={wide} />
       </div>
+      )
     )}
     {id === "note" && (
       <div className="min-h-0 flex-1">
@@ -595,10 +644,11 @@ export function Pill() {
       <IslandHalo
         w={(palette || !animSize ? size : animSize).w} h={(palette || !animSize ? size : animSize).h} radius={targetR} opacity={opacity}
         align={settings.pillPosition === "left" ? "left" : settings.pillPosition === "right" ? "right" : "center"}
-        transition={kind === "close" ? islandSpring.close : kind === "panel" ? islandSpring.panel : islandSpring.open}
+        transition={sizeSpring}
         opacityTransition={{ duration: reduceUI ? 0.15 : dur.base, ease: ease.out }}
       />
       <motion.div
+        ref={bodyRef}
         onMouseEnter={onEnter}
         onMouseLeave={onLeave}
         onClick={(e) => {
@@ -615,10 +665,11 @@ export function Pill() {
           opacity, width: (palette || !animSize ? size : animSize).w, height: (palette || !animSize ? size : animSize).h, y: 0,
           borderTopLeftRadius: rTop, borderTopRightRadius: rTop, borderBottomLeftRadius: rBot, borderBottomRightRadius: rBot,
         }}
-        transition={{ default: kind === "close" ? islandSpring.close : kind === "panel" ? islandSpring.panel : islandSpring.open, opacity: { duration: reduceUI ? 0.15 : dur.base, ease: ease.out } }}
+        transition={{ default: sizeSpring, opacity: { duration: reduceUI ? 0.15 : dur.base, ease: ease.out } }}
         onAnimationComplete={() => { if (!flushShrink()) settleNow(); }}
         data-open={open || palette ? "true" : "false"}
         data-mode={palette ? "palette" : mode}
+        data-media-hover={mediaHover ? "true" : undefined}
         data-docking={attached ? "attached" : "floating"}
         data-spring={JSON.stringify(kind === "close" ? islandSpring.close : kind === "panel" ? islandSpring.panel : islandSpring.open)}
         onWheel={(e) => {
@@ -651,7 +702,7 @@ export function Pill() {
             {privacy.mic && <span className="h-2 w-2 rounded-full bg-[var(--c-warning)] shadow-[0_0_6px_var(--c-warning)]" />}
           </div>
         )}
-        {media.cover && (settings.artworkBackdrop ?? true) && (settings.playerLayout ?? "compact") !== "minimal" && (
+        {media.cover && (settings.artworkBackdrop ?? true) && (settings.playerLayout ?? "compact") !== "minimal" && !(open && dockStyle && !wide && curTab === "home") && (
           <>
             <div aria-hidden data-testid="artwork-backdrop" style={{
               position: "absolute", inset: settings.fx?.hero ? "-24px -24px auto -24px" : -40, height: settings.fx?.hero ? "58%" : undefined, backgroundImage: `url(${media.cover})`, backgroundSize: "cover", backgroundPosition: "center", filter: `blur(${settings.fx?.hero ? 18 : 30}px) saturate(1.5)`, pointerEvents: "none",
@@ -665,10 +716,11 @@ export function Pill() {
         <AnimatePresence>
           {peek && !palette && (
             <motion.div
-              key="peek" variants={cf} initial="hidden" animate="shown" exit="hidden" data-testid="peek-layer"
+              key="peek" variants={hoverCf} initial="hidden" animate="shown" exit="hidden" data-testid="peek-layer"
               style={{ width: peekSz.w, height: peekSz.h }}
               className="absolute left-1/2 top-0 flex -translate-x-1/2 flex-col"
             >
+              {mediaHover ? <PlayerPeek media={media} s={settings} accent={accent} reduce={reduceUI} visible={!hidden && opacity > 0} hover /> : <>
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div
                   key={peekTabId} variants={swapVariants} initial="initial" animate="animate" exit="exit"
@@ -697,6 +749,7 @@ export function Pill() {
                   />
                 </div>
               </div>
+              </>}
             </motion.div>
           )}
         </AnimatePresence>
@@ -744,7 +797,7 @@ export function Pill() {
               ) : pillKey === "stopwatch" ? (
                 <CapsuleSplit kind="stopwatch" k={k} dots={dots} left={i("ساعة إيقاف", "Stopwatch")} value={fmtStopwatch(swMs, false)} />
               ) : pillKey === "media" && pillTitle ? (
-                <PillMedia media={media} accent={accent} reduce={reduceUI} visible={mode === "pill" && !hidden} k={k} viz={settings.visualizer ?? "bars"} dots={dots} />
+                <PillMedia media={media} accent={accent} reduce={reduceUI} visible={mode === "pill" && !hidden} k={k} viz={settings.visualizer ?? "bars"} dots={dots} rtl={settings.language !== "en"} />
               ) : pillKey === "meeting" && upMeeting ? (
                 <CapsuleSplit
                   kind="meeting" k={k} dots={dots}
@@ -817,7 +870,7 @@ export function Pill() {
         </AnimatePresence>
         <motion.div
           initial={false}
-          variants={cf}
+          variants={homeCf}
           animate={open ? "shown" : "hidden"}
           data-testid="panel-layer"
           style={{ width: panel.w, height: panel.h, padding: "var(--island-pad)", pointerEvents: open ? "auto" : "none" }}
@@ -871,7 +924,7 @@ export function Pill() {
                 initial="initial"
                 animate="animate"
                 exit="exit"
-                className="flex min-h-0 flex-1 flex-col pt-3"
+                className={`flex min-h-0 flex-1 flex-col ${referenceHome ? "pt-0" : "pt-3"}`}
               >
                 {dockStyle && groups[groupIdx]?.id === "work" && (
                   <SubTabs

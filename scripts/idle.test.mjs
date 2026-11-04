@@ -20,10 +20,10 @@ eq("snippet truncates with ellipsis at max", m.snippet("abcdefghij", 5), "abcd�
 eq("snippet handles null/empty", [m.snippet(null), m.snippet(undefined), m.snippet("<p></p>")], ["", "", ""]);
 eq("focus formatting ar/en", [m.fmtFocus(3 * 3600 + 12 * 60 + 40, "ar"), m.fmtFocus(45 * 60, "en"), m.fmtFocus(0, "en"), m.fmtFocus(-9, "ar")], ["3س 12د", "45m", "0m", "0د"]);
 const full = m.buildSuggestions({ note: "اجتماع", clip: "github", workspace: "my-island", workspaceItems: 4, lang: "ar" });
-eq("suggestions: order note · clip · workspace · captures", full.map((s) => s.id), ["note", "clip", "workspace", "captures"]);
+eq("suggestions: note and clip take the two reference slots", full.map((s) => s.id), ["note", "clip"]);
 eq("suggestions: empty sources vanish, captures always present", m.buildSuggestions({ note: "", clip: "", workspace: "", workspaceItems: 0, lang: "en" }).map((s) => s.id), ["captures"]);
-eq("suggestions: max four", m.buildSuggestions({ note: "a", clip: "b", workspace: "c", workspaceItems: 1, lang: "en" }).length, 4);
-eq("suggestions: workspace subtitle carries the item count", full[2].sub, "مساحة عمل · 4 عناصر");
+eq("suggestions: maximum two", m.buildSuggestions({ note: "a", clip: "b", workspace: "c", workspaceItems: 1, lang: "en" }).length, 2);
+eq("suggestions: workspace fills an available slot with its real item count", m.buildSuggestions({ note: "", clip: "", workspace: "my-island", workspaceItems: 4, lang: "ar" })[0].sub, "مساحة عمل · 4 عناصر");
 eq("wide layout: short+wide panels yes, default/tall no", [lm.isWideLayout(720, 300), lm.isWideLayout(720, 260), lm.isWideLayout(520, 290), lm.isWideLayout(720, 420), lm.isWideLayout(480, 220)], [true, true, false, false, true]);
 eq("wide layout boundary: height 320 and ratio 2.1", [lm.isWideLayout(672, 320), lm.isWideLayout(671, 320), lm.isWideLayout(800, 321)], [true, false, false]);
 eq("wide layout: invalid input is never wide", [lm.isWideLayout(NaN, 300), lm.isWideLayout(720, 0), lm.isWideLayout(-1, -1)], [false, false, false]);

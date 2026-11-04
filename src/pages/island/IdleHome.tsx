@@ -1,6 +1,6 @@
 // الرئيسية بلا ميديا (ARCH-UI «يومك + ابدأ من هنا»): تحية بحسب الوقت + «ابدأ من حيث توقفت» (آخر ملاحظة · آخر عنصر حافظة · مساحة العمل · اللقطات)
 // + «وقتي اليوم». جلب واحد عند الفتح فقط (لا استطلاع ولا مؤقّتات)؛ الصلاة/الطقس/الاجتماع/البطارية تبقى في HomeTiles تحتها.
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { motion } from "motion/react";
 import { Camera, ClipboardList, Grid2x2, Notebook } from "lucide-react";
@@ -28,20 +28,20 @@ export function fmtFocus(totalSec: number, lang: "ar" | "en"): string {
   return h > 0 ? `${h}${hs} ${r}${ms}` : `${r}${ms}`;
 }
 export interface Suggestion { id: "note" | "clip" | "workspace" | "captures"; title: string; sub: string }
-/** يرتّب الاقتراحات المتاحة فقط (أول 4): ما لا بيانات له لا يظهر عدا اللقطات (تفتح مجلدها دائمًا). */
+/** أول اقتراحين متاحين؛ لا نختلق محتوى حين لا توجد بيانات. */
 export function buildSuggestions(o: { note: string; clip: string; workspace: string; workspaceItems: number; lang: "ar" | "en" }): Suggestion[] {
   const ar = o.lang === "ar", out: Suggestion[] = [];
   if (o.note) out.push({ id: "note", title: ar ? "أكمل ملاحظتك" : "Continue your note", sub: o.note });
   if (o.clip) out.push({ id: "clip", title: ar ? "آخر ما نسخت" : "Last copied", sub: o.clip });
   if (o.workspace) out.push({ id: "workspace", title: o.workspace, sub: ar ? `مساحة عمل · ${o.workspaceItems} عناصر` : `Workspace · ${o.workspaceItems} items` });
   out.push({ id: "captures", title: ar ? "آخر الملتقطات" : "Recent captures", sub: ar ? "افتح مجلد اللقطات" : "Open the captures folder" });
-  return out.slice(0, 4);
+  return out.slice(0, 2);
 }
 // PURE-END
 
 const ICON = { note: Notebook, clip: ClipboardList, workspace: Grid2x2, captures: Camera } as const;
 
-export function IdleHome({ settings, attention, onOpenTab }: { settings: Partial<Settings>; attention: AttentionSnap | null; onOpenTab: (id: string) => void }) {
+export function IdleHome({ settings, attention, onOpenTab, time, children }: { settings: Partial<Settings>; attention: AttentionSnap | null; onOpenTab: (id: string) => void; time?: string; children?: ReactNode }) {
   const lang = settings.language === "en" ? "en" : "ar";
   const [note, setNote] = useState("");
   const [clip, setClip] = useState("");
@@ -61,12 +61,14 @@ export function IdleHome({ settings, attention, onOpenTab }: { settings: Partial
   const focus = settings.attentionTracking ?? true ? attention : null;
   return (
     <motion.div data-testid="idle-home" custom={0} variants={sectionVariants} initial="initial" animate="animate" className="flex min-w-0 shrink-0 flex-col gap-2">
-      <div className="flex items-baseline justify-between gap-3" dir="auto">
-        <span data-testid="idle-greeting" className="text-[20px] font-extrabold" style={{ fontFamily: "var(--font-display)" }}>{greetingFor(new Date().getHours(), lang)}</span>
-        {focus && focus.enabled && focus.total > 0 && (
+      <div className="home-day-header flex items-baseline justify-between gap-3" dir={lang === "ar" ? "rtl" : "ltr"}>
+        <div><span data-testid="idle-greeting" className="home-greeting text-[20px] font-extrabold">{greetingFor(new Date().getHours(), lang)}</span>
+        {time && <h2 className="home-day-title">{i("يومك", "Your day")}</h2>}</div>
+        {time ? <span data-testid="idle-clock" dir="ltr" className="home-day-clock">{time}</span> : focus && focus.enabled && focus.total > 0 && (
           <span data-testid="idle-focus" className="text-[12px] text-white/55">{i("وقتي اليوم", "My time today")} <b className="text-white/90">{fmtFocus(focus.total, lang)}</b></span>
         )}
       </div>
+      {children}
       <span className="text-[11.5px] text-white/50" dir="auto">{i("ابدأ من حيث توقفت", "Pick up where you left off")}</span>
       <div className="grid grid-cols-2 gap-2">
         {sugg.map((s, n) => {
@@ -74,8 +76,8 @@ export function IdleHome({ settings, attention, onOpenTab }: { settings: Partial
           return (
             <motion.button key={s.id} custom={n} variants={itemVariants} initial="initial" animate="animate" whileHover={tap.whileHover} whileTap={tap.whileTap} transition={tap.transition}
               data-testid={`idle-${s.id}`} onClick={(e) => { e.stopPropagation(); run(s.id); }} dir="auto"
-              className="i-card flex min-w-0 items-center gap-2.5 px-3 py-2 text-start">
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}><Ic size={16} /></span>
+              className="i-card home-resume flex min-w-0 items-center gap-2 px-3 py-2 text-start">
+              <span className="shrink-0" style={{ color: "var(--accent)" }}><Ic size={14} /></span>
               <span className="min-w-0"><span className="block truncate text-[12.5px] font-bold">{s.title}</span><span className="block truncate text-[11px] text-white/55">{s.sub}</span></span>
             </motion.button>
           );

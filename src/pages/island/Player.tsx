@@ -10,7 +10,8 @@ import { mediaTitle, type MediaView } from "../../useMedia";
 import { classifySource, vibrant } from "../../mediaSource";
 import { THUMB } from "../../tokens";
 import { canSeekNow, clampFrac, fmtTime, fracFromPointer, keySeek, secondsFromFrac } from "../../seek";
-import { Thumb } from "./Thumb";
+import { Thumb, guessKind } from "./Thumb";
+import { thumbKind } from "../../coverImage";
 import { panelThumb, peekThumb } from "./thumbSize";
 
 // المشغّل (T03): عناصر مشتركة بين اللمحة واللوحة والحبة — غلاف، شارة مصدر، شريط تقدّم، أزرار، مؤشر صوتي، لون إبراز من الغلاف.
@@ -201,8 +202,10 @@ export function SeekBar({ pos, info, accent, h, reduce, showBar = true, showTime
         </div>
       )}
       {showTimes && (
-        <div data-testid="times" style={{ display: "flex", justifyContent: "space-between", fontSize: 10.5, opacity: 0.62, fontVariantNumeric: "tabular-nums" }}>
-          <span data-testid="time-now">{fmt(shown)}</span><span data-testid="time-total">{dur > 0 ? fmt(dur) : "--:--"}</span>
+        <div data-testid="times" style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", fontSize: 10.5, opacity: 0.62, fontVariantNumeric: "tabular-nums" }}>
+          <span data-testid="time-now">{fmt(drag !== null ? pos : shown)}</span>
+          <span data-testid="time-target" aria-live="polite" style={{ color: accent, fontWeight: 700 }}>{drag !== null ? `← ${fmt(shown)}` : ""}</span>
+          <span data-testid="time-total" style={{ textAlign: "right" }}>{dur > 0 ? fmt(dur) : "--:--"}</span>
         </div>
       )}
     </div>
@@ -240,7 +243,7 @@ const tkey = (info: MediaView["info"]) => `${info.source}|${info.title}|${info.a
 const thumbH = (layout: string) => (layout === "large" ? THUMB.hLarge : THUMB.h);
 
 /** بطاقة المشغّل في اللمحة (تفاعلية كاملة): مصغّرة (THUMB) + عنوان/فنان + أزرار التحكم + شريط تقديم بالزمنين. */
-export function PlayerPeek({ media, s, accent, reduce, visible }: PlayerProps) {
+export function PlayerPeek({ media, s, accent, reduce, visible, hover = false }: PlayerProps & { hover?: boolean }) {
   const { info, cover } = media;
   const layout = s.playerLayout ?? "compact";
   const pos = usePos(media, visible);
@@ -248,6 +251,20 @@ export function PlayerPeek({ media, s, accent, reduce, visible }: PlayerProps) {
   const viz = s.visualizer ?? "bars";
   const pk = peekThumb(s.peekWidth, s.peekHeight);
   const narrow = (s.peekWidth ?? 460) < 360; // إطلالة ضيّقة: بلا مصغّرة ولا مؤشر كي لا يتداخل شيء مع الأزرار
+  if (hover) return (
+    <div data-testid="player-peek" data-pill-hover="true" className="pill-hover-player" style={{ ["--player-accent" as string]: "var(--accent)" }}>
+      <div className="pill-hover-header" dir={s.language === "en" ? "ltr" : "rtl"}>
+        <Thumb cover={cover} coverW={media.coverW} coverH={media.coverH} session={info.session} trackKey={tkey(info)} source={info.source} sourceName={info.source_name} duration={info.duration} accent="var(--accent)" reduce={reduce} h={Math.min(pk.h, Math.max(20, (s.peekHeight ?? 148) - 64))} maxW={pk.maxW} />
+        <div className="pill-hover-info">
+          {(s.showSourceBadge ?? true) && <SourceBadge aumid={info.source} name={info.source_name} />}
+          <div dir="auto" className="truncate pill-hover-title">{mediaTitle(info)}</div>
+          <div dir="auto" className="truncate pill-hover-sub">{sub(info) || " "}</div>
+        </div>
+      </div>
+      {(s.showProgress ?? true) && <SeekBar pos={pos} info={info} accent="var(--accent)" h={4} reduce={reduce} showTimes={s.showPlaybackTime ?? true} />}
+      <div className="pill-hover-controls"><Controls info={info} compact={narrow} /></div>
+    </div>
+  );
   return (
     <div data-testid="player-peek" style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 8, height: "100%", ["--player-accent" as string]: accent }}>
       <div style={{ display: "flex", alignItems: "center", gap: 14, minHeight: 0 }}>
@@ -293,16 +310,14 @@ export function PlayerPanel({ media, s, accent, reduce, visible, wide = false }:
     // بطاقة المشغّل (التصميم المتفق عليه): غلاف/مصغّرة فيديو كبيرة بحجم يتبع مقاس اللوحة + شارة المصدر + موجة + عنوان + شريط + أزرار.
     const pt = panelThumb(s.panelWidth, s.panelHeight);
     return (
-      <div data-testid="player-panel" data-card="true" className="i-card" style={{ display: "flex", alignItems: "center", gap: 16, padding: 12, borderRadius: 26, height: "100%", minHeight: 0, ["--player-accent" as string]: accent }}>
-        {layout !== "minimal" && <Thumb cover={cover} coverW={media.coverW} coverH={media.coverH} session={info.session} trackKey={tkey(info)} source={info.source} sourceName={info.source_name} duration={info.duration} accent={accent} reduce={reduce} h={pt.h} maxW={pt.maxW} />}
-        <div style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: 5 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-            {(s.showSourceBadge ?? true) ? <SourceBadge aumid={info.source} name={info.source_name} /> : <span />}
-            <Visualizer kind={s.visualizer ?? "bars"} count={14} playing={info.playing} visible={visible} reduce={reduce} accent={accent} w={3} h={20} />
-          </div>
-          <div dir="auto" className="truncate" style={{ fontSize: 21, fontWeight: 700, lineHeight: 1.2 }}>{mediaTitle(info)}</div>
-          <div dir="auto" className="truncate" style={{ fontSize: 13, opacity: 0.65 }}>{sub(info) || " "}</div>
-          {(s.showProgress ?? true) && <SeekBar pos={pos} info={info} accent={accent} h={5} reduce={reduce} showTimes={s.showPlaybackTime ?? true} />}
+      <div data-testid="player-panel" data-card="true" className="i-card home-player" style={{ ["--player-accent" as string]: "var(--accent)" }}>
+        {layout !== "minimal" && <Thumb cover={cover} coverW={media.coverW} coverH={media.coverH} session={info.session} trackKey={tkey(info)} source={info.source} sourceName={info.source_name} duration={info.duration} accent={accent} reduce={reduce} h={Math.round(pt.h * .8)} maxW={Math.round(pt.maxW * .8)} />}
+        <div className="home-player-info">
+          {(s.showSourceBadge ?? true) && <SourceBadge aumid={info.source} name={info.source_name} />}
+          <div dir="auto" className="home-player-title truncate">{mediaTitle(info)}</div>
+          <div dir="auto" className="home-player-sub truncate">{sub(info) || " "}</div>
+          {(cover && media.coverW > 0 ? thumbKind(media.coverW, media.coverH) : guessKind(info.source, info.source_name)) === "audio" && <Visualizer kind={s.visualizer ?? "bars"} count={12} playing={info.playing} visible={visible} reduce={reduce} accent="var(--accent)" w={5} h={16} />}
+          {(s.showProgress ?? true) && <SeekBar pos={pos} info={info} accent="var(--accent)" h={4} reduce={reduce} showTimes={s.showPlaybackTime ?? true} />}
           <div style={{ display: "flex", justifyContent: "center" }}><Controls info={info} /></div>
         </div>
       </div>
@@ -336,17 +351,17 @@ export function PlayerPanel({ media, s, accent, reduce, visible, wide = false }:
 }
 
 /** محتوى الحبة المنكمشة أثناء التشغيل: مصغّرة الغلاف + 4 أشرطة (داخل الحبة نفسها، لا تغيّر مقاسها). */
-export function PillMedia({ media, accent, reduce, visible, k, viz, dots }: { media: MediaView; accent: string; reduce: boolean; visible: boolean; k: number; viz: "bars" | "wave" | "off"; dots?: ReactNode }) {
+export function PillMedia({ media, accent, reduce, visible, k, viz, dots, rtl = false }: { media: MediaView; accent: string; reduce: boolean; visible: boolean; k: number; viz: "bars" | "wave" | "off"; dots?: ReactNode; rtl?: boolean }) {
   const { info, cover } = media;
-  const a = Math.round(20 * k);
+  const a = Math.min(36, Math.round(32 * k)); // يبقى مقاس الحبة الذي اختاره المستخدم قائدًا إن كان ارتفاعه أقل من 36.
+  void accent; void dots;
   return (
-    <div dir="ltr" data-testid="capsule-media" data-kind="media" style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", paddingInline: Math.round(8 * k) }}>
-      <div style={{ width: a, height: a, flex: "none", borderRadius: a * 0.28, overflow: "hidden", background: "rgba(255,255,255,.12)" }}>
-        {cover ? <img src={cover} alt="" draggable={false} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <Music size={Math.round(a * 0.6)} style={{ margin: "20%" }} />}
+    <div dir={rtl ? "rtl" : "ltr"} data-testid="capsule-media" data-kind="media" className="pill-media-rest" style={{ paddingInline: Math.round(6 * k) }}>
+      <div data-testid="pill-rest-thumb" style={{ width: 64, height: a, flex: "none", borderRadius: 8, overflow: "hidden", background: "var(--island-surface)" }}>
+        {cover ? <img src={cover} alt="" draggable={false} style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} /> : <Music size={Math.round(a * 0.6)} style={{ margin: "auto", height: "100%" }} />}
       </div>
-      <span dir="auto" className="min-w-0 flex-1 truncate" style={{ textAlign: "start", fontSize: 12.5 * k }}>{mediaTitle(info)}</span>
-      <Visualizer kind={viz === "off" ? "off" : "bars"} count={4} playing={info.playing} visible={visible} reduce={reduce} accent={accent} w={Math.round(3 * k)} h={Math.round(14 * k)} />
-      {dots}
+      <div className="min-w-0 flex-1"><div dir="auto" className="truncate" style={{ fontSize: Math.min(13, 12.5 * k), fontWeight: 700 }}>{mediaTitle(info)}</div><div dir="auto" className="truncate pill-rest-sub">{sub(info)}</div></div>
+      <Visualizer kind={viz === "off" ? "off" : "bars"} count={4} playing={info.playing} visible={visible} reduce={reduce} accent="var(--accent)" w={2} h={12} />
     </div>
   );
 }

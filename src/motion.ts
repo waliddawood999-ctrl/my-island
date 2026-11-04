@@ -38,6 +38,9 @@ export const islandSpring: { open: Transition; panel: Transition; close: Transit
   open: deriveSpring("open", "calm", 1, 0.1), panel: deriveSpring("panel", "calm", 1, 0.1), close: deriveSpring("close", "calm", 1, 0.1),
 };
 
+/** تمدد مشغّل الحبة من الحافة العليا؛ يقرأ النابض الحي نفسه كي يحترم ضبط المستخدم وEco/reduced/off. */
+export const pillHoverSpring = (closing = false): Transition => closing ? islandSpring.close : islandSpring.open;
+
 function buildFullSpring(): Record<SpringKey, Transition> {
   return {
     island: deriveSpring("open", preset, speed, bounce),
