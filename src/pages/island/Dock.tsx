@@ -2,6 +2,7 @@
 // (pageGroups): الرئيسية · الالتقاط · الحافظة · التطبيقات · الأدوات (الرف/ملاحظة/اجتماعات/النظام كتبويبات فرعية). لا يغيّر منطق التبويبات نفسه.
 import { motion } from "motion/react";
 import type { ReactNode } from "react";
+import { i } from "../../i18n";
 import { spring, tap } from "../../motion";
 
 /** تعريف صفحة في الدوك: members = معرّفات التبويبات الدقيقة التي تنتمي لها. */
@@ -27,7 +28,7 @@ export function targetTab(group: { members: string[] }, last: string | undefined
 
 export function Dock({ groups, active, onSelect }: { groups: PageGroup[]; active: number; onSelect: (n: number) => void }) {
   return (
-    <div role="tablist" dir="ltr" data-testid="page-dock" className="flex gap-[3px] rounded-full p-[5px]" style={{ background: "var(--island-surface-strong, rgba(255,255,255,.08))" }}>
+    <div role="tablist" dir={i("rtl", "ltr")} data-testid="page-dock" className="flex gap-[3px] rounded-full p-[5px]" style={{ background: "var(--island-surface-strong, rgba(255,255,255,.08))" }}>
       {groups.map((g, n) => {
         const on = n === active;
         return (

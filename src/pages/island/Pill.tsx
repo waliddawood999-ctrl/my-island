@@ -4,6 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 import { LottieIcon, LottieShownProvider } from "../../lottie";
 import { Coffee, Settings as SettingsIcon, Timer as TimerIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { CapturePreview, type CaptureShot } from "./CapturePreview";
 import { IslandHalo } from "./Halo";
 import { alertShake, dur, ease, islandSpring, pillHoverSpring, paletteVariants, useMotionLevel, sectionVariants, spring, swapVariants, tap } from "../../motion";
 import { i } from "../../i18n";
@@ -33,9 +34,9 @@ import { normSound, normVolume, playSound } from "../../sounds";
 import { IslandMachine, normCardOrder, realSched } from "../../islandMachine";
 import { crossfade, normSpeed, resolveReduce } from "../../islandMotion";
 import { PeekView } from "./PeekView";
-import { PillMedia, PlayerPeek, PlayerPanel, useAccent } from "./Player";
+import { PillMedia, PlayerPeek, PlayerPanel } from "./Player";
 import { scrollsFurther } from "./wheel";
-import { Bell as BellIcon, Calendar as CalendarIcon, Camera as CameraIcon, ClipboardList, Grid2x2, Home as HomeIcon, Layers as LayersIcon, Notebook, Wrench, Cpu as CpuIcon, MessageCircle, Rocket, Users } from "lucide-react";
+import { Bell as BellIcon, Calendar as CalendarIcon, Camera as CameraIcon, ClipboardList, Grid2x2, Home as HomeIcon, Layers as LayersIcon, Notebook, NotebookPen, Wrench, Cpu as CpuIcon, MessageCircle, Rocket, Users } from "lucide-react";
 import { fmtCountdown, TIMER_NEAR_MS, useNoteAlert, useTimer } from "../../useNote";
 import { MediaSection } from "./MediaSection";
 import { TodaySection } from "./TodaySection";
@@ -107,7 +108,7 @@ const PAGE_DEFS = [
   { id: "capture", members: ["tools"], label: () => i("الالتقاط", "Capture"), icon: <CameraIcon size={16} /> },
   { id: "clip", members: ["clip"], label: () => i("الحافظة", "Clipboard"), icon: <ClipboardList size={16} /> },
   { id: "apps", members: ["launcher"], label: () => i("التطبيقات", "Apps"), icon: <Grid2x2 size={16} /> },
-  { id: "work", members: ["shelf", "note", "meetings", "system"], label: () => i("الأدوات", "Tools"), icon: <Wrench size={16} /> },
+  { id: "work", members: ["shelf", "note", "meetings", "system"], label: () => i("الأدوات", "Tools"), icon: <NotebookPen size={16} /> },
 ];
 
 /**
@@ -178,6 +179,15 @@ export function Pill() {
   const open = mode === "panel";
   const peek = mode === "peek";
   const [tabId, setTabId] = useState("home");
+  const [captureShot, setCaptureShot] = useState<CaptureShot | null>(null);
+  const closeCapture = useCallback(() => setCaptureShot(null), []);
+  useEffect(() => {
+    const un = listen<CaptureShot>("capture:saved", e => {
+      if (!e.payload?.path) return;
+      setCaptureShot(e.payload); setTabId("tools"); M.click();
+    });
+    return () => { un.then(f => f()); };
+  }, [M]);
   // تبويب الإطلالة مستقل عن تبويب اللوحة ويعود للرئيسية عند الانكماش للحبة (فلا تفتح كل إطلالة لاحقة على حقل بحث/قائمة)؛ الضغط على خلفية الإطلالة ينقله للوحة.
   const [peekTab, setPeekTab] = useState("home");
   const [NoteTab, setNoteTab] = useState(makeNoteTab);
@@ -193,7 +203,7 @@ export function Pill() {
   const moduleMedia = settings.moduleMedia ?? true;
   const media = useMedia(moduleMedia);
   const trackKey = `${media.info.source}|${media.info.title}|${media.info.artist}|${media.info.album}`;
-  const accent = useAccent(media.cover, trackKey, settings);
+  const accent = "var(--accent)";
   const reduceUI = motion_level !== "full" || resolveReduce(settings.reduceMotion, false);
   // mediaPill: "off"/"clock" = الساعة؛ جلسة الميديا تبقى في الحبة عند الإيقاف المؤقت كي لا تختفي أزرار استئنافها أثناء الهوفر.
   const pillTitle =
@@ -423,7 +433,7 @@ export function Pill() {
   const onLeave = () => {
     hoverRef.current = false;
     setHover(false);
-    if (paletteRef.current) return;
+    if (paletteRef.current || captureShot) return;
     M.leave(); // إغلاق بعد 300ms (لمحة) / 500ms (لوحة)؛ العودة تلغيه
   };
 
@@ -506,11 +516,11 @@ export function Pill() {
   const cf = crossfade(speed, reduceUI);
   const referenceHome = dockStyle && curTab === "home";
   // reduced لا يذكر filter/transform؛ امسح قيم الحالة المخفية السابقة كي تبقى الرئيسية المرجعية حادّة بعد تحميل الإعدادات.
-  const homeCf = referenceHome && reduceUI ? {
+  const homeCf = reduceUI ? {
     hidden: { ...cf.hidden, filter: "none", y: 0, scale: 1 },
     shown: { ...cf.shown, filter: "none", y: 0, scale: 1 },
   } : cf;
-  const hoverCf = mediaHover && reduceUI ? {
+  const hoverCf = reduceUI ? {
     hidden: { ...cf.hidden, filter: "none", y: 0, scale: 1 },
     shown: { ...cf.shown, filter: "none", y: 0, scale: 1 },
   } : cf;
@@ -933,7 +943,7 @@ export function Pill() {
                     onSelect={(id) => setTabId(id)}
                   />
                 )}
-                {renderTab(curTab, "panel")}
+                {captureShot ? <CapturePreview key={captureShot.path} shot={captureShot} onClose={closeCapture} /> : renderTab(curTab, "panel")}
               </motion.div>
             )}
           </AnimatePresence>

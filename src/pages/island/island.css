@@ -348,3 +348,17 @@ svg.lucide { scale: var(--icon-k, 1); }
 :root[data-pstyle="ring"] .sk { height: 12px !important; }
 :root[data-pstyle="ring"] .sk-track { height: 2px !important; opacity: .35; }
 :root[data-pstyle="ring"] .sk-knob { width: 6px; height: 6px; margin: -3px 0 0 -3px; }
+
+/* Capture feedback uses the existing panel and never changes the theme geometry. */
+.capture-preview { display:flex; flex-direction:column; gap:8px; min-height:0; height:100%; overflow:auto; }
+.capture-preview header { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.capture-image { display:block; width:100%; min-height:50px; max-height:55%; object-fit:contain; border-radius:16px; cursor:grab; }
+.capture-actions { display:flex; flex-wrap:wrap; gap:6px; }
+.capture-actions .i-btn { padding:5px 10px; font-size:11px; background:var(--island-surface); }
+.capture-countdown { height:4px; background:var(--c-border); border-radius:999px; overflow:hidden; flex:none; }
+.capture-countdown span { display:block; height:100%; background:var(--accent); transform-origin:right; }
+.capture-preview p { font-size:11px; overflow-wrap:anywhere; }
+.clip-filters { display:flex; gap:5px; flex-wrap:wrap; }
+.clip-filters button { border-radius:999px; padding:4px 10px; background:var(--island-surface); }
+.clip-filters button[aria-pressed=true] { background:var(--accent); color:var(--accent-fg); }
+.clip-selected { outline:2px solid var(--accent); outline-offset:-2px; }

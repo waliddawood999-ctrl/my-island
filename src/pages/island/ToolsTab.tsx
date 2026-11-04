@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { FolderOpen, Monitor, NotebookPen, Pencil, Pipette, Square, Trash2, Video } from "lucide-react";
+import { ScanText, Monitor, NotebookPen, Pipette, Square, Trash2, Video } from "lucide-react";
 import { i } from "../../i18n";
 import { fmtElapsed, useRecording } from "../../useRecording";
 import type { Settings } from "../../settings";
@@ -33,7 +33,7 @@ export function ToolsTab({ settings, wide = false, onOpenTab }: { settings?: Par
   }, [loadColors]);
 
   const run = (cmd: string, args?: Record<string, unknown>) => () => {
-    invoke(cmd, args).catch((e) => say(String(e)));
+    invoke(cmd, args).then(() => say(i("تم إرسال الطلب", "Request sent"))).catch((e) => say(String(e)));
   };
   // حذف لون واحد / مسح السجل: الخلفية تعيد القائمة المحدَّثة (الاستجابة تكفي؛ وإن تعذّرت نعيد التحميل).
   const delColor = (c: ColorEntry) => invoke<ColorEntry[] | null>("color_delete", { hex: c.hex }).then((l) => (Array.isArray(l) ? setColors(l) : loadColors())).catch(() => loadColors());
@@ -49,12 +49,12 @@ export function ToolsTab({ settings, wide = false, onOpenTab }: { settings?: Par
   const hk = (v?: string) => (v ? <kbd dir="ltr" className="rounded bg-white/10 px-1 text-[9.5px] font-normal text-white/55">{v}</kbd> : null);
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
-      <div data-testid="capture-grid" className={`grid shrink-0 gap-2 ${wide ? "grid-cols-7" : "grid-cols-4"}`}>
+      <div data-testid="capture-grid" className={`grid shrink-0 gap-2 ${wide ? "grid-cols-6" : "grid-cols-3"}`}>
         <button className={btn} onClick={run("capture_start", { mode: "area" })}>
           <Square size={18} /><span dir="auto">{i("لقطة منطقة", "Area shot")}</span>{hk(settings?.hotkeyArea)}
         </button>
         <button className={btn} onClick={run("capture_start", { mode: "screen" })}>
-          <Monitor size={18} /><span dir="auto">{i("لقطة الشاشة", "Full screen")}</span>{hk(settings?.hotkeyScreen)}
+          <Monitor size={18} /><span dir="auto">{i("لقطة كاملة", "Full screen")}</span>{hk(settings?.hotkeyScreen)}
         </button>
         {rec.recording ? (
           <button className={`${btn} !bg-red-600/80`} onClick={run("record_stop")} aria-label={i("إيقاف التسجيل", "Stop recording")}>
@@ -63,23 +63,21 @@ export function ToolsTab({ settings, wide = false, onOpenTab }: { settings?: Par
           </button>
         ) : (
           <button className={btn} onClick={run("record_begin")}>
-            <Video size={18} /><span dir="auto">{i("تسجيل", "Record")}</span>{hk(settings?.hotkeyRecord)}
+            <Video size={18} /><span dir="auto">{i("تسجيل شاشة", "Record screen")}</span>{hk(settings?.hotkeyRecord)}
           </button>
         )}
         <button className={btn} onClick={run("color_pick")}>
           <Pipette size={18} /><span dir="auto">{i("منتقي الألوان", "Color picker")}</span>{hk(settings?.hotkeyColor)}
         </button>
-        <button className={btn} onClick={run("editor_open")}>
-          <Pencil size={18} /><span dir="auto">{i("تحرير آخر لقطة", "Edit last shot")}</span>
+        <button className={btn} disabled title={i("استخراج النص غير متاح بعد؛ لا يوجد محرك OCR موصول", "Text extraction is not available yet; no OCR engine is connected")}>
+          <ScanText size={18} /><span dir="auto">{i("استخراج نص OCR", "Extract text OCR")}</span><small>{i("غير متاح بعد", "Not available yet")}</small>
         </button>
         {onOpenTab && (
           <button data-testid="capture-note" className={btn} onClick={() => onOpenTab("note")}>
             <NotebookPen size={18} /><span dir="auto">{i("ملاحظة سريعة", "Quick note")}</span>
           </button>
         )}
-        <button className={btn} onClick={run("open_captures")}>
-          <FolderOpen size={18} /><span dir="auto">{i("مجلد اللقطات", "Captures folder")}</span>
-        </button>
+
       </div>
 
       {(rec.last?.path || rec.last?.error) && !rec.recording && (
@@ -93,7 +91,7 @@ export function ToolsTab({ settings, wide = false, onOpenTab }: { settings?: Par
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="mb-1 flex shrink-0 items-center gap-2 text-xs text-white/60">
           <Pipette size={12} /><span dir="auto">{i("آخر الألوان", "Recent colors")}</span>
-          {colors.length > 0 && <button data-testid="colors-clear" onClick={clearColors} className="ms-2 rounded bg-white/10 px-1.5 py-0.5 text-[10px] hover:bg-white/20">{i("مسح الكل", "Clear all")}</button>}
+          {colors.length > 0 && <button data-testid="colors-clear" onClick={clearColors} className="ms-2 rounded bg-white/10 px-1.5 py-0.5 text-[10px] hover:bg-white/20">{i("حذف الكل", "Clear all")}</button>}
           {toast && <span dir="auto" className="ms-auto inline-flex items-center gap-1.5"><span aria-hidden className="h-1.5 w-1.5 rounded-full bg-[var(--app-accent)]" />{toast}</span>}
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto">

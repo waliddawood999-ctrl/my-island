@@ -268,3 +268,6 @@ export const progressMotion = {
   wave: { duration: 1.2, repeat: Infinity, ease: "easeInOut" } as Transition,
   settle: { type: "spring", stiffness: 300, damping: 30 } as Transition,
 };
+
+/** Capture acceptance duration; hover/edit pauses elapsed time, not just its animation. */
+export const capturePreviewMs = 5000;

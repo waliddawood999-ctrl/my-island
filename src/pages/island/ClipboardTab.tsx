@@ -16,12 +16,16 @@ type Clip = {
   height: number | null;
   pinned: boolean;
   source: string | null;
+  created_at?: number;
+  image_path?: string | null;
 };
 
 /** تبويب الحافظة: بحث فوري + تثبيت/حذف لكل عنصر + مسح الكل + لصق بنقرة. */
 export function ClipboardTab() {
   const [clips, setClips] = useState<Clip[]>([]);
   const [q, setQ] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [selected, setSelected] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const toastT = useRef<number | undefined>(undefined);
   const focused = useRef(false);
@@ -49,9 +53,12 @@ export function ClipboardTab() {
 
   const shown = useMemo(() => {
     const s = q.trim().toLowerCase();
-    if (!s) return clips;
-    return clips.filter((c) => (c.text ?? "").toLowerCase().includes(s) || (c.source ?? "").toLowerCase().includes(s));
-  }, [clips, q]);
+    return clips.filter(c => {
+      const link = c.kind === "text" && /^https?:\/\/\S+$/i.test((c.text ?? "").trim());
+      const matches = filter === "all" || (filter === "pinned" ? c.pinned : filter === "link" ? link : filter === "text" ? c.kind === "text" && !link : c.kind === "image");
+      return matches && (!s || (c.text ?? "").toLowerCase().includes(s) || (c.source ?? "").toLowerCase().includes(s));
+    });
+  }, [clips, q, filter]);
 
   const flash = (m: string) => {
     setToast(m);
@@ -71,7 +78,7 @@ export function ClipboardTab() {
 
   const act = (e: React.MouseEvent, fn: () => Promise<unknown>) => {
     e.stopPropagation();
-    fn().catch(() => {}).finally(load);
+    fn().then(() => flash(i("تم الإجراء", "Done"))).catch((error) => flash(`${i("تعذّر الإجراء", "Action failed")}: ${String(error)}`)).finally(load);
   };
 
   return (
@@ -99,6 +106,9 @@ export function ClipboardTab() {
         </motion.button>
       </div>
 
+      <div className="clip-filters" role="group" aria-label={i("مرشحات الحافظة", "Clipboard filters")}>
+        {[["all",i("الكل","All")],["text",i("نص","Text")],["link",i("رابط","Link")],["image",i("صورة","Image")],["pinned",i("مثبّت","Pinned")]].map(([id,label]) => <button key={id} type="button" aria-pressed={filter===id} onClick={() => setFilter(id)}>{label}</button>)}
+      </div>
       <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto scroll-smooth pe-1">
         {shown.length === 0 && (
           <div className="flex flex-col items-center gap-1 pt-4 text-center text-[13px] text-white/40">
@@ -116,9 +126,13 @@ export function ClipboardTab() {
             exit={{ opacity: 0, transition: { duration: dur.fast, ease: ease.inOut } }}
             whileTap={{ scale: 0.985 }}
             role="button"
-            tabIndex={-1}
-            onClick={() => paste(c)}
-            className="i-card i-card-hover group flex cursor-pointer items-center gap-3 px-3 py-2"
+            tabIndex={0}
+            data-testid={`clip-item-${c.id}`}
+            aria-label={c.text || i("صورة في الحافظة", "Clipboard image")}
+            onKeyDown={e => { if (e.target !== e.currentTarget) return; if (e.key === "Enter") { e.preventDefault(); setSelected(c.id); void paste(c); } else if (e.key === " ") { e.preventDefault(); setSelected(c.id); } }}
+            onClick={() => setSelected(c.id)}
+            onDoubleClick={() => paste(c)}
+            className={`i-card i-card-hover group flex cursor-pointer items-center gap-3 px-3 py-2 ${selected === c.id ? "clip-selected" : ""}`}
           >
             <div className="min-w-0 flex-1">
               {c.kind === "image" && c.thumb ? (
@@ -132,11 +146,17 @@ export function ClipboardTab() {
                   {c.text}
                 </p>
               )}
+              {c.created_at != null && <time dateTime={new Date(c.created_at).toISOString()} className="text-[10px] text-white/50">{new Date(c.created_at).toLocaleTimeString(i("ar-SA", "en-US"), {hour:"2-digit",minute:"2-digit"})}</time>}
               {c.kind === "text" && <ClipActions text={c.text} onDone={flash} />}
               {c.kind === "image" && c.width && (
                 <span dir="ltr" className="text-[11px] text-white/40">{c.width}×{c.height}</span>
               )}
             </div>
+            <button className="i-btn p-1.5" aria-label={i("نسخ العنصر", "Copy item")} onClick={e => act(e, async () => {
+              if (c.kind === "text") await invoke("clip_set_text", {text:c.text ?? ""});
+              else if (c.image_path) { const items=await invoke<{id:number}[]>("shelf_add",{paths:[c.image_path]}); if (!items?.[0]) throw new Error(i("تعذر تجهيز الصورة", "Could not prepare image")); await invoke("shelf_copy",{id:items[0].id}); }
+              else throw new Error(i("لا مسار للصورة", "Image path unavailable"));
+            })}>{i("نسخ", "Copy")}</button>
             <motion.button
               {...tap}
               aria-label={c.pinned ? i("إلغاء التثبيت", "Unpin") : i("تثبيت", "Pin")}

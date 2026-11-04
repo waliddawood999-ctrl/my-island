@@ -293,7 +293,7 @@ export function PlayerPeek({ media, s, accent, reduce, visible, hover = false }:
           <div dir="auto" className="truncate" style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.25 }}>{mediaTitle(info)}</div>
           <div dir="auto" className="truncate" style={{ fontSize: 12, opacity: 0.62 }}>{sub(info) || " "}</div>
         </div>
-        <Controls ring={s.showProgress !== false && s.progressStyle === "ring" ? { pos, duration: info.duration } : undefined} info={info} compact />
+        <Controls ring={s.showProgress !== false && s.progressStyle === "ring" ? { pos, duration: info.duration } : undefined} info={info} compact single />
       </div>
       {(s.showProgress ?? true) && <SeekBar animateProgress={s.progressMotion !== false} style={progressStyle(s.progressStyle)} scrubTime={s.progressScrubTime !== false} pos={pos} info={info} accent={accent} h={4} reduce={reduce} showTimes={s.showPlaybackTime ?? true} />}
     </div>
@@ -324,7 +324,7 @@ export function PlayerPanel({ media, s, accent, reduce, visible, wide = false }:
     // بطاقة المشغّل (التصميم المتفق عليه): غلاف/مصغّرة فيديو كبيرة بحجم يتبع مقاس اللوحة + شارة المصدر + موجة + عنوان + شريط + أزرار.
     const pt = panelThumb(s.panelWidth, s.panelHeight);
     return (
-      <div data-testid="player-panel" data-card="true" className="i-card home-player" style={{ ["--player-accent" as string]: "var(--accent)" }}>
+      <div data-testid="player-panel" data-card="true" className="i-card home-player" dir={s.language === "en" ? "ltr" : "rtl"} style={{ ["--player-accent" as string]: "var(--accent)" }}>
         {layout !== "minimal" && <Thumb cover={cover} coverW={media.coverW} coverH={media.coverH} session={info.session} trackKey={tkey(info)} source={info.source} sourceName={info.source_name} duration={info.duration} accent={accent} reduce={reduce} h={Math.round(pt.h * .8)} maxW={Math.round(pt.maxW * .8)} />}
         <div className="home-player-info">
           {(s.showSourceBadge ?? true) && <SourceBadge aumid={info.source} name={info.source_name} />}

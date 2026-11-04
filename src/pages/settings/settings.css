@@ -261,3 +261,6 @@ input[type="range"].st-range:focus-visible::-webkit-slider-thumb { box-shadow: 0
 .tp-simple .tp-hero { grid-template-columns: 1fr; }
 .tp-simple .tp-hero[hidden] { display: none; }
 .tp-simple .tp-grid { max-height: 360px; overflow-y: auto; scrollbar-width: thin; padding: 3px; }
+
+.tp-simple .tp-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.settings-feedback { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:36px; font-size:12px; }

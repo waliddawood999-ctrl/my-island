@@ -311,3 +311,8 @@ settings_set لمفتاح `autostart` يكتب/يحذف قيمة MyIsland في H
 - **أمر جديد `webview_runtime()`** → `{ version: string, major: number, background_clear: bool | null }` (نافذة الإعدادات فقط؛ capability `allow-webview-runtime`). `version` من `tauri::webview_version()` (نسخة WebView2 Runtime الفعلية، تظهر في ▸ حول)، و`background_clear` = نتيجة التحقق من `DefaultBackgroundColor=(0,0,0,0)` لنافذة main بعد الضبط (`null` قبل الفحص/خارج ويندوز). الواجهة تحذّر عند 145–146 (تراجع شفافية معروف، أُصلح في 147) أو `false`.
 - **لا أحداث جديدة.** `mascot:look` يقرأ مستطيل الجزيرة المُبلَّغ (`hit::shape()`) لا منطقة نافذة؛ `island:hidden` بلا تغيير.
 - **بيئة العملية:** `WEBVIEW2_DEFAULT_BACKGROUND_COLOR=00000000` يُضبط في `run()` قبل إنشاء أي ويب فيو (`backdrop::apply_transparency_env`).
+
+
+## معاينة الالتقاط داخل main — طلب 2026-11-04 22:16
+لا أمر أو حدث جديد ولا تغيير لعقد الخلفية: CapturePreview.tsx يستقبل capture:saved {path,width,height}، ويقرأ editor_image({path}) دون editor_open (فلا يفتح نافذة المحرر). تجهيز السحب والنسخ يتم عبر shelf_add({paths:[path]}) ثم shelf_drag({ids}) أو shelf_copy({id}). السحب الأصلي COPY؛ رسالة الواجهة تؤكد بدء الطلب فقط ولا تدّعي قبول التطبيق الهدف. البديل الظاهر: clip_set_text للمسار وopen_captures للمجلد. القص والرسم محليان ثم editor_save({data,mode:"new"}) لنسخة PNG جديدة. open_path يفتح الأصل بطلب صريح. التنزيل يطلب عبر رابط data:؛ لا يُدّعى اكتماله في WebView2 دون اختبار ويندوز.
+OCR والمشاركة الأصلية واختيار مجلد بالحوار وحذف الملف القابل للاسترجاع وتثبيت الصورة في سجل الحافظة لم تُضف لها أوامر في هذه الخطوة؛ تبقى ناقصة، وليست أزرارًا تدّعي نجاحًا وهميًا. «حفظ في الرف» يحفظ في الرف فقط، ولا يُسمّى تثبيتًا في الحافظة.

@@ -103,7 +103,7 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings>; set: (p: Part
   const file = useRef<HTMLInputElement>(null);
 
   const allPacks: { pack: Pack; id: string }[] = [...PACKS.map((p) => ({ pack: p, id: p.id })), ...mine.map((u) => ({ pack: resolvePack(u.id, null, mine), id: u.id }))];
-  const galleryPacks = FAMILY_ORDER.flatMap((family) => allPacks.filter((x) => x.pack.family === family));
+  const galleryPacks = ["noir-gold", "ivory", "nebula-mesh"].flatMap((id) => allPacks.filter((x) => x.id === id));
   const selected = hover ? resolvePack(hover, s.themeCustom, mine) : pack;
   const dark = theme === "dark";
   const packLabel = (p: Pack) => i(p.ar, p.en);
@@ -175,8 +175,8 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings>; set: (p: Part
           </Row>
         </section>
         <section className="tp-basic-group st-card" data-basic="material">
-          <Row icon={ic(Layers)} label={i("الزجاج", "Material")} hint={i("مصمت أو زجاج مثلّج", "Solid or frosted glass")}>
-            <Segmented label={i("الزجاج", "Material")} value={s.themeMaterial === "solid" ? "solid" : "glass"} onChange={(v) => set(v === "solid" ? { themeMaterial: "solid" } : GLASS_STYLE_VALUES.crystal)} options={[{ value: "solid", label: i("مصمت", "Solid") }, { value: "glass", label: i("مثلّج", "Frosted") }]} />
+          <Row icon={ic(Layers)} label={i("الزجاج", "Material")} hint={i("معتم · مثلّج · شفاف", "Opaque · frosted · clear")}>
+            <Segmented label={i("الزجاج", "Material")} value={s.themeMaterial === "solid" ? "solid" : s.glassStyle === "clear" ? "clear" : "crystal"} onChange={(v) => set(v === "solid" ? { themeMaterial: "solid" } : v === "clear" ? { themeMaterial: "glass", glassStyle: "clear", glassTint: 25 } : GLASS_STYLE_VALUES.crystal)} options={[{ value: "solid", label: i("معتم", "Opaque") }, { value: "crystal", label: i("مثلّج", "Frosted") }, { value: "clear", label: i("شفاف", "Clear") }]} />
           </Row>
         </section>
         <section className="tp-basic-group st-card" data-basic="density">
@@ -189,6 +189,7 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings>; set: (p: Part
             <div className="tp-basic-controls"><div className="tp-basic-slider"><span>{i("الحدود", "Borders")}</span><Slider label={i("قوة الحدود", "Border strength")} value={s.borderStrength ?? 50} min={0} max={100} step={5} format={pct} onLive={(v) => set({ borderStrength: v })} onCommit={(v) => set({ borderStrength: v })} /></div>
             <div className="tp-basic-slider"><span>{i("الظل", "Shadow")}</span><Slider label={i("قوة الظلال", "Shadow strength")} value={s.shadowStrength ?? 50} min={0} max={100} step={5} format={pct} onLive={(v) => set({ shadowStrength: v })} onCommit={(v) => set({ shadowStrength: v })} /></div></div>
           </Row>
+          <Row icon={ic(Zap)} label={i("جزيرة متحركة", "Animated island")} hint={i("تتوقف مع تقليل الحركة", "Stops with reduced motion")}><Toggle label={i("جزيرة متحركة", "Animated island")} value={s.themeAnim !== false} onChange={v => set({themeAnim:v})} /></Row>
         </section>
       </div>
       <button className="tp-advanced-toggle" data-testid="appearance-advanced-toggle" aria-expanded={advanced || searching} aria-controls="appearance-advanced" onClick={() => setAdvanced(!advanced)}>
