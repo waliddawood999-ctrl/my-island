@@ -493,6 +493,111 @@ fn base64_encode(bytes: &[u8]) -> String {
     base64::engine::general_purpose::STANDARD.encode(bytes)
 }
 
+/// Read-only recent capture gallery; never changes or removes a file.
+#[derive(Serialize)]
+pub struct RecentCapture {
+    pub path: String,
+    pub width: u32,
+    pub height: u32,
+    pub thumb: String,
+}
+#[tauri::command]
+pub async fn capture_recent(app: AppHandle) -> Result<Vec<RecentCapture>, String> {
+    let dir = screenshot_dir(&app);
+    tauri::async_runtime::spawn_blocking(move || -> Result<Vec<RecentCapture>, String> {
+        if !dir.exists() { return Ok(Vec::new()); }
+        let mut files: Vec<_> = std::fs::read_dir(dir).map_err(|e| e.to_string())?
+            .filter_map(Result::ok)
+            .filter(|e| e.path().extension().is_some_and(|x| x.eq_ignore_ascii_case("png")))
+            .filter_map(|e| { let m = e.metadata().ok()?; if !m.is_file() { return None; } Some((m.modified().unwrap_or(std::time::UNIX_EPOCH), e.path())) })
+            .collect();
+        files.sort_by(|a,b| b.0.cmp(&a.0).then_with(|| a.1.cmp(&b.1)));
+        let mut out = Vec::new();
+        for (_, path) in files.into_iter().take(16) {
+            let Ok(image) = image::open(&path) else { continue; };
+            let (width,height) = (image.width(),image.height());
+            let mut bytes = std::io::Cursor::new(Vec::new());
+            image.thumbnail(128,128).write_to(&mut bytes, image::ImageFormat::Png).map_err(|e| e.to_string())?;
+            out.push(RecentCapture { path: path.to_string_lossy().into_owned(), width, height, thumb:format!("data:image/png;base64,{}", base64_encode(bytes.get_ref())) });
+        }
+        Ok(out)
+    }).await.map_err(|e| e.to_string())?
+}
+
+// CAPTURE-DELETE-PURE-BEGIN
+/// Deletes exactly one regular PNG in the configured directory; no traversal or recursion.
+fn delete_capture_file(dir: &std::path::Path, path: &std::path::Path) -> Result<bool, String> {
+    let metadata = match std::fs::symlink_metadata(path) {
+        Ok(v) => v,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(false),
+        Err(e) => return Err(e.to_string()),
+    };
+    if !metadata.is_file() || metadata.file_type().is_symlink() {
+        return Err("ليست لقطة عادية قابلة للحذف".into());
+    }
+    if !path.extension().is_some_and(|x| x.eq_ignore_ascii_case("png")) {
+        return Err("الحذف متاح لملفات PNG في مجلد اللقطات فقط".into());
+    }
+    let root = dir.canonicalize().map_err(|e| e.to_string())?;
+    let parent = path.parent().ok_or("مسار لقطة غير صالح")?.canonicalize().map_err(|e| e.to_string())?;
+    if parent != root { return Err("الملف خارج مجلد اللقطات".into()); }
+    match std::fs::remove_file(path) {
+        Ok(()) => Ok(true),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(e) => Err(format!("تعذّر حذف اللقطة: {e}")),
+    }
+}
+
+#[cfg(test)]
+mod capture_deletion_tests {
+    use super::delete_capture_file;
+    fn temp() -> std::path::PathBuf {
+        let n = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
+        let p = std::env::temp_dir().join(format!("my-island-delete-{}-{n}", std::process::id()));
+        std::fs::create_dir_all(&p).unwrap(); p
+    }
+    #[test]
+    fn deletes_only_the_selected_capture() {
+        let dir = temp(); let a = dir.join("a.png"); let b = dir.join("b.png");
+        std::fs::write(&a, b"a").unwrap(); std::fs::write(&b, b"keep").unwrap();
+        assert_eq!(delete_capture_file(&dir,&a), Ok(true));
+        assert!(!a.exists()); assert_eq!(std::fs::read(&b).unwrap(), b"keep");
+        assert_eq!(delete_capture_file(&dir,&a), Ok(false));
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+    #[test]
+    fn rejects_other_files_directories_and_outside_paths() {
+        let dir = temp(); let root = dir.join("shots"); std::fs::create_dir(&root).unwrap();
+        let outside = dir.join("outside.png"); let text = root.join("keep.txt"); let folder = root.join("folder.png");
+        std::fs::write(&outside,b"outside").unwrap(); std::fs::write(&text,b"text").unwrap(); std::fs::create_dir(&folder).unwrap();
+        assert!(delete_capture_file(&root,&outside).is_err()); assert!(delete_capture_file(&root,&text).is_err()); assert!(delete_capture_file(&root,&folder).is_err());
+        assert_eq!(std::fs::read(&outside).unwrap(),b"outside"); assert!(text.exists() && folder.exists());
+        assert_eq!(delete_capture_file(&root,&root.join("missing.png")),Ok(false));
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+    #[cfg(unix)]
+    #[test]
+    fn refuses_symbolic_links() {
+        let dir = temp(); let root = dir.join("shots"); std::fs::create_dir(&root).unwrap();
+        let outside = dir.join("outside.png"); std::fs::write(&outside,b"keep").unwrap();
+        let link = root.join("link.png"); std::os::unix::fs::symlink(&outside,&link).unwrap();
+        assert!(delete_capture_file(&root,&link).is_err()); assert_eq!(std::fs::read(&outside).unwrap(),b"keep");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+}
+// CAPTURE-DELETE-PURE-END
+
+/// Explicit capture deletion; never called by loading or rearranging the gallery.
+#[tauri::command]
+pub async fn capture_delete(app: AppHandle, path: String) -> Result<bool, String> {
+    let dir = screenshot_dir(&app);
+    let selected = path.clone();
+    let deleted = tauri::async_runtime::spawn_blocking(move || delete_capture_file(&dir,std::path::Path::new(&selected)))
+        .await.map_err(|e| e.to_string())??;
+    let _ = app.emit("capture:changed", path);
+    Ok(deleted)
+}
+
 // ───────────────────────── الأوامر ─────────────────────────
 
 /// capture_start(mode?: "area"|"screen") — الافتراضي "area".

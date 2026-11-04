@@ -24,7 +24,6 @@ type Clip = {
 export function ClipboardTab() {
   const [clips, setClips] = useState<Clip[]>([]);
   const [q, setQ] = useState("");
-  const [filter, setFilter] = useState("all");
   const [selected, setSelected] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const toastT = useRef<number | undefined>(undefined);
@@ -53,12 +52,8 @@ export function ClipboardTab() {
 
   const shown = useMemo(() => {
     const s = q.trim().toLowerCase();
-    return clips.filter(c => {
-      const link = c.kind === "text" && /^https?:\/\/\S+$/i.test((c.text ?? "").trim());
-      const matches = filter === "all" || (filter === "pinned" ? c.pinned : filter === "link" ? link : filter === "text" ? c.kind === "text" && !link : c.kind === "image");
-      return matches && (!s || (c.text ?? "").toLowerCase().includes(s) || (c.source ?? "").toLowerCase().includes(s));
-    });
-  }, [clips, q, filter]);
+    return clips.filter(c => !s || (c.text ?? "").toLowerCase().includes(s) || (c.source ?? "").toLowerCase().includes(s));
+  }, [clips, q]);
 
   const flash = (m: string) => {
     setToast(m);
@@ -82,9 +77,9 @@ export function ClipboardTab() {
   };
 
   return (
-    <div className="relative flex h-full min-h-0 flex-col gap-2 pt-3">
-      <div className="flex shrink-0 items-center gap-2">
-        <label className="flex flex-1 items-center gap-2 rounded-full bg-white/10 px-3 py-1.5">
+    <div className="clipboard-page relative flex h-full min-h-0 flex-col" data-testid="clipboard-page">
+      <div className="clipboard-toolbar" data-testid="clipboard-toolbar">
+        <label className="clipboard-search flex min-w-0 flex-1 items-center gap-2 rounded-full bg-white/10 px-3 py-1.5">
           <Search size={14} className="text-white/50" />
           <input
             value={q}
@@ -99,17 +94,14 @@ export function ClipboardTab() {
         <motion.button
           {...tap}
           onClick={(e) => act(e, () => invoke("clip_clear"))}
-          className="i-btn flex items-center gap-1 bg-white/10 px-3 py-1.5 text-[12px] text-white/80"
+          data-testid="clipboard-clear" className="clipboard-clear i-btn flex items-center gap-1 bg-white/10 px-3 py-1.5 text-[12px] text-white/80"
         >
           <Trash2 size={13} />
           {i("مسح الكل", "Clear all")}
         </motion.button>
       </div>
 
-      <div className="clip-filters" role="group" aria-label={i("مرشحات الحافظة", "Clipboard filters")}>
-        {[["all",i("الكل","All")],["text",i("نص","Text")],["link",i("رابط","Link")],["image",i("صورة","Image")],["pinned",i("مثبّت","Pinned")]].map(([id,label]) => <button key={id} type="button" aria-pressed={filter===id} onClick={() => setFilter(id)}>{label}</button>)}
-      </div>
-      <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto scroll-smooth pe-1">
+      <div className="clipboard-items min-h-0 flex-1 overflow-y-auto pe-1" data-testid="clipboard-items">
         {shown.length === 0 && (
           <div className="flex flex-col items-center gap-1 pt-4 text-center text-[13px] text-white/40">
             <LottieIcon name="empty" size={64} />
@@ -130,19 +122,18 @@ export function ClipboardTab() {
             data-testid={`clip-item-${c.id}`}
             aria-label={c.text || i("صورة في الحافظة", "Clipboard image")}
             onKeyDown={e => { if (e.target !== e.currentTarget) return; if (e.key === "Enter") { e.preventDefault(); setSelected(c.id); void paste(c); } else if (e.key === " ") { e.preventDefault(); setSelected(c.id); } }}
-            onClick={() => setSelected(c.id)}
-            onDoubleClick={() => paste(c)}
-            className={`i-card i-card-hover group flex cursor-pointer items-center gap-3 px-3 py-2 ${selected === c.id ? "clip-selected" : ""}`}
+            onClick={() => { setSelected(c.id); void paste(c); }}
+            className={`clip-item i-card i-card-hover group flex cursor-pointer items-center gap-2 px-2 py-1 ${selected === c.id ? "clip-selected" : ""}`}
           >
             <div className="min-w-0 flex-1">
               {c.kind === "image" && c.thumb ? (
                 <img
                   src={`data:image/png;base64,${c.thumb}`}
                   alt={i("صورة", "Image")}
-                  className="max-h-14 rounded-md object-contain"
+                  className="max-h-9 rounded-md object-contain"
                 />
               ) : (
-                <p dir="auto" className="line-clamp-2 break-words text-[13px] leading-snug text-white/90">
+                <p dir="auto" className="line-clamp-1 break-words text-[12px] leading-snug text-white/90">
                   {c.text}
                 </p>
               )}

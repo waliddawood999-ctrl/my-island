@@ -134,7 +134,7 @@ function useEnv(s: Partial<Settings>): Env {
 /** يطبّق المظهر كله على <html> (data-* + متغيرات CSS من tokens.css) حيًّا بلا إعادة تحميل. */
 function useAppearance(s: Partial<Settings>, env: Env) {
   const { attrs, vars } = appearanceVars(s, env);
-  const pstyle = progressStyle("line");
+  const pstyle = progressStyle(s.progressStyle);
   const key = JSON.stringify([attrs, vars, pstyle]);
   useEffect(() => {
     const root = document.documentElement;
@@ -162,11 +162,11 @@ let migrated = false;
  *  اللغة: تُطبَّق على i18n أثناء الرسم نفسه، فكل نافذة تعيد رسم نفسها عند تغيّر language عبر الحدث. */
 export function useSettings(): Partial<Settings> & { loaded?: boolean; /** تأثيرات الحزمة غير اللونية (شكل/بطل غلاف) */ fx?: Fx } {
   const [stored, setS] = useState<Partial<Settings> & { loaded?: boolean }>(DEFAULTS);
-  // Presentation policy: preserve legacy settings on disk, expose only the approved references.
+  // Presentation policy: preserve legacy settings on disk, expose the factory references and the user’s stored themes.
   const s = useMemo(() => {
-    const allowed = ["noir-gold", "ivory", "nebula-mesh"];
+    const allowed = ["noir-gold", "ivory", "nebula-mesh", ...(Array.isArray(stored.myThemes) ? stored.myThemes.flatMap(t => t && typeof t.id === "string" ? [t.id] : []) : [])];
     const valid = (id: unknown, fallback: string) => typeof id === "string" && allowed.includes(id) ? id : fallback;
-    return { ...stored, themePack: valid(stored.themePack, "noir-gold"), themePackLight: valid(stored.themePackLight, "ivory"), themePackDark: valid(stored.themePackDark, "noir-gold"), progressStyle: "line", artworkBackdrop: false, accentMode: "fixed" } as typeof stored;
+    return { ...stored, themePack: valid(stored.themePack, "noir-gold"), themePackLight: valid(stored.themePackLight, "ivory"), themePackDark: valid(stored.themePackDark, "noir-gold"), glassStyle: "clear", glassTint: stored.glassStyle === "crystal" ? 25 : stored.glassTint, artworkBackdrop: false, accentMode: "fixed" } as typeof stored;
   }, [stored]);
   useEffect(() => {
     let alive = true;

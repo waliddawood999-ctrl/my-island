@@ -312,7 +312,7 @@ export function LauncherTab({ launcher }: { launcher: Launcher }) {
 
   return (
     <div ref={box} className="relative flex h-full min-h-0 flex-col gap-2 pt-3">
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="launcher-toolbar flex shrink-0 items-center gap-2">
         <label className="flex flex-1 items-center gap-2 rounded-full bg-white/10 px-3 py-1.5">
           <Search size={14} className="text-white/50" />
           <input
@@ -322,7 +322,7 @@ export function LauncherTab({ launcher }: { launcher: Launcher }) {
               if (e.key === "Escape") setQ("");
               if (e.key === "Enter" && found[0]) launch(found[0]);
             }}
-            placeholder={i("ابحث في اللانشر…", "Search launcher…")}
+            placeholder={i("ابحث في المكتبة…", "Search Library…")}
             className="w-full bg-transparent text-[13px] text-white placeholder:text-white/40 focus:outline-none"
           />
         </label>
@@ -365,7 +365,7 @@ export function LauncherTab({ launcher }: { launcher: Launcher }) {
         {items.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-white/40">
             <LottieIcon name="empty" size={64} />
-            <p className="text-[13px]">{i("اللانشر فارغ", "Launcher is empty")}</p>
+            <p className="text-[13px]">{i("لا تطبيقات محفوظة في المكتبة", "No saved applications in the Library")}</p>
             <p className="text-[11px]">{i("أضف تطبيقًا أو ملفًا أو مجلدًا أو رابطًا من «إضافة»", "Add an app, file, folder or link with “Add”")}</p>
           </div>
         ) : searching ? (

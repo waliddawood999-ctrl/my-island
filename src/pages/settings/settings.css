@@ -264,3 +264,11 @@ input[type="range"].st-range:focus-visible::-webkit-slider-thumb { box-shadow: 0
 
 .tp-simple .tp-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
 .settings-feedback { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:36px; font-size:12px; }
+
+/* Stored themes retain their order; each card occupies a full gallery row. */
+.tp-simple .tp-grid { grid-template-columns:minmax(0,1fr); max-height:none; }
+.tp-simple .tp-card-btn { min-width:0; }
+.tp-basic-group[data-basic="edges"] > .st-row { align-items:flex-start; }
+.tp-basic-group[data-basic="edges"] .tp-basic-controls { flex-wrap:wrap; gap:12px; min-width:0; }
+.tp-basic-group[data-basic="edges"] .tp-basic-slider { flex:1 1 160px; min-width:0; }
+.tp-island-animation { width:100%; clear:both; border-top:1px solid var(--c-border); }

@@ -271,3 +271,10 @@ export const progressMotion = {
 
 /** Capture acceptance duration; hover/edit pauses elapsed time, not just its animation. */
 export const capturePreviewMs = 5000;
+
+/** Continuous directional page exchange; reduced motion swaps immediately without a spring. */
+export const pageSwap = (direction: number, reduced: boolean): Variants => ({
+  initial: { opacity: reduced ? 1 : 0, x: reduced ? 0 : direction * 10, filter: "none" },
+  animate: { opacity: 1, x: 0, filter: "none", transition: reduced ? {duration:0} : spring.content },
+  exit: { opacity: reduced ? 1 : 0, x: reduced ? 0 : -direction * 10, filter: "none", transition: {duration:reduced ? 0 : dur.fast} },
+});

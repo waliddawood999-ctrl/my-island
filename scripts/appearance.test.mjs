@@ -29,6 +29,8 @@ ok("reduceMotion/OS ⇒ reduced; off stays off", a.effectiveMotion({ reduceMotio
 // لون التمييز
 ok("accent invalid ⇒ default; fg readable", (() => { const x = a.accentVars("zzz", "dark"); return x.accent === "#4fd1c5" && ["#ffffff", "#06080c"].includes(x.accentFg); })());
 ok("light accent darkened to ≥3:1 on light surface", (() => { const x = a.accentVars("#ffb224", "light"); const c = [1, 3, 5].map((i) => parseInt(x.accent.slice(i, i + 2), 16)); return a.contrast(c, [236, 239, 244]) >= 3; })());
+ok("island animation resets and imports independently of theme wash", a.resetPatch(a.SECTION_KEYS.appearance).islandAnimation === true && a.parseThemeImport(JSON.stringify({ app:"myisland-theme",theme:{ islandAnimation:false,themeAnim:true }})).islandAnimation === false);
+ok("disabling island animation leaves animated wash independent", a.appearanceVars({themePack:"nebula-mesh",islandAnimation:false,themeAnim:true},env).attrs.washAnim === "on" && a.appearanceVars({themePack:"nebula-mesh",islandAnimation:true,themeAnim:false},env).attrs.washAnim === "");
 // إعدادات مسبقة
 ok("two material presets without theme overrides", a.STYLE_PRESETS.map((p) => p.id).join() === "frosted,solid" && a.STYLE_PRESETS.every(p => !("themeMode" in p.values) && !("accentColor" in p.values)));
 ok("presets never set blur/saturation", a.STYLE_PRESETS.every((p) => !("glassBlur" in p.values) && !("glassSaturation" in p.values)));

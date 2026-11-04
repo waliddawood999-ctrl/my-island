@@ -21,7 +21,7 @@ import { manualCheck } from "../../useUpdater";
 import type { ManualStatus } from "../../updater";
 import { AppearanceBody } from "./Appearance";
 import { SECTION_KEYS, exportSettings, parseImport, resetPatch } from "../../appearance";
-import type { Settings } from "../../settings";
+import { PROGRESS_STYLES, progressStyle, type Settings } from "../../settings";
 import { spring } from "../../motion";
 import { MOTION_PRESETS, MOTION_PRESET_KEYS, migrateReduce, normBounce, normPreset, normSpeed } from "../../islandMotion";
 import { normCardOrder } from "../../islandMachine";
@@ -439,10 +439,13 @@ function App() {
           <div className="px-4 py-3">
             <h3>{i("شكل شريط التقدم", "Progress bar style")}</h3>
             <div className="progress-style-grid" role="radiogroup" aria-label={i("شكل شريط التقدم", "Progress bar style")}>
-              <button type="button" role="radio" aria-checked="true" data-testid="progress-option-line" className="progress-style-card" onClick={() => set({ progressStyle: "line" })}>
-                <span className="progress-preview" data-style="line" aria-hidden><span className="progress-preview-track"><span className="progress-preview-fill" /></span></span>
-                <span>{i("خط رفيع + مقبض", "Line + knob")}</span><small>{i("يُطبّق على الحبة واللوحة", "Applies to the pill and panel")}</small>
-              </button>
+              {PROGRESS_STYLES.map((style, n) => {
+                const labels = [i("خط رفيع + مقبض", "Line + knob"), i("لمعان + فصول", "Shimmer + chapters"), i("موجة صوتية", "Wave"), i("سائل", "Liquid"), i("شُرَيطات", "Dashes"), i("حلقة حول زر التشغيل", "Ring around play")];
+                return <button key={style} type="button" role="radio" aria-checked={progressStyle(s.progressStyle) === style} data-testid={`progress-option-${style}`} className="progress-style-card" onClick={() => set({ progressStyle: style })}>
+                  <span className="progress-preview" data-style={style} aria-hidden>{style === "ring" ? <span className="progress-preview-ring"><Play size={14} /></span> : <span className="progress-preview-track">{style === "wave" ? <span className="progress-preview-wave">{Array.from({ length: 28 }, (_, n) => <span key={n} style={{ height: 5 + Math.abs(Math.sin(n * 1.7)) * 15, background: n < 11 ? "var(--accent)" : undefined }} />)}</span> : <span className="progress-preview-fill" />}{style === "shimmer" && <span className="progress-preview-chapters" />}</span>}</span>
+                  <span>{labels[n]}</span><small>{i("يُطبّق على الحبة واللوحة", "Applies to the pill and panel")}</small>
+                </button>;
+              })}
             </div>
           </div>
           <Row icon={ic(Waves)} label={i("حركة سريعة", "Quick motion")} hint={i("اللمعان والنبض؛ يتوقفان مع تقليل الحركة", "Shimmer and pulse stop with reduced motion")}>

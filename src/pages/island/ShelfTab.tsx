@@ -157,7 +157,7 @@ export function ShelfTab({ items, dragging, reload }: { items: ShelfItem[]; drag
 
   return (
     <div ref={box} className="relative flex h-full min-h-0 flex-col gap-2 pt-3">
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="shelf-toolbar flex shrink-0 items-center gap-2">
         <span className="text-[12px] text-white/50">
           {items.length > 0
             ? i(`${items.length} عنصر — اسحب إلى أي تطبيق أو مجلد`, `${items.length} items — drag to any app or folder`)
@@ -186,7 +186,7 @@ export function ShelfTab({ items, dragging, reload }: { items: ShelfItem[]; drag
         {items.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-white/40">
             <LottieIcon name="empty" size={64} />
-            <p className="text-[13px]">{i("الرفّ فارغ", "Shelf is empty")}</p>
+            <p className="text-[13px]">{i("لا ملفات أو نصوص في المكتبة", "No files or text in the Library")}</p>
           </div>
         ) : (
           <div className="flex flex-wrap content-start gap-2" dir="ltr">
@@ -209,7 +209,7 @@ export function ShelfTab({ items, dragging, reload }: { items: ShelfItem[]; drag
             transition={{ duration: dur.fast }}
             className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-2xl border-2 border-dashed border-white/40 bg-black/60 text-[14px] font-medium text-white"
           >
-            {i("أفلت لإضافتها إلى الرفّ", "Drop to add to the shelf")}
+            {i("أفلت لإضافتها إلى المكتبة", "Drop to add to the Library")}
           </motion.div>
         )}
       </AnimatePresence>

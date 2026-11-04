@@ -197,6 +197,8 @@ pub fn run() {
             accent::system_accent,
             accent::wallpaper_color,
             capture::capture_start,
+            capture::capture_recent,
+            capture::capture_delete,
             capture::capture_frame,
             capture::capture_ready,
             capture::capture_region,

@@ -27,7 +27,7 @@ const FAMILY_ORDER: PackFamily[] = ["seed", "gradient", "craft", "editorial", "s
 
 /** معاينة مصغّرة حيّة للوحة الموسّعة بحزمة ووضع محدّدين (متغيرات الرصّة محصورة بعنصر المعاينة نفسه). */
 function MiniIsland({ pack, dark, s, size = "md", label }: { pack: Pack; dark: boolean; s: Partial<Settings>; size?: "sm" | "md" | "lg"; label?: string }) {
-  const style = "crystal";
+  const style = "clear";
   const tune = normTune(s.themeTune);
   const accent = s.accentSource === "custom" && typeof s.accentColor === "string" ? s.accentColor : undefined;
   const d = useMemo(
@@ -103,7 +103,7 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings>; set: (p: Part
   const file = useRef<HTMLInputElement>(null);
 
   const allPacks: { pack: Pack; id: string }[] = [...PACKS.map((p) => ({ pack: p, id: p.id })), ...mine.map((u) => ({ pack: resolvePack(u.id, null, mine), id: u.id }))];
-  const galleryPacks = ["noir-gold", "ivory", "nebula-mesh"].flatMap((id) => allPacks.filter((x) => x.id === id));
+  const galleryPacks = [...["noir-gold", "ivory", "nebula-mesh"].flatMap((id) => allPacks.filter((x) => x.id === id)), ...mine.map(u => ({ pack: resolvePack(u.id, null, mine), id: u.id }))];
   const selected = hover ? resolvePack(hover, s.themeCustom, mine) : pack;
   const dark = theme === "dark";
   const packLabel = (p: Pack) => i(p.ar, p.en);
@@ -175,8 +175,8 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings>; set: (p: Part
           </Row>
         </section>
         <section className="tp-basic-group st-card" data-basic="material">
-          <Row icon={ic(Layers)} label={i("الزجاج", "Material")} hint={i("معتم · مثلّج · شفاف", "Opaque · frosted · clear")}>
-            <Segmented label={i("الزجاج", "Material")} value={s.themeMaterial === "solid" ? "solid" : s.glassStyle === "clear" ? "clear" : "crystal"} onChange={(v) => set(v === "solid" ? { themeMaterial: "solid" } : v === "clear" ? { themeMaterial: "glass", glassStyle: "clear", glassTint: 25 } : GLASS_STYLE_VALUES.crystal)} options={[{ value: "solid", label: i("معتم", "Opaque") }, { value: "crystal", label: i("مثلّج", "Frosted") }, { value: "clear", label: i("شفاف", "Clear") }]} />
+          <Row icon={ic(Layers)} label={i("الزجاج", "Material")} hint={i("معتم أو شفاف", "Opaque or clear")}>
+            <Segmented label={i("الزجاج", "Material")} value={s.themeMaterial === "solid" ? "solid" : "clear"} onChange={(v) => set(v === "solid" ? { themeMaterial: "solid" } : { themeMaterial: "glass", glassStyle: "clear", glassTint: 25 })} options={[{ value: "solid", label: i("معتم", "Opaque") }, { value: "clear", label: i("شفاف", "Clear") }]} />
           </Row>
         </section>
         <section className="tp-basic-group st-card" data-basic="density">
@@ -185,11 +185,11 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings>; set: (p: Part
           </Row>
         </section>
         <section className="tp-basic-group st-card" data-basic="edges">
-          <Row icon={ic(Square)} label={i("الحدود والظل", "Borders & shadow")}>
+          <Row icon={ic(Square)} label={i("الحدود والظل", "Borders & shadow")} col>
             <div className="tp-basic-controls"><div className="tp-basic-slider"><span>{i("الحدود", "Borders")}</span><Slider label={i("قوة الحدود", "Border strength")} value={s.borderStrength ?? 50} min={0} max={100} step={5} format={pct} onLive={(v) => set({ borderStrength: v })} onCommit={(v) => set({ borderStrength: v })} /></div>
             <div className="tp-basic-slider"><span>{i("الظل", "Shadow")}</span><Slider label={i("قوة الظلال", "Shadow strength")} value={s.shadowStrength ?? 50} min={0} max={100} step={5} format={pct} onLive={(v) => set({ shadowStrength: v })} onCommit={(v) => set({ shadowStrength: v })} /></div></div>
           </Row>
-          <Row icon={ic(Zap)} label={i("جزيرة متحركة", "Animated island")} hint={i("تتوقف مع تقليل الحركة", "Stops with reduced motion")}><Toggle label={i("جزيرة متحركة", "Animated island")} value={s.themeAnim !== false} onChange={v => set({themeAnim:v})} /></Row>
+          <div className="tp-island-animation"><Row icon={ic(Zap)} label={i("جزيرة متحركة", "Animated island")} hint={i("تمدد الحبة واللوحة؛ مستقل عن الغسلة ويتوقف مع تقليل الحركة", "Pill and panel expansion; independent of the wash and respects reduced motion")}><Toggle label={i("جزيرة متحركة", "Animated island")} value={s.islandAnimation !== false} onChange={v => set({islandAnimation:v})} /></Row></div>
         </section>
       </div>
       <button className="tp-advanced-toggle" data-testid="appearance-advanced-toggle" aria-expanded={advanced || searching} aria-controls="appearance-advanced" onClick={() => setAdvanced(!advanced)}>
@@ -263,7 +263,7 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings>; set: (p: Part
 
       {/* ───────── 2) الأسطح والمادة ───────── */}
       <Module {...modProps("surfaces")} icon={ic(Layers)} title={i("الأسطح والمادة", "Surfaces & material")}
-        summary={`${(s.themeMaterial ?? "glass") === "glass" ? i("زجاج مثلّج", "Frosted glass") : i("مصمت", "Solid")} · ${i("الحجاب", "veil")} ${s.glassTint ?? 45}% · ${i("ظل", "shadow")} ${tune.en.elevation}`}
+        summary={`${(s.themeMaterial ?? "glass") === "glass" ? i("شفاف", "Clear") : i("معتم", "Opaque")} · ${i("الحجاب", "veil")} ${s.glassTint ?? 45}% · ${i("ظل", "shadow")} ${tune.en.elevation}`}
         preview={<span className="tp-mp tp-mp-surf"><i /><b /></span>}
         onReset={() => resetKeys(["themeMaterial", "glassStyle", "glassTint", "backgroundOpacity", "borderStrength", "shadowStrength"], TUNE_MODULE_FIELDS.surfaces)}>
         {(s.themeMaterial ?? "glass") === "glass" && (
@@ -400,7 +400,7 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings>; set: (p: Part
       <Section title={i("إعادة ضبط شاملة", "Global reset")}>
         <Row icon={ic(RotateCcw)} label={i("إعادة ضبط كل إعدادات المظهر", "Reset all appearance settings")} hint={i("يعيد الحزمة والمادة والمخزون كله للافتراضي (رفّ «ثيماتي» يبقى)", "Restores the pack, material and every knob to default (your “My themes” shelf is kept)")}>
           <button className={`st-btn ${armed ? "st-btn-danger" : ""}`} style={armed ? { width: "auto" } : undefined} data-armed={armed} data-testid="reset-theme-all"
-            onClick={() => { if (armed) { set({ ...resetPatch(["themeMode", "themePack", "themePackLight", "themePackDark", "accentSource", "accentColor", "accentMode", "artBloom", "themeAnim", "themeCustom", "themeMaterial", "glassStyle", "glassTint", "backgroundOpacity", "borderStrength", "shadowStrength", "cornerStyle", "fontScale", "density"]), themeTune: {} }); setArmed(false); } else setArmed(true); }}
+            onClick={() => { if (armed) { set({ ...resetPatch(["themeMode", "themePack", "themePackLight", "themePackDark", "accentSource", "accentColor", "accentMode", "artBloom", "themeAnim", "islandAnimation", "themeCustom", "themeMaterial", "glassStyle", "glassTint", "backgroundOpacity", "borderStrength", "shadowStrength", "cornerStyle", "fontScale", "density"]), themeTune: {} }); setArmed(false); } else setArmed(true); }}
             onBlur={() => setArmed(false)}>{armed ? i("متأكد؟ إعادة ضبط", "Sure? Reset") : i("إعادة ضبط الكل", "Reset all")}</button>
         </Row>
       </Section>

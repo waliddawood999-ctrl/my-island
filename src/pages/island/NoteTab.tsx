@@ -72,7 +72,7 @@ export function NoteTab({ timer }: { timer: TimerState | null }) {
 
 const DEFAULT_ID = "default";
 
-function NoteEditor() {
+export function NoteEditor() {
   const typing = useTypingFocus();
   const [folders, setFolders] = useState<Folder[]>([]);
   const [folder, setFolder] = useState(DEFAULT_ID);

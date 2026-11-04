@@ -358,7 +358,52 @@ svg.lucide { scale: var(--icon-k, 1); }
 .capture-countdown { height:4px; background:var(--c-border); border-radius:999px; overflow:hidden; flex:none; }
 .capture-countdown span { display:block; height:100%; background:var(--accent); transform-origin:right; }
 .capture-preview p { font-size:11px; overflow-wrap:anywhere; }
-.clip-filters { display:flex; gap:5px; flex-wrap:wrap; }
-.clip-filters button { border-radius:999px; padding:4px 10px; background:var(--island-surface); }
-.clip-filters button[aria-pressed=true] { background:var(--accent); color:var(--accent-fg); }
 .clip-selected { outline:2px solid var(--accent); outline-offset:-2px; }
+
+/* The Library has one navigation entry; both existing components retain their own actions. */
+.library-page { display:flex; flex-direction:column; min-height:0; flex:1; gap:6px; }
+.library-page > h2 { font-size:15px; font-weight:700; }
+.library-content { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); grid-auto-rows:minmax(0,1fr); min-height:0; flex:1; gap:10px; overflow:auto; }
+.library-content[data-wide=true] { grid-template-columns:repeat(2,minmax(0,1fr)); grid-auto-rows:minmax(0,1fr); }
+.library-content[data-parts="1"] { grid-template-columns:minmax(0,1fr); grid-auto-rows:minmax(0,1fr); }
+.library-part { display:flex; flex-direction:column; min-height:0; min-width:0; gap:4px; }
+.library-part > h3 { font-size:11px; color:var(--c-text-secondary); }
+.library-part-body { flex:1; min-height:0; position:relative; }
+.clipboard-page { gap:4px; }
+.clipboard-toolbar { display:flex; align-items:center; gap:6px; flex:none; }
+.clipboard-clear { order:-1; flex:none; font-weight:700; border:1px solid var(--c-border); }
+.clipboard-items { display:flex; flex-direction:column; justify-content:flex-start; gap:3px; }
+.clip-item { flex:none; min-height:42px; }
+
+.library-part .shelf-toolbar, .library-part .launcher-toolbar { flex-wrap:wrap; gap:4px; }
+.library-part .shelf-toolbar > span { flex-basis:100%; }
+.library-part .launcher-toolbar > label { min-width:120px; }
+
+/* Inline metadata and contextual actions keep every mixed clipboard item in one compact row. */
+.clip-item > div:first-child { display:flex; align-items:center; gap:6px; min-width:0; }
+.clip-item > div:first-child > p { display:block; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.clip-item > div:first-child > time { flex:none; white-space:nowrap; }
+.clip-item > div:first-child > div { margin-top:0; flex:none; }
+.clip-item > button { flex:none; font-size:11px; padding:4px; }
+/* In the short panel, full file/app names and actions fit without tall thumbnail tiles. */
+.library-content[data-wide=true] [role=button][title] { padding:4px; gap:2px; }
+.library-content[data-wide=true] [role=button][title] > div:first-child { height:20px; min-height:20px; }
+.library-content[data-wide=true] [role=button][title] > div:first-child svg,
+.library-content[data-wide=true] [role=button][title] > div:first-child img { max-height:20px; max-width:24px; }
+
+/* Preview has no screen scrim (0% dim); the original image uses the whole existing island. */
+.capture-preview { gap:4px; padding:0; background:transparent; filter:none; opacity:1; overflow:hidden; }
+.capture-preview header { min-height:20px; font-size:11px; flex:none; }
+.capture-preview .capture-image { flex:1; min-height:0; width:100%; height:100%; max-height:none; object-fit:contain; filter:none; opacity:1; cursor:grab; }
+.capture-preview .capture-actions { display:none; flex:none; }
+.capture-preview:hover .capture-actions, .capture-preview:focus-within .capture-actions, .capture-preview[data-editing=true] .capture-actions { display:flex; }
+.capture-page { padding:0; }
+.capture-page [data-testid="capture-grid"] { gap:4px; }
+.capture-recent { flex:none; min-width:0; }
+.capture-recent h3 { font-size:11px; margin-bottom:4px; }
+.capture-recent-row { display:flex; gap:6px; overflow-x:auto; overflow-y:hidden; align-items:center; min-height:64px; }
+.capture-recent-row > span { font-size:11px; color:var(--c-text-secondary); }
+.capture-recent-square { position:relative; width:64px; height:64px; flex:none; border-radius:12px; overflow:hidden; }
+.capture-recent-open { width:100%; height:100%; }
+.capture-recent-open img { width:100%; height:100%; object-fit:cover; }
+.capture-recent-delete { position:absolute; top:2px; right:2px; display:grid; place-items:center; width:20px; height:20px; border-radius:50%; background:var(--island-surface-strong); }

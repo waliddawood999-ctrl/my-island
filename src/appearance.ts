@@ -173,7 +173,7 @@ export function glassAlpha(_style: "crystal" | "clear", light: boolean, tint: nu
 export const SECTION_KEYS: Record<string, (keyof Settings)[]> = {
   general: ["autostart", "language", "monitor"],
   island: ["clockPosition", "clockX", "clockY", "clockScale", "eyesAlign", "pillWidth", "pillHeight", "pillRadius", "peekWidth", "peekHeight", "peekRadius", "panelWidth", "panelHeight", "panelRadius", "hoverDelayMs", "hoverZone", "peekWheelCycle", "peekCardOrder", "panelWheelPaging", "panelTabsStyle", "offsetX", "offsetY", "pillPosition", "islandDocking", "autoHide", "hideInFullscreen", "opacityRest", "opacityOpen", "showClock", "clockFormat", "eyesEnabled", "captureVisible"],
-  appearance: ["themeMode", "themePack", "artBloom", "themeAnim", "themeCustom", "themeTune", "themeDisclosure", "themePackLight", "themePackDark", "accentSource", "themeMaterial", "glassStyle", "glassTint", "backgroundOpacity", "accentMode", "accentColor", "borderStrength", "shadowStrength", "cornerStyle", "fontScale", "density"],
+  appearance: ["themeMode", "themePack", "artBloom", "themeAnim", "islandAnimation", "themeCustom", "themeTune", "themeDisclosure", "themePackLight", "themePackDark", "accentSource", "themeMaterial", "glassStyle", "glassTint", "backgroundOpacity", "accentMode", "accentColor", "borderStrength", "shadowStrength", "cornerStyle", "fontScale", "density"],
   motion: ["motionLevel", "motionPreset", "motionSpeed", "motionBounce", "reduceMotion"],
   modules: ["showToday", "prayerCity", "showWeather", "weatherCity", "weatherUnits", "showCountdowns", "showWorldClock", "showBattery", "batteryTip", "btBatteries", "showNetSpeed", "clipLimit", "pasteOnClick", "clipExcludedApps", "privacyIndicator", "showVolume", "showMeetings", "screenshotDir", "recordFormat", "recordingFps", "recordingQuality", "recordingDir", "liveRates", "liquidSpectrum", "playerLayout", "progressStyle", "progressMotion", "progressScrubTime", "visualizer", "showPlaybackTime", "showSourceBadge", "showProgress", "artworkBackdrop", "attentionTracking"],
   notifications: ["soundChoice", "soundVolume", "prayerAlerts", "loadAlert", "meetingLeadMin", "breakReminders", "breakMinutes"],
@@ -244,7 +244,7 @@ export function glassSurface(style: "crystal" | "clear", theme: ResolvedTheme, t
 
 // ───────── ثيماتي: رفّ المستخدم + تصدير/استيراد الثيم (JSON) ─────────
 /** المفاتيح التي يحملها ملف الثيم (لا أسرار ولا إعدادات غير مظهرية). */
-export const THEME_KEYS = ["themeMode", "themePack", "themePackLight", "themePackDark", "accentSource", "accentColor", "accentMode", "artBloom", "themeAnim", "themeCustom", "myThemes", "themeTune", "themeMaterial", "glassStyle", "glassTint", "backgroundOpacity", "borderStrength", "shadowStrength", "cornerStyle", "fontScale", "density"] as const;
+export const THEME_KEYS = ["themeMode", "themePack", "themePackLight", "themePackDark", "accentSource", "accentColor", "accentMode", "artBloom", "themeAnim", "islandAnimation", "themeCustom", "myThemes", "themeTune", "themeMaterial", "glassStyle", "glassTint", "backgroundOpacity", "borderStrength", "shadowStrength", "cornerStyle", "fontScale", "density"] as const;
 export const MAX_SHELF = 24;
 export function exportTheme(s: P): string {
   const theme: Record<string, unknown> = {};
@@ -271,7 +271,7 @@ export function parseThemeImport(text: string): P | null {
       if (k in ENUMS) { if (typeof v === "string" && ENUMS[k].includes(v)) out[k] = v; }
       else if (k === "themePack" || k === "themePackLight" || k === "themePackDark") { if (validPackId(v, mine) && (k === "themePack" ? v !== "" : true)) out[k] = v; }
       else if (k === "accentColor") { if (typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v)) out[k] = v.toLowerCase(); }
-      else if (k === "themeAnim") { if (typeof v === "boolean") out[k] = v; }
+      else if (k === "themeAnim" || k === "islandAnimation") { if (typeof v === "boolean") out[k] = v; }
       else if (k === "themeCustom") { const u = sanitizeUserTheme({ id: "custom", ...(v && typeof v === "object" ? v : {}) }); if (u) { const { id: _id, name: _n, ...rest } = u; out[k] = rest; } }
       else if (k === "themeTune") out[k] = compactTune(normTune(v));
       else if (typeof v === "number" && Number.isFinite(v)) {

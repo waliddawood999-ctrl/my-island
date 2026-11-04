@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { ScanText, Monitor, NotebookPen, Pipette, Square, Trash2, Video } from "lucide-react";
@@ -6,11 +6,25 @@ import { i } from "../../i18n";
 import { fmtElapsed, useRecording } from "../../useRecording";
 import type { Settings } from "../../settings";
 
+import type { CaptureShot } from "./CapturePreview";
+const QuickNote = lazy(() => import("./NoteTab").then(m => ({default:m.NoteEditor})));
+type RecentCapture = CaptureShot & {thumb:string};
+
 type ColorEntry = { hex: string; r: number; g: number; b: number; h: number; s: number; l: number };
 
 /** تبويب الأدوات: لقطات، تسجيل، منتقي ألوان مع السجل، محرّر آخر لقطة (الجلسة 3.3). */
-export function ToolsTab({ settings, wide = false, onOpenTab }: { settings?: Partial<Settings>; wide?: boolean; onOpenTab?: (id: string) => void } = {}) {
+export function ToolsTab({ settings, wide = false, quickNoteRequest = 0, onPreview }: { settings?: Partial<Settings>; wide?: boolean; quickNoteRequest?: number; onPreview?: (shot: CaptureShot) => void } = {}) {
   const rec = useRecording();
+  const [noteOpen,setNoteOpen] = useState(quickNoteRequest > 0);
+  const [recent,setRecent] = useState<RecentCapture[]>([]);
+  const [recentError,setRecentError] = useState("");
+  useEffect(() => { if (quickNoteRequest > 0) setNoteOpen(true); }, [quickNoteRequest]);
+  useEffect(() => {
+    let alive=true;
+    const load=()=>invoke<RecentCapture[]>("capture_recent").then(v=>{if(alive){setRecent(Array.isArray(v)?v:[]);setRecentError("");}}).catch(e=>alive&&setRecentError(String(e)));
+    load(); const un=listen("capture:saved",load); const changed=listen("capture:changed",load);
+    return()=>{alive=false;un.then(f=>f());changed.then(f=>f());};
+  },[]);
   const [colors, setColors] = useState<ColorEntry[]>([]);
   const [toast, setToast] = useState<string | null>(null);
   const toastT = useRef<number | undefined>(undefined);
@@ -32,6 +46,13 @@ export function ToolsTab({ settings, wide = false, onOpenTab }: { settings?: Par
     return () => { un.then((f) => f()); };
   }, [loadColors]);
 
+  const deleteShot = async (path:string) => {
+    try {
+      const deleted=await invoke<boolean>("capture_delete",{path});
+      setRecent(list=>list.filter(shot=>shot.path!==path));
+      say(deleted?i("حُذفت اللقطة","Capture deleted"):i("اللقطة غير موجودة؛ حُدّثت القائمة","Capture already missing; list updated"));
+    } catch(e) { say(`${i("تعذّر حذف اللقطة","Could not delete capture")}: ${String(e)}`); }
+  };
   const run = (cmd: string, args?: Record<string, unknown>) => () => {
     invoke(cmd, args).then(() => say(i("تم إرسال الطلب", "Request sent"))).catch((e) => say(String(e)));
   };
@@ -44,11 +65,12 @@ export function ToolsTab({ settings, wide = false, onOpenTab }: { settings?: Par
       .catch((e) => say(String(e)));
   };
 
-  const btn = "i-btn flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs";
+  const btn = "i-btn flex flex-col items-center justify-center gap-0.5 rounded-xl px-2 py-1 text-[11px]";
   // الاختصار العام تحت اسم كل إجراء (فارغ = معطّل ⇒ لا يظهر). الصفحة مستقلة «الالتقاط» في الدوك.
   const hk = (v?: string) => (v ? <kbd dir="ltr" className="rounded bg-white/10 px-1 text-[9.5px] font-normal text-white/55">{v}</kbd> : null);
+  if (noteOpen) return <div data-testid="capture-quick-note" className="flex h-full min-h-0 flex-col gap-1"><button className="i-btn self-start px-2 py-1 text-xs" onClick={()=>setNoteOpen(false)}>{i("العودة إلى الالتقاط","Back to capture")}</button><Suspense fallback={<p>{i("جارٍ فتح الملاحظة…","Opening note…")}</p>}><QuickNote /></Suspense></div>;
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3">
+    <div data-testid="capture-page" className="capture-page flex h-full min-h-0 flex-col gap-2">
       <div data-testid="capture-grid" className={`grid shrink-0 gap-2 ${wide ? "grid-cols-6" : "grid-cols-3"}`}>
         <button className={btn} onClick={run("capture_start", { mode: "area" })}>
           <Square size={18} /><span dir="auto">{i("لقطة منطقة", "Area shot")}</span>{hk(settings?.hotkeyArea)}
@@ -72,14 +94,22 @@ export function ToolsTab({ settings, wide = false, onOpenTab }: { settings?: Par
         <button className={btn} disabled title={i("استخراج النص غير متاح بعد؛ لا يوجد محرك OCR موصول", "Text extraction is not available yet; no OCR engine is connected")}>
           <ScanText size={18} /><span dir="auto">{i("استخراج نص OCR", "Extract text OCR")}</span><small>{i("غير متاح بعد", "Not available yet")}</small>
         </button>
-        {onOpenTab && (
-          <button data-testid="capture-note" className={btn} onClick={() => onOpenTab("note")}>
-            <NotebookPen size={18} /><span dir="auto">{i("ملاحظة سريعة", "Quick note")}</span>
-          </button>
-        )}
+        <button data-testid="capture-note" className={btn} onClick={() => setNoteOpen(true)}>
+          <NotebookPen size={18} /><span dir="auto">{i("ملاحظة سريعة", "Quick note")}</span>
+        </button>
 
       </div>
 
+      <section className="capture-recent" aria-label={i("اللقطات الأخيرة","Recent captures")}>
+        <h3>{i("اللقطات الأخيرة","Recent captures")}</h3>
+        <div className="capture-recent-row" data-testid="capture-recent">
+          {recent.map(shot=><div className="capture-recent-square" key={shot.path}>
+            <button className="capture-recent-open" onClick={()=>onPreview?.(shot)} aria-label={`${i("فتح اللقطة","Open capture")} ${shot.path}`}><img src={shot.thumb} alt="" draggable={false} /></button>
+            <button className="capture-recent-delete" onClick={()=>void deleteShot(shot.path)} aria-label={`${i("حذف اللقطة","Delete capture")} ${shot.path}`} title={i("حذف ملف هذه اللقطة فقط","Delete only this capture file")}><Trash2 size={12}/></button>
+          </div>)}
+          {!recent.length && <span>{recentError || i("لا لقطات محفوظة بعد","No saved captures yet")}</span>}
+        </div>
+      </section>
       {(rec.last?.path || rec.last?.error) && !rec.recording && (
         <p dir="auto" className={`shrink-0 truncate text-xs ${rec.last.error ? "text-red-400" : "text-white/70"}`}>
           {rec.last.error

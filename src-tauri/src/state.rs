@@ -59,6 +59,7 @@ pub fn defaults() -> Map<String, Value> {
         "themePackDark": "noir-gold",
         "accentSource": "pack",
         "artBloom": 60,
+        "islandAnimation": true,
         "themeAnim": true,
         "themeTune": {},
         "themeDisclosure": "basic",
