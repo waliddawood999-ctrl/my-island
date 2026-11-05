@@ -875,7 +875,7 @@ export function Pill() {
                 initial="initial"
                 animate="animate"
                 exit="exit"
-                className={`flex min-h-0 flex-1 flex-col ${referenceHome || curTab === "clip" || curTab === "tools" ? "pt-0" : "pt-3"}`}
+                className={`flex min-h-0 flex-1 flex-col ${referenceHome || curTab === "clip" || curTab === "tools" || curTab === "library" ? "pt-0" : "pt-3"}`}
               >
                 {captureShot ? <CapturePreview key={captureShot.path} shot={captureShot} onClose={closeCapture} /> : renderTab(curTab, "panel")}
               </motion.div>

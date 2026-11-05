@@ -255,19 +255,22 @@ input[type="range"].st-range:focus-visible::-webkit-slider-thumb { box-shadow: 0
 .tp-advanced-toggle[aria-expanded="true"] > svg:last-child { rotate: 180deg; }
 .tp-advanced-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @media (max-width: 760px) { .tp-basic-controls { flex-direction: column; align-items: stretch; } .tp-simple .st-row { flex-wrap: wrap; } }
-.tp-simple .tp-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-@media (max-width: 900px) { .tp-simple .tp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 .tp-simple .tp-hero { grid-template-columns: 1fr; }
 .tp-simple .tp-hero[hidden] { display: none; }
-.tp-simple .tp-grid { max-height: 360px; overflow-y: auto; scrollbar-width: thin; padding: 3px; }
+.tp-simple .tp-grid { max-height: 480px; overflow-y: auto; scrollbar-width: thin; padding: 3px; }
 
-.tp-simple .tp-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
 .settings-feedback { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:36px; font-size:12px; }
 
-/* Stored themes retain their order; each card occupies a full gallery row. */
-.tp-simple .tp-grid { grid-template-columns:minmax(0,1fr); max-height:none; }
-.tp-simple .tp-card-btn { min-width:0; }
+/* All original packs plus stored themes; compact square cards, responsive 3–4 columns. */
+.tp-gallery { container-type:inline-size; }
+.tp-simple .tp-grid { grid-template-columns:repeat(3,minmax(0,1fr)); max-width:720px; gap:10px; }
+@container (min-width:600px) { .tp-simple .tp-grid { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+.tp-simple .tp-card-btn { min-width:0; min-height:0; aspect-ratio:1; overflow:hidden; gap:4px; }
+.tp-simple .tp-card-btn .tp-mini[data-size="sm"] { flex:1; min-height:0; height:auto; }
+.tp-simple .tp-card-name, .tp-simple .tp-card-desc { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; max-width:100%; }
+.tp-simple .tp-card-name { font-size:12px; }
+.tp-simple .tp-card-desc { font-size:10px; }
 .tp-basic-group[data-basic="edges"] > .st-row { align-items:flex-start; }
 .tp-basic-group[data-basic="edges"] .tp-basic-controls { flex-wrap:wrap; gap:12px; min-width:0; }
 .tp-basic-group[data-basic="edges"] .tp-basic-slider { flex:1 1 160px; min-width:0; }

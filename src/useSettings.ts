@@ -6,7 +6,7 @@ import { setLang } from "./i18n";
 import { setMotionTuning, setPressTap, useMotionSync, useEco } from "./motion";
 import { PRESS, normTune } from "./themeTune";
 import { appearanceVars, deriveFor, effectiveMotion, fxFor, glassAllowed, migrateSettings, resolveTheme, type Env, type Fx } from "./appearance";
-import { resolvePack } from "./themePacks";
+import { PACKS, resolvePack } from "./themePacks";
 import { extractSwatches, type ArtSwatches } from "./artwork";
 
 /** glassTint صالح 0..80 (غير ذلك ⇒ الافتراضي 45). */
@@ -164,7 +164,7 @@ export function useSettings(): Partial<Settings> & { loaded?: boolean; /** تأ�
   const [stored, setS] = useState<Partial<Settings> & { loaded?: boolean }>(DEFAULTS);
   // Presentation policy: preserve legacy settings on disk, expose the factory references and the user’s stored themes.
   const s = useMemo(() => {
-    const allowed = ["noir-gold", "ivory", "nebula-mesh", ...(Array.isArray(stored.myThemes) ? stored.myThemes.flatMap(t => t && typeof t.id === "string" ? [t.id] : []) : [])];
+    const allowed = [...PACKS.map(pack => pack.id), "custom", ...(Array.isArray(stored.myThemes) ? stored.myThemes.flatMap(t => t && typeof t.id === "string" ? [t.id] : []) : [])];
     const valid = (id: unknown, fallback: string) => typeof id === "string" && allowed.includes(id) ? id : fallback;
     return { ...stored, themePack: valid(stored.themePack, "noir-gold"), themePackLight: valid(stored.themePackLight, "ivory"), themePackDark: valid(stored.themePackDark, "noir-gold"), glassStyle: "clear", glassTint: stored.glassStyle === "crystal" ? 25 : stored.glassTint, artworkBackdrop: false, accentMode: "fixed" } as typeof stored;
   }, [stored]);

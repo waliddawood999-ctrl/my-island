@@ -278,3 +278,10 @@ export const pageSwap = (direction: number, reduced: boolean): Variants => ({
   animate: { opacity: 1, x: 0, filter: "none", transition: reduced ? {duration:0} : spring.content },
   exit: { opacity: reduced ? 1 : 0, x: reduced ? 0 : -direction * 10, filter: "none", transition: {duration:reduced ? 0 : dur.fast} },
 });
+
+/** Capture frame: restrained hover, with no spatial animation in reduced/off/Eco. */
+export const captureToolHover = () => ({
+  whileHover: { scale: motionLevel() === "full" ? 1.04 : 1 },
+  whileTap: { scale: motionLevel() === "full" ? 0.97 : 1 },
+  transition: spring.press,
+});

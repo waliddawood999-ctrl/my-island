@@ -38,8 +38,8 @@ async function openPanel(page){await page.goto(BASE+'/index.html');await page.wa
 async function main(){const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium'});try{
  const context=await browser.newContext({viewport:{width:1280,height:1000}}),page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));await setup(page);
  await page.goto(BASE+'/settings.html');await page.locator('[data-nav="appearance"]').click();await page.getByTestId('theme-gallery').waitFor();
- ok('factory packs plus all saved themes in stored order',JSON.stringify(await page.getByTestId('theme-gallery').getByRole('radio').evaluateAll(es=>es.map(e=>e.dataset.pack)))===JSON.stringify(['noir-gold','ivory','nebula-mesh','u:z','u:a']));
- ok('gallery cards stacked as rows',await page.getByTestId('theme-gallery').getByRole('radio').evaluateAll(es=>es.every((e,n)=>n===0||e.getBoundingClientRect().top>=es[n-1].getBoundingClientRect().bottom)));
+ ok('all factory packs plus saved themes in stored order',await page.getByTestId('theme-gallery').getByRole('radio').evaluateAll(es=>es.length>12&&JSON.stringify(es.slice(-2).map(e=>e.dataset.pack))===JSON.stringify(['u:z','u:a'])));
+ ok('gallery cards form compact square grid',await page.getByTestId('theme-gallery').getByRole('radio').evaluateAll(es=>es.every(e=>Math.abs(e.getBoundingClientRect().width-e.getBoundingClientRect().height)<1)&&es.filter(e=>Math.abs(e.getBoundingClientRect().top-es[0].getBoundingClientRect().top)<1).length>=3));
  await page.getByTestId('theme-gallery').locator('[data-pack="u:z"]').click();await page.waitForFunction(()=>document.documentElement.dataset.pack==='u:z');
  ok('saved theme writes three selection keys',await page.evaluate(()=>['themePack','themePackLight','themePackDark'].every(k=>window.__stored[k]==='u:z')));
  await page.reload();await page.locator('[data-nav="appearance"]').click();await page.getByTestId('theme-gallery').waitFor();ok('saved theme survives reload',await page.evaluate(()=>document.documentElement.dataset.pack==='u:z'));
@@ -71,8 +71,11 @@ async function main(){const browser=await chromium.launch({executablePath:proces
   ok('both library functions mounted '+width,await p.getByTestId('library-files').count()===1&&await p.getByTestId('library-apps').count()===1);
   const file=p.getByTestId('library-files').getByRole('button',{name:/report.txt/});
   // Shelf tiles use the file path as title; keep the original action handlers.
+  await p.getByTestId('library-select-files').click();
   const tile=p.locator('[title="C:/test/report.txt"]');await tile.click();ok('file open retained '+width,(await calls(p,'open_path')).some(([,a])=>a.path==='C:/test/report.txt'));
+  await p.getByTestId('library-select-apps').click();
   await p.getByTestId('library-apps').getByText('تطبيق محفوظ',{exact:true}).click();ok('app launch retained '+width,(await calls(p,'launcher_launch')).some(([,a])=>a.id===21));
+  await p.getByTestId('library-select-files').click();
   await tile.scrollIntoViewIfNeeded();const r=await tile.boundingBox();await p.mouse.move(r.x+r.width/2,r.y+r.height/2);await p.mouse.down();await p.mouse.move(r.x+r.width/2+12,r.y+r.height/2);await p.mouse.up();ok('native shelf drag retained '+width,(await calls(p,'shelf_drag')).some(([,a])=>a.ids.includes(11)));
   await p.locator('.island-body').screenshot({path:OUT+'/library-populated-'+width+'.png'});
   ok('both library areas fit without horizontal overflow '+width,await p.getByTestId('library-page').evaluate(el=>el.scrollWidth<=el.clientWidth+1&&[...el.querySelectorAll('.library-part')].every(e=>e.scrollWidth<=e.clientWidth+1)));
@@ -83,14 +86,19 @@ async function main(){const browser=await chromium.launch({executablePath:proces
   ok('all eight mixed entries retained '+width,await p.locator('[data-testid^="clip-item-"]').count()===8&&(await calls(p,'clip_clear')).length===0&&(await calls(p,'clip_delete')).length===0);
   ok('clear/search share first top row '+width,await p.getByTestId('clipboard-toolbar').evaluate(el=>{const b=el.querySelector('button').getBoundingClientRect(),s=el.querySelector('label').getBoundingClientRect(),p=el.parentElement.getBoundingClientRect();return Math.abs(b.y-s.y)<5&&el.getBoundingClientRect().y-p.y<1}));
   ok('list starts immediately after toolbar '+width,await p.getByTestId('clipboard-page').evaluate(el=>{const a=el.querySelector('[data-testid="clipboard-toolbar"]').getBoundingClientRect(),b=el.querySelector('[data-testid="clipboard-items"]').getBoundingClientRect();return b.top-a.bottom<=5}));
-  ok('rows compact with no middle gap '+width,await p.locator('[data-testid^="clip-item-"]').evaluateAll(es=>es.every((el,n)=>n===0||el.getBoundingClientRect().top-es[n-1].getBoundingClientRect().bottom<5)));
-  ok('compact text rows are at most 46px '+width,await p.getByTestId('clip-item-1').evaluate(el=>el.getBoundingClientRect().height<=46));
+  ok('rows compact with no middle gap '+width,await p.locator('[data-testid^="clip-item-"]').evaluateAll(es=>es.every((el,n)=>n<2||el.getBoundingClientRect().top-es[n-2].getBoundingClientRect().bottom<=9)));
+  ok('clipboard has two entries per row '+width,await p.locator('[data-testid^="clip-item-"]').evaluateAll(es=>{const rs=es.map(e=>e.getBoundingClientRect());return rs.every((r,n)=>Math.abs(r.top-rs[n-n%2].top)<1)&&rs[2].top>rs[0].top&&(rs[0].right<=rs[1].left+1||rs[1].right<=rs[0].left+1);}));
+  ok('cards and action buttons fit '+width,await p.locator('[data-testid^="clip-item-"]').evaluateAll(es=>es.every(e=>e.scrollWidth<=e.clientWidth+1&&[...e.querySelectorAll(':scope > button')].every(b=>b.getBoundingClientRect().right<=e.getBoundingClientRect().right+1))));
   ok('pinned status visible '+width,await p.getByTestId('clip-item-1').getByRole('button',{name:'إلغاء التثبيت'}).isVisible());
   await p.getByTestId('clip-item-2').click();ok('single click pastes '+width,(await calls(p,'clip_paste')).some(([,a])=>a.id===2));
   const before=(await calls(p,'clip_paste')).length;await p.getByTestId('clip-item-2').getByRole('button',{name:'نسخ العنصر'}).click();ok('copy does not also paste '+width,(await calls(p,'clip_set_text')).some(([,a])=>a.text==='https://example.com')&&(await calls(p,'clip_paste')).length===before);
   await p.getByTestId('clip-item-2').getByRole('button',{name:'تثبيت',exact:true}).click();await p.waitForTimeout(150);ok('pin action preserved '+width,(await calls(p,'clip_pin')).some(([,a])=>a.id===2&&a.pinned));
+  await p.evaluate(()=>{window.__clipOverlap=false;window.__clipSampling=true;const sample=()=>{const rs=[...document.querySelectorAll('.clip-item')].map(e=>e.getBoundingClientRect());if(rs.some((a,n)=>rs.some((b,m)=>n<m&&Math.min(a.right,b.right)-Math.max(a.left,b.left)>1&&Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>1)))window.__clipOverlap=true;if(window.__clipSampling)requestAnimationFrame(sample)};sample()});
   await p.getByTestId('clip-item-4').getByRole('button',{name:'حذف',exact:true}).click();await p.waitForTimeout(200);ok('delete action preserved '+width,(await calls(p,'clip_delete')).some(([,a])=>a.id===4));
   await p.getByPlaceholder('ابحث في الحافظة…').fill('عنصر 5');await p.waitForTimeout(200);ok('inline search works '+width,await p.locator('[data-testid^="clip-item-"]').count()===1);await p.getByPlaceholder('ابحث في الحافظة…').fill('');await p.waitForTimeout(200);
+  await p.waitForTimeout(400);
+  ok('no card overlap during deletion and filtering '+width,await p.evaluate(()=>{window.__clipSampling=false;return !window.__clipOverlap}));
+  ok('uniform card heights '+width,await p.locator('.clip-item').evaluateAll(es=>es.every(e=>Math.abs(e.getBoundingClientRect().height-76)<1)));
   await p.locator('.island-body').screenshot({path:OUT+'/clipboard-'+width+'.png'});
   await p.getByTestId('clipboard-clear').click();ok('clear command only on explicit click '+width,(await calls(p,'clip_clear')).length>0);
   await c.close();

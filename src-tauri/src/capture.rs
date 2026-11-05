@@ -493,32 +493,44 @@ fn base64_encode(bytes: &[u8]) -> String {
     base64::engine::general_purpose::STANDARD.encode(bytes)
 }
 
-/// Read-only recent capture gallery; never changes or removes a file.
+/// Read-only history of captures and recordings in their configured directories.
 #[derive(Serialize)]
 pub struct RecentCapture {
     pub path: String,
     pub width: u32,
     pub height: u32,
     pub thumb: String,
+    pub kind: &'static str,
+    pub modified_at: u64,
 }
 #[tauri::command]
 pub async fn capture_recent(app: AppHandle) -> Result<Vec<RecentCapture>, String> {
-    let dir = screenshot_dir(&app);
+    let dirs = [(screenshot_dir(&app), false), (crate::recorder::recording_dir(&app), true)];
     tauri::async_runtime::spawn_blocking(move || -> Result<Vec<RecentCapture>, String> {
-        if !dir.exists() { return Ok(Vec::new()); }
-        let mut files: Vec<_> = std::fs::read_dir(dir).map_err(|e| e.to_string())?
-            .filter_map(Result::ok)
-            .filter(|e| e.path().extension().is_some_and(|x| x.eq_ignore_ascii_case("png")))
-            .filter_map(|e| { let m = e.metadata().ok()?; if !m.is_file() { return None; } Some((m.modified().unwrap_or(std::time::UNIX_EPOCH), e.path())) })
-            .collect();
+        let mut files = Vec::new();
+        for (dir, video) in dirs {
+            if !dir.exists() { continue; }
+            for entry in std::fs::read_dir(dir).map_err(|e| e.to_string())?.filter_map(Result::ok) {
+                let path = entry.path();
+                let ext = path.extension().and_then(|v| v.to_str()).unwrap_or("").to_ascii_lowercase();
+                if !(if video { ext == "mp4" || ext == "gif" } else { ext == "png" }) { continue; }
+                let Ok(meta) = entry.metadata() else { continue; };
+                if !meta.is_file() || entry.file_type().map(|t| t.is_symlink()).unwrap_or(true) { continue; }
+                files.push((meta.modified().unwrap_or(std::time::UNIX_EPOCH), path, video));
+            }
+        }
         files.sort_by(|a,b| b.0.cmp(&a.0).then_with(|| a.1.cmp(&b.1)));
         let mut out = Vec::new();
-        for (_, path) in files.into_iter().take(16) {
-            let Ok(image) = image::open(&path) else { continue; };
-            let (width,height) = (image.width(),image.height());
-            let mut bytes = std::io::Cursor::new(Vec::new());
-            image.thumbnail(128,128).write_to(&mut bytes, image::ImageFormat::Png).map_err(|e| e.to_string())?;
-            out.push(RecentCapture { path: path.to_string_lossy().into_owned(), width, height, thumb:format!("data:image/png;base64,{}", base64_encode(bytes.get_ref())) });
+        for (modified, path, video) in files.into_iter() {
+            let (width, height, thumb) = if video { (0, 0, String::new()) } else {
+                let Ok(image) = image::open(&path) else { continue; };
+                let mut bytes = std::io::Cursor::new(Vec::new());
+                image.thumbnail(128,128).write_to(&mut bytes, image::ImageFormat::Png).map_err(|e| e.to_string())?;
+                (image.width(), image.height(), format!("data:image/png;base64,{}", base64_encode(bytes.get_ref())))
+            };
+            out.push(RecentCapture { path: path.to_string_lossy().into_owned(), width, height, thumb,
+                kind: if video { "video" } else { "image" },
+                modified_at: modified.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis() as u64 });
         }
         Ok(out)
     }).await.map_err(|e| e.to_string())?
@@ -527,6 +539,10 @@ pub async fn capture_recent(app: AppHandle) -> Result<Vec<RecentCapture>, String
 // CAPTURE-DELETE-PURE-BEGIN
 /// Deletes exactly one regular PNG in the configured directory; no traversal or recursion.
 fn delete_capture_file(dir: &std::path::Path, path: &std::path::Path) -> Result<bool, String> {
+    delete_media_file(dir, path, &["png"])
+}
+
+fn delete_media_file(dir: &std::path::Path, path: &std::path::Path, extensions: &[&str]) -> Result<bool, String> {
     let metadata = match std::fs::symlink_metadata(path) {
         Ok(v) => v,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(false),
@@ -535,8 +551,8 @@ fn delete_capture_file(dir: &std::path::Path, path: &std::path::Path) -> Result<
     if !metadata.is_file() || metadata.file_type().is_symlink() {
         return Err("ليست لقطة عادية قابلة للحذف".into());
     }
-    if !path.extension().is_some_and(|x| x.eq_ignore_ascii_case("png")) {
-        return Err("الحذف متاح لملفات PNG في مجلد اللقطات فقط".into());
+    if !path.extension().is_some_and(|x| extensions.iter().any(|ext| x.eq_ignore_ascii_case(ext))) {
+        return Err("نوع الملف غير مسموح في هذا المجلد".into());
     }
     let root = dir.canonicalize().map_err(|e| e.to_string())?;
     let parent = path.parent().ok_or("مسار لقطة غير صالح")?.canonicalize().map_err(|e| e.to_string())?;
@@ -550,7 +566,17 @@ fn delete_capture_file(dir: &std::path::Path, path: &std::path::Path) -> Result<
 
 #[cfg(test)]
 mod capture_deletion_tests {
-    use super::delete_capture_file;
+    use super::{delete_capture_file, delete_media_file};
+    #[test]
+    fn recording_delete_is_scoped_and_preserves_neighbors() {
+        let dir=temp(); let a=dir.join("a.mp4"); let b=dir.join("b.gif"); let text=dir.join("keep.txt");
+        for path in [&a,&b,&text] { std::fs::write(path,b"keep").unwrap(); }
+        assert_eq!(delete_media_file(&dir,&a,&["mp4","gif"]),Ok(true));
+        assert!(b.exists() && text.exists());
+        assert!(delete_media_file(&dir,&text,&["mp4","gif"]).is_err());
+        assert_eq!(delete_media_file(&dir,&a,&["mp4","gif"]),Ok(false));
+        std::fs::remove_dir_all(dir).unwrap();
+    }
     fn temp() -> std::path::PathBuf {
         let n = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
         let p = std::env::temp_dir().join(format!("my-island-delete-{}-{n}", std::process::id()));
@@ -590,9 +616,13 @@ mod capture_deletion_tests {
 /// Explicit capture deletion; never called by loading or rearranging the gallery.
 #[tauri::command]
 pub async fn capture_delete(app: AppHandle, path: String) -> Result<bool, String> {
-    let dir = screenshot_dir(&app);
+    let video = std::path::Path::new(&path).extension().is_some_and(|ext| ext.eq_ignore_ascii_case("mp4") || ext.eq_ignore_ascii_case("gif"));
+    let dir = if video { crate::recorder::recording_dir(&app) } else { screenshot_dir(&app) };
     let selected = path.clone();
-    let deleted = tauri::async_runtime::spawn_blocking(move || delete_capture_file(&dir,std::path::Path::new(&selected)))
+    let deleted = tauri::async_runtime::spawn_blocking(move || {
+        if video { delete_media_file(&dir,std::path::Path::new(&selected), &["mp4", "gif"]) }
+        else { delete_capture_file(&dir,std::path::Path::new(&selected)) }
+    })
         .await.map_err(|e| e.to_string())??;
     let _ = app.emit("capture:changed", path);
     Ok(deleted)

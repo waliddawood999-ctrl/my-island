@@ -36,8 +36,8 @@ for(const motionLevel of ['full','reduced','off']){
  await p.getByTestId('dock-capture').click();await p.getByTestId('capture-page').waitFor();await p.waitForTimeout(350);
  ok(motionLevel+': six capture tools retained',await p.getByTestId('capture-grid').getByRole('button').count()===6);
  ok(motionLevel+': twelve recent thumbnails available',await p.getByTestId('capture-recent').locator('.capture-recent-square').count()===12);
- ok(motionLevel+': thumbnails square uniform and single row',await p.getByTestId('capture-recent').locator('.capture-recent-square').evaluateAll(es=>es.every(e=>{const r=e.getBoundingClientRect();return Math.abs(r.width-64)<.5&&Math.abs(r.height-64)<.5&&Math.abs(r.y-es[0].getBoundingClientRect().y)<1})));
- ok(motionLevel+': no vertical gallery scroll',await p.getByTestId('capture-recent').evaluate(el=>el.scrollHeight<=el.clientHeight+1));
+ ok(motionLevel+': thumbnails uniform and twelve fit viewport',await p.getByTestId('capture-recent').locator('.capture-recent-square').evaluateAll(es=>es.every(e=>{const r=e.getBoundingClientRect();return Math.abs(r.width-es[0].getBoundingClientRect().width)<.5&&Math.abs(r.height-es[0].getBoundingClientRect().height)<.5&&r.bottom<=e.closest('.capture-history-viewport').getBoundingClientRect().bottom+1})));
+ ok(motionLevel+': no vertical gallery scroll',await p.locator('.capture-history-viewport').evaluate(el=>el.scrollHeight<=el.clientHeight+1));
  ok(motionLevel+': loading gallery never deletes a file',!await p.evaluate(()=>window.__calls.some(([c])=>c==='capture_delete')));
  await p.getByRole('button',{name:'حذف اللقطة '+recent[11].path,exact:true}).click();await p.waitForTimeout(150);
  ok(motionLevel+': selected capture removed, other captures retained',await p.getByTestId('capture-recent').locator('.capture-recent-square').count()===11&&await p.getByRole('button',{name:'فتح اللقطة '+recent[0].path,exact:true}).count()===1&&await p.evaluate(path=>window.__calls.some(([c,a])=>c==='capture_delete'&&a.path===path),recent[11].path));

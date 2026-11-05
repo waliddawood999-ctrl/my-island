@@ -103,7 +103,7 @@ export function AppearanceBody({ s, set }: { s: Partial<Settings>; set: (p: Part
   const file = useRef<HTMLInputElement>(null);
 
   const allPacks: { pack: Pack; id: string }[] = [...PACKS.map((p) => ({ pack: p, id: p.id })), ...mine.map((u) => ({ pack: resolvePack(u.id, null, mine), id: u.id }))];
-  const galleryPacks = [...["noir-gold", "ivory", "nebula-mesh"].flatMap((id) => allPacks.filter((x) => x.id === id)), ...mine.map(u => ({ pack: resolvePack(u.id, null, mine), id: u.id }))];
+  const galleryPacks = allPacks;
   const selected = hover ? resolvePack(hover, s.themeCustom, mine) : pack;
   const dark = theme === "dark";
   const packLabel = (p: Pack) => i(p.ar, p.en);

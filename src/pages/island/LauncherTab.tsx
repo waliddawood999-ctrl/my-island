@@ -134,7 +134,7 @@ function SubmitRow({ busy, error, label, onSubmit }: { busy?: boolean; error: st
 }
 
 /** تبويب اللانشر: شبكة أيقونات كبيرة بمجموعات، بحث سريع، إطلاق بنقرة، سحب بين المجموعات، واختصارات عالمية. */
-export function LauncherTab({ launcher }: { launcher: Launcher }) {
+export function LauncherTab({ launcher, compact = false }: { launcher: Launcher; compact?: boolean }) {
   const { items, groups, hotkeys, reload, setGroups } = launcher;
   const [q, setQ] = useState("");
   const [toast, setToast] = useState<string | null>(null);
@@ -311,7 +311,7 @@ export function LauncherTab({ launcher }: { launcher: Launcher }) {
     : [];
 
   return (
-    <div ref={box} className="relative flex h-full min-h-0 flex-col gap-2 pt-3">
+    <div ref={box} className={`relative flex h-full min-h-0 flex-col ${compact ? "library-widget gap-1" : "gap-2 pt-3"}`}>
       <div className="launcher-toolbar flex shrink-0 items-center gap-2">
         <label className="flex flex-1 items-center gap-2 rounded-full bg-white/10 px-3 py-1.5">
           <Search size={14} className="text-white/50" />
@@ -363,10 +363,10 @@ export function LauncherTab({ launcher }: { launcher: Launcher }) {
 
       <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto pe-1">
         {items.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center gap-2 text-white/40">
-            <LottieIcon name="empty" size={64} />
+          <div className={compact ? "library-empty text-white/40" : "flex h-full flex-col items-center justify-center gap-2 text-white/40"}>
+            {!compact && <LottieIcon name="empty" size={64} />}
             <p className="text-[13px]">{i("لا تطبيقات محفوظة في المكتبة", "No saved applications in the Library")}</p>
-            <p className="text-[11px]">{i("أضف تطبيقًا أو ملفًا أو مجلدًا أو رابطًا من «إضافة»", "Add an app, file, folder or link with “Add”")}</p>
+            {!compact && <p className="text-[11px]">{i("أضف تطبيقًا أو ملفًا أو مجلدًا أو رابطًا من «إضافة»", "Add an app, file, folder or link with “Add”")}</p>}
           </div>
         ) : searching ? (
           found.length === 0 ? (
