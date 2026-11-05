@@ -3,6 +3,10 @@
 /** مساحة عمل لشريط الأوامر: تُفتح كل عناصرها (تطبيق/مجلد/ملف كمسار، أو رابط http(s)) دفعة واحدة. */
 export interface Workspace { id:string, name:string, items:string[] }
 
+export const PROGRESS_STYLES = ["line", "shimmer", "wave", "liquid", "dashes", "ring"] as const;
+export type ProgressStyle = typeof PROGRESS_STYLES[number];
+export const progressStyle = (v: unknown): ProgressStyle => PROGRESS_STYLES.includes(v as ProgressStyle) ? v as ProgressStyle : "line";
+
 export type MotionLevelSetting = 'full'|'reduced'|'off';
 
 export interface Settings {
@@ -69,6 +73,7 @@ export interface Settings {
   artBloom:number,                // مقياس إزهار Living Artwork 0..200 (٪؛ 100 = سقوف الرصّة)
   themeTune:Record<string, unknown>, // مخزون التخصيص الشامل (themeTune.ts): أسطح/أحجام/أيقونات/ظل/ضغط/تمرير… ضمن نطاقات مصمَّمة — المفاتيح غير الافتراضية فقط
   themeDisclosure:'basic'|'advanced'|'expert', // مستوى إفصاح قسم المظهر (الخبير يفتح محرر الرموز الخام)
+  islandAnimation:boolean,        // حركة تمدد الجزيرة؛ مستقلة عن غسلة الثيم
   themeAnim:boolean,              // حركة الغسلة البطيئة (حزم التدرّج) — تعمل فقط والجزيرة مفتوحة وتُطفأ في Eco/تقليل الحركة
   themeCustom:Record<string, unknown>, // خانة الحزمة المخصصة الحيّة (بذور المستخدم ضمن نطاقات مصمَّمة)
   myThemes:Array<Record<string, unknown>>, // رفّ «ثيماتي»: نسخ المستخدم من حزم المصنع (id يبدأ بـ u:)
@@ -101,6 +106,9 @@ export interface Settings {
   backgroundOpacity:number,       // 0.3..1.0
   accentMode:'auto'|'fixed',      // auto = من غلاف الأغنية
   playerLayout:'compact'|'large'|'minimal',
+  progressStyle:ProgressStyle,
+  progressMotion:boolean,
+  progressScrubTime:boolean,
   visualizer:'bars'|'wave'|'off',
   showPlaybackTime:boolean, showSourceBadge:boolean, showProgress:boolean, artworkBackdrop:boolean,
   settingsVersion:number,         // ترحيل الإعدادات (appearance.ts::migrateSettings)
@@ -156,6 +164,7 @@ export const DEFAULTS: Partial<Settings> = {
   themePackLight: 'ivory',
   themePackDark: 'noir-gold',
   accentSource: 'pack',
+  islandAnimation: true,
   themeAnim: true,
   themeTune: {},
   themeDisclosure: 'basic',
@@ -189,6 +198,9 @@ export const DEFAULTS: Partial<Settings> = {
   backgroundOpacity: 1,
   accentMode: 'auto',
   playerLayout: 'compact',
+  progressStyle: 'line',
+  progressMotion: true,
+  progressScrubTime: true,
   visualizer: 'bars',
   showPlaybackTime: true, showSourceBadge: true, showProgress: true, artworkBackdrop: true,
   settingsVersion: 4,

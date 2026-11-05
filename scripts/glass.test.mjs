@@ -1,5 +1,5 @@
 // اختبار نموذج الزجاج المُحاكى (Tier A): node scripts/glass.test.mjs (أو npm run test:glass)
-//  · لا backdrop-filter ولا SetWindowCompositionAttribute/ACCENT_* في أي مسار · السطح من --glass-a · الاحتياط معتم · الإعدادات المسبقة أربعة حقيقية.
+//  · لا backdrop-filter ولا SetWindowCompositionAttribute/ACCENT_* في أي مسار · السطح من --glass-a · الاحتياط معتم · المواد مصمت/مثلّج فقط.
 import { build } from "esbuild";
 import { pathToFileURL } from "node:url";
 import { existsSync, mkdtempSync, readFileSync, readdirSync } from "node:fs";
@@ -33,12 +33,15 @@ eq("halo glow peak is capped ≤ 0.7× the engine glow alpha (no harsh ring besi
 eq("grain: SVG feTurbulence data-URI tile at 3.5% on ::before, glass only", /island-body::before \{[^}]*opacity: var\(--t-grain-a, 0\.035\)[^}]*feTurbulence/s.test(css) && !/fallback="solid"\] \.island-body::before/.test(css), true);
 eq("no gradient rim mask (old acrylic-era rim) left", css.includes("mask-composite"), false);
 eq("inner cards flat: .i-card and .i-glass both use the engine card level (--t-card-a of the foreground ink) with per-surface veil/edge overrides", css.includes('.i-card { background: rgb(from var(--t-fg, #fff) r g b / calc(var(--t-card-a, .05) * var(--sf-cards-veil, 1)))') && css.includes('.i-glass { background: rgb(from var(--t-fg, #fff) r g b / calc(var(--t-card-a, .05) * var(--sf-pop-veil, 1)))') && css.includes("var(--sf-cards-edge, 1)") && css.includes("var(--sf-pop-edge, 1)"), true);
-// ── الإعدادات المسبقة: أربعة فقط
-eq("presets = frosted/smoked/clear/minimal", A.STYLE_PRESETS.map((p) => p.id), ["frosted", "smoked", "clear", "minimal"]);
-eq("presets: veil styles/tints", A.STYLE_PRESETS.slice(0, 3).map((p) => [p.values.glassStyle, p.values.glassTint]), [["crystal", 45], ["crystal", 68], ["clear", 25]]);
-eq("presets give distinct veil alphas (dark): frosted < smoked, clear < frosted", (() => { const [f, s, c] = A.STYLE_PRESETS.slice(0, 3).map((p) => A.glassAlpha(p.values.glassStyle, false, p.values.glassTint)); return f < s && c < f; })(), true);
-eq("minimal is solid dark", [A.STYLE_PRESETS[3].values.themeMaterial, A.STYLE_PRESETS[3].values.themeMode], ["solid", "dark"]);
-eq("GLASS_STYLE_VALUES = veil only", A.GLASS_STYLE_VALUES, { crystal: { glassStyle: "crystal", themeMaterial: "glass", glassTint: 45 }, clear: { glassStyle: "clear", themeMaterial: "glass", glassTint: 25 } });
+// ── مصمت ومثلّج فقط؛ clear المخزّن اسم قديم للمثلّج، لا تغيير لونه أو tint المستخدم.
+eq("presets = frosted/solid only", A.STYLE_PRESETS.map((p) => p.id), ["frosted", "solid"]);
+eq("frosted values", A.STYLE_PRESETS[0].values, { themeMaterial: "glass", glassStyle: "crystal", glassTint: 45 });
+eq("solid does not alter theme or accent", A.STYLE_PRESETS[1].values, { themeMaterial: "solid" });
+eq("legacy clear aliases frosted without deleting stored keys", A.GLASS_STYLE_VALUES.clear, A.GLASS_STYLE_VALUES.crystal);
+for (const light of [false, true]) for (const tint of [0, 25, 45, 68, 80]) {
+  eq(`clear alias opacity ${light}/${tint}`, A.glassAlpha("clear", light, tint), A.glassAlpha("crystal", light, tint));
+}
+eq("legacy clear applies the same effective glass attributes and vars", A.appearanceVars({ glassStyle: "clear", glassTint: 25 }, A.ENV_DEFAULT), A.appearanceVars({ glassStyle: "crystal", glassTint: 25 }, A.ENV_DEFAULT));
 // ── مفاتيح وهمية محذوفة
 const settingsSrc = readFileSync("src/settings.ts", "utf8"), rs = readFileSync("src-tauri/src/state.rs", "utf8");
 eq("glassBlur / glassSaturation gone from settings.ts, glass.ts and appearance sections", [/glassBlur|glassSaturation/.test(settingsSrc), existsSync("src/glass.ts"), A.SECTION_KEYS.appearance.some((k) => /glassBlur|glassSaturation/.test(k))], [false, false, false]);

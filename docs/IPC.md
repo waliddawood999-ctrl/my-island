@@ -311,3 +311,15 @@ settings_set لمفتاح `autostart` يكتب/يحذف قيمة MyIsland في H
 - **أمر جديد `webview_runtime()`** → `{ version: string, major: number, background_clear: bool | null }` (نافذة الإعدادات فقط؛ capability `allow-webview-runtime`). `version` من `tauri::webview_version()` (نسخة WebView2 Runtime الفعلية، تظهر في ▸ حول)، و`background_clear` = نتيجة التحقق من `DefaultBackgroundColor=(0,0,0,0)` لنافذة main بعد الضبط (`null` قبل الفحص/خارج ويندوز). الواجهة تحذّر عند 145–146 (تراجع شفافية معروف، أُصلح في 147) أو `false`.
 - **لا أحداث جديدة.** `mascot:look` يقرأ مستطيل الجزيرة المُبلَّغ (`hit::shape()`) لا منطقة نافذة؛ `island:hidden` بلا تغيير.
 - **بيئة العملية:** `WEBVIEW2_DEFAULT_BACKGROUND_COLOR=00000000` يُضبط في `run()` قبل إنشاء أي ويب فيو (`backdrop::apply_transparency_env`).
+
+
+## معاينة الالتقاط داخل main — طلب 2026-11-04 22:16
+لا أمر أو حدث جديد ولا تغيير لعقد الخلفية: CapturePreview.tsx يستقبل capture:saved {path,width,height}، ويقرأ editor_image({path}) دون editor_open (فلا يفتح نافذة المحرر). تجهيز السحب والنسخ يتم عبر shelf_add({paths:[path]}) ثم shelf_drag({ids}) أو shelf_copy({id}). السحب الأصلي COPY؛ رسالة الواجهة تؤكد بدء الطلب فقط ولا تدّعي قبول التطبيق الهدف. البديل الظاهر: clip_set_text للمسار وopen_captures للمجلد. القص والرسم محليان ثم editor_save({data,mode:"new"}) لنسخة PNG جديدة. open_path يفتح الأصل بطلب صريح. التنزيل يطلب عبر رابط data:؛ لا يُدّعى اكتماله في WebView2 دون اختبار ويندوز.
+OCR والمشاركة الأصلية واختيار مجلد بالحوار وحذف الملف القابل للاسترجاع وتثبيت الصورة في سجل الحافظة لم تُضف لها أوامر في هذه الخطوة؛ تبقى ناقصة، وليست أزرارًا تدّعي نجاحًا وهميًا. «حفظ في الرف» يحفظ في الرف فقط، ولا يُسمّى تثبيتًا في الحافظة.
+
+
+## إصلاح 2026-11-05 — المكتبة ومعاينة الالتقاط واللقطات الأخيرة
+- `capture_recent()` → `[{path,width,height,thumb,kind,modified_at}]`: قراءة كل ملفات PNG في screenshotDir وتسجيلات MP4/GIF في recordingDir، بترتيب التعديل تنازليًا. kind=image|video وmodified_at بالمللي ثانية؛ للصورة thumb بيانات PNG≤128px، وللتسجيل thumb فارغ وwidth/height=0 (أيقونة فيديو في الواجهة). لا حذف أو تعديل أثناء القراءة؛ لا اجتياز مجلدات فرعية أو روابط رمزية. متاح لنافذة main عبر allow-capture-recent في capability وAppManifest.
+- `capture_delete(path)` → bool: حذف صريح لملف PNG عادي واحد مباشرةً داخل screenshotDir أو MP4/GIF داخل recordingDir فقط؛ true=حُذف، false=غير موجود. يرفض ملفًا خارج المجلد المطابق لنوعه والمجلدات والروابط الرمزية والامتدادات الأخرى، بلا حذف تكراري. الحذف مباشر وليس سلة المهملات. الحدث `capture:changed` يعيد تحميل القائمة، والخطأ يبقي العنصر ظاهرًا. إذن main: allow-capture-delete.
+- المكتبة توحّد ShelfTab وLauncherTab في وجهة واحدة، مع بقاء أوامرهما وعقود تخزينهما كما هي. اختفت مسارات apps/launcher وwork/note/system/meetings/shelf المستقلة من التنقل. الملاحظة السريعة تستعمل NoteEditor داخل الالتقاط، لا صفحة note مستقلة.
+- المعاينة تستعمل editor_image لملف الأصل، وshelf_add→shelf_drag للسحب الأصلي OLE COPY وshelf_copy لنسخ الملف. shelf:drag-end يؤكد copy/cancel؛ لا ادعاء نجاح WhatsApp قبل قبول ويندوز الحقيقي. لا طبقة تعتيم للشاشة أثناء المعاينة (0%).

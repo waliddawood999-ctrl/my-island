@@ -2,7 +2,7 @@
 //  · enter: من pill تُجدوِل الانتقال إلى peek بعد hoverDelayMs؛ مغادرة قبل انتهاء المهلة تلغيه. الدخول من جديد يلغي أي إغلاق معلّق.
 //  · leave: من peek ⇒ pill بعد 300ms؛ من panel ⇒ pill بعد 500ms؛ العودة للجزيرة تلغي الإغلاق.
 //  · click: pill/peek ⇒ panel. back (Esc): panel ⇒ peek.
-//  · wheel: في peek يبدّل البطاقات (دوران) بخطوة كل 280ms؛ في panel فوق = الصفحة التالية، تحت = السابقة، مع حدّ بلا التفاف؛
+//  · wheel: في peek يبدّل البطاقات (دوران) بخطوة كل 280ms؛ في panel فوق = الصفحة التالية، تحت = السابقة، مع التفاف في الاتجاهين؛
 //    لا تخطف العجلة من قائمة قابلة للتمرير ما دامت تستطيع التمرير في الاتجاه نفسه.
 export type Mode = "pill" | "peek" | "panel";
 export const CLOSE_FROM_PEEK_MS = 300;
@@ -86,10 +86,10 @@ export class IslandMachine {
     }
     // panel: فوق = التالية، تحت = السابقة
     const next = deltaY < 0 ? this.page + 1 : this.page - 1;
-    const clamped = Math.min(this.pageCount - 1, Math.max(0, next));
-    if (clamped === this.page) return false; // عند الحد: لا التفاف ولا ابتلاع
+    if (this.pageCount < 2) return false;
+    const wrapped = (next + this.pageCount) % this.pageCount;
     this.dir = deltaY < 0 ? 1 : -1;
-    this.page = clamped; this.lastWheel = t; this.onChange();
+    this.page = wrapped; this.lastWheel = t; this.onChange();
     return true;
   }
   get currentCard(): PeekCard { return this.cfg.cards[this.card] ?? "player"; }

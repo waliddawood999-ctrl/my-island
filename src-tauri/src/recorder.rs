@@ -211,7 +211,7 @@ fn videos_dir() -> Option<std::path::PathBuf> {
 }
 
 /// recordingDir أو Videos\MyIsland.
-fn recording_dir(app: &AppHandle) -> std::path::PathBuf {
+pub(crate) fn recording_dir(app: &AppHandle) -> std::path::PathBuf {
     let s = crate::capture::setting_str(app, "recordingDir");
     if !s.is_empty() {
         return s.into();

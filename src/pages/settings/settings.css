@@ -220,3 +220,58 @@ input[type="range"].st-range:focus-visible::-webkit-slider-thumb { box-shadow: 0
 .tp-measures li[data-ok="0"] em { color: var(--c-danger); font-style: normal; }
 .tp-adj { display: flex; flex-direction: column; gap: 3px; width: 100%; font-size: var(--fs-12); color: var(--c-text-secondary); }
 @media (max-width: 760px) { .tp-hero { grid-template-columns: 1fr; } }
+
+/* المهمة 4: بطاقات شكل التقدم 2×3، معاينات ثابتة بلا مؤقّتات. */
+.progress-style-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 12px 0; }
+.progress-style-card { min-width: 0; text-align: start; border: 1px solid var(--border-color, var(--c-border)); border-radius: 18px; background: var(--c-surface); padding: 14px; color: inherit; }
+.progress-style-card[aria-checked="true"] { border-color: var(--accent); }
+.progress-preview { height: 46px; display: flex; align-items: center; position: relative; direction: ltr; margin-bottom: 8px; }
+.progress-preview-track { display: block; width: 100%; height: 5px; border-radius: 8px; background: color-mix(in srgb, currentColor 15%, transparent); overflow: hidden; }
+.progress-preview-fill { display: block; width: 38%; height: 100%; background: var(--accent); border-radius: inherit; }
+.progress-preview[data-style="shimmer"] .progress-preview-fill { background: linear-gradient(90deg, var(--accent), var(--c-text-primary)); }
+.progress-preview[data-style="wave"] .progress-preview-track { height: 20px; mask-image: repeating-linear-gradient(to right, #000 0 4px, transparent 4px 7px); }
+.progress-preview[data-style="liquid"] .progress-preview-track { height: 9px; }
+.progress-preview[data-style="dashes"] .progress-preview-track { height: 7px; mask-image: repeating-linear-gradient(to right, #000 0 10px, transparent 10px 14px); }
+.progress-preview[data-style="ring"] { justify-content: center; }
+.progress-preview-ring { width: 40px; height: 40px; border-radius: 50%; border: 4px solid color-mix(in srgb, currentColor 15%, transparent); border-top-color: var(--accent); border-right-color: var(--accent); display: grid; place-items: center; }
+.progress-style-card small { display: block; opacity: .65; margin-top: 4px; font-size: 11px; }
+
+.progress-preview[data-style="shimmer"] .progress-preview-track { position: relative; }
+.progress-preview-chapters { position: absolute; inset: 0; background: repeating-linear-gradient(to right, transparent 0 30%, var(--c-surface) 30% 31%); }
+
+.progress-preview-wave { display: flex; align-items: center; gap: 3px; height: 20px; }
+.progress-preview-wave > span { flex: 1; min-width: 0; border-radius: 3px; background: color-mix(in srgb, currentColor 25%, transparent); }
+.progress-preview[data-style="wave"] .progress-preview-track { background: transparent; mask-image: none; }
+.progress-preview[data-style="line"]::after, .progress-preview[data-style="liquid"]::after { content: ""; position: absolute; left: 38%; width: 11px; height: 11px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
+
+/* المهمة 5: ستة أقسام أساسية، ثم تخصيص متقدم قابل للطي. */
+.tp-simple .tp-stage { background: var(--t-wash-img, none), var(--c-surface-raised); min-height: 170px; box-shadow: inset 0 0 0 1px var(--c-border); }
+.tp-basic, .tp-advanced { display: flex; flex-direction: column; gap: var(--space-4); }
+.tp-basic-controls { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; min-width: 0; }
+.tp-basic-slider { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.tp-basic-slider > span { color: var(--c-text-secondary); font-size: var(--fs-12); }
+.tp-advanced-toggle { display: flex; align-items: center; gap: var(--space-3); width: 100%; padding: var(--space-4); border: 1px dashed var(--c-border); border-radius: var(--radius-card); text-align: start; color: var(--c-text-primary); }
+.tp-advanced-toggle > span { flex: 1; }
+.tp-advanced-toggle[aria-expanded="true"] > svg:last-child { rotate: 180deg; }
+.tp-advanced-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 760px) { .tp-basic-controls { flex-direction: column; align-items: stretch; } .tp-simple .st-row { flex-wrap: wrap; } }
+
+.tp-simple .tp-hero { grid-template-columns: 1fr; }
+.tp-simple .tp-hero[hidden] { display: none; }
+.tp-simple .tp-grid { max-height: 480px; overflow-y: auto; scrollbar-width: thin; padding: 3px; }
+
+.settings-feedback { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:36px; font-size:12px; }
+
+/* All original packs plus stored themes; compact square cards, responsive 3–4 columns. */
+.tp-gallery { container-type:inline-size; }
+.tp-simple .tp-grid { grid-template-columns:repeat(3,minmax(0,1fr)); max-width:720px; gap:10px; }
+@container (min-width:600px) { .tp-simple .tp-grid { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+.tp-simple .tp-card-btn { min-width:0; min-height:0; aspect-ratio:1; overflow:hidden; gap:4px; }
+.tp-simple .tp-card-btn .tp-mini[data-size="sm"] { flex:1; min-height:0; height:auto; }
+.tp-simple .tp-card-name, .tp-simple .tp-card-desc { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; max-width:100%; }
+.tp-simple .tp-card-name { font-size:12px; }
+.tp-simple .tp-card-desc { font-size:10px; }
+.tp-basic-group[data-basic="edges"] > .st-row { align-items:flex-start; }
+.tp-basic-group[data-basic="edges"] .tp-basic-controls { flex-wrap:wrap; gap:12px; min-width:0; }
+.tp-basic-group[data-basic="edges"] .tp-basic-slider { flex:1 1 160px; min-width:0; }
+.tp-island-animation { width:100%; clear:both; border-top:1px solid var(--c-border); }

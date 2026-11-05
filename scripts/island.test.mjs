@@ -75,10 +75,15 @@ function fake() {
 { const f = fake(); const m = new S.IslandMachine(f.sched, { hoverDelayMs: 0 }); m.enter(); f.advance(0); m.click(); m.setPages(4);
   ok("panel wheel up = next page", m.wheel(-1) && m.page === 1); f.advance(280);
   ok("panel wheel down = previous page", m.wheel(1) && m.page === 0); f.advance(280);
-  ok("clamped at first page (no wrap, not swallowed)", m.wheel(1) === false && m.page === 0);
-  m.gotoPage(3); f.advance(280); ok("clamped at last page", m.wheel(-1) === false && m.page === 3);
-  f.advance(280); ok("does not hijack a list that can still scroll", m.wheel(1, { scrollsFurther: true }) === false && m.page === 3);
+  ok("first page wraps backwards to last", m.wheel(1) === true && m.page === 3);
+  m.gotoPage(3); f.advance(280); ok("last page wraps forwards to first", m.wheel(-1) === true && m.page === 0);
+  f.advance(280); ok("does not hijack a list that can still scroll", m.wheel(1, { scrollsFurther: true }) === false && m.page === 0);
   m.setCfg({ panelPaging: false }); ok("panelWheelPaging=false ignores wheel", m.wheel(1) === false); }
+{ const f=fake(),m=new S.IslandMachine(f.sched);m.click();m.setPages(3);m.gotoPage(2);
+  ok("wrap uses current page count after route removal",m.wheel(-1)&&m.page===0);f.advance(280);
+  ok("reverse wrap uses current page count",m.wheel(1)&&m.page===2);
+  m.setPages(1);f.advance(280);ok("one remaining page does not consume wheel",m.wheel(1)===false&&m.page===0);
+}
 { ok("pill ignores wheel", new S.IslandMachine(fake().sched).wheel(1) === false);
   ok("card order: valid permutation kept", JSON.stringify(S.normCardOrder(["timer", "weather", "today", "player"])) === JSON.stringify(["timer", "weather", "today", "player"]));
   ok("card order: invalid ⇒ default", JSON.stringify(S.normCardOrder(["player", "player", "today", "x"])) === JSON.stringify(["player", "today", "weather", "timer"]) && S.normCardOrder(null).length === 4); }

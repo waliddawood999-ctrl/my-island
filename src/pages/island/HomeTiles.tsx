@@ -30,7 +30,7 @@ export function HomeTiles({ settings, meetings, battery, liveShown, wide = false
   meetings: readonly Meeting[];
   battery: Battery | null;
   liveShown: string | null;
-  /** تخطيط عريض: البلاطات عمود جانبي بدل صف أسفل المشغّل. */
+  /** تخطيط عريض قصير: سطر واحد للصلاة والطقس والبطارية تحت المشغّل. */
   wide?: boolean;
   /** الرئيسية المرجعية فقط؛ العريض والتبويبات القديمة تبقى بمسارها القائم. */
   reference?: "idle" | "media";
@@ -54,7 +54,7 @@ export function HomeTiles({ settings, meetings, battery, liveShown, wide = false
   const kinds = visibleTiles({
     prayer: !!next,
     weather: wOk || wErr,
-    meeting: !reference && !!upcoming && liveShown !== "meeting",
+    meeting: !reference && !wide && !!upcoming && liveShown !== "meeting",
     battery: reference !== "idle" && batOk && liveShown !== "battery",
   });
   if (kinds.length === 0) return null;
@@ -72,7 +72,7 @@ export function HomeTiles({ settings, meetings, battery, liveShown, wide = false
   const render = (k: (typeof kinds)[number]) => {
     switch (k) {
       case "prayer":
-        if (reference) return next && (
+        if (reference || wide) return next && (
           <div data-testid="tile-prayer" className="i-card home-tile" dir={lang === "ar" ? "rtl" : "ltr"}>
             <Calendar size={15} /><div className="min-w-0"><span className="block truncate">{prayerLabel(next.id, lang)} <span>{i("بعد", "in")} {Math.ceil((next.at - now) / 60_000)} {i("د", "min")}</span></span>
             {reference === "idle" && <span className="home-tile-sub">{fmtClock(next.at, clock)}</span>}</div>
@@ -96,7 +96,7 @@ export function HomeTiles({ settings, meetings, battery, liveShown, wide = false
             <button data-testid="weather-retry" onClick={(e) => { e.stopPropagation(); reloadWeather(); }} className="act-btn ms-auto"><RotateCw size={12} />{i("إعادة المحاولة", "Retry")}</button>
           </div>
         );
-        if (reference) return WIcon && weather && (
+        if (reference || wide) return WIcon && weather && (
           <div data-testid="tile-weather" className="i-card home-tile" dir={lang === "ar" ? "rtl" : "ltr"}>
             <WIcon size={15} /><div className="min-w-0"><span className="block truncate">{Math.round(weather.temp)}{unit} {weatherLabel(wk!, lang)}</span>
             {reference === "idle" && <span className="home-tile-sub truncate">{weather.city}</span>}</div>
@@ -131,7 +131,7 @@ export function HomeTiles({ settings, meetings, battery, liveShown, wide = false
           </div>
         );
       case "battery":
-        if (reference) return battery && (
+        if (reference || wide) return battery && (
           <div data-testid="tile-battery" className="i-card home-tile" dir="ltr"><BatIcon size={15} /><span>{battery.percent}%</span></div>
         );
         return battery && (
@@ -150,7 +150,7 @@ export function HomeTiles({ settings, meetings, battery, liveShown, wide = false
 
   // الأم تدخل بنابض القسم؛ كل بلاطة بتدرّج خفيف (itemVariants) — كلاهما من src/motion.ts ويتبعان motionLevel.
   return (
-    <motion.div data-testid="home-tiles" data-reference={reference} dir={reference && lang === "ar" ? "rtl" : "ltr"} custom={1} variants={sectionVariants} initial="initial" animate="animate" className={wide ? "flex w-[36%] shrink-0 flex-col items-stretch gap-2 overflow-y-auto" : "flex shrink-0 items-stretch gap-2"}>
+    <motion.div data-testid="home-tiles" data-reference={reference} dir={(reference || wide) && lang === "ar" ? "rtl" : "ltr"} custom={1} variants={sectionVariants} initial="initial" animate="animate" className={`flex shrink-0 items-stretch gap-2${wide ? " wide-home-tiles" : ""}`}>
       {kinds.map((k, n) => (
         <motion.div key={k} custom={n} variants={itemVariants} initial="initial" animate="animate" className="flex min-w-0 flex-1">
           {render(k)}

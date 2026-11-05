@@ -1,11 +1,12 @@
-import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { LottieIcon, LottieShownProvider } from "../../lottie";
 import { Coffee, Settings as SettingsIcon, Timer as TimerIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { CapturePreview, type CaptureShot } from "./CapturePreview";
 import { IslandHalo } from "./Halo";
-import { alertShake, dur, ease, islandSpring, pillHoverSpring, paletteVariants, useMotionLevel, sectionVariants, spring, swapVariants, tap } from "../../motion";
+import { alertShake, dur, ease, islandSpring, pillHoverSpring, paletteVariants, useMotionLevel, sectionVariants, pageSwap, spring, swapVariants, tap } from "../../motion";
 import { i } from "../../i18n";
 import { useResolvedTheme, useSettings } from "../../useSettings";
 import { shapeRadius } from "../../appearance";
@@ -21,40 +22,30 @@ import { useUpdater } from "../../useUpdater";
 import { fmtElapsed, useRecording } from "../../useRecording";
 import { ClipboardTab } from "./ClipboardTab";
 import { ToolsTab } from "./ToolsTab";
-import { ShelfTab } from "./ShelfTab";
-import { LauncherTab } from "./LauncherTab";
+import { LibraryTab } from "./LibraryTab";
 import { useShelf } from "../../useShelf";
 import { useLauncher } from "../../useLauncher";
-// محرّر Tiptap ثقيل: يُحمَّل عند أول فتح لتبويب الملاحظة فقط (أو عند المرور على تبويبها). كل محاولة إعادة تنشئ lazy جديدًا
-// (lazy المرفوض يبقى مرفوضًا للأبد)، وفشل التحميل يُحجَز في TabBoundary فلا يهدم الجزيرة.
-const importNote = () => import("./NoteTab").then((m) => ({ default: m.NoteTab }));
-const makeNoteTab = () => lazy(importNote);
 import { normSound, normVolume, playSound } from "../../sounds";
 import { IslandMachine, normCardOrder, realSched } from "../../islandMachine";
 import { crossfade, normSpeed, resolveReduce } from "../../islandMotion";
 import { PeekView } from "./PeekView";
-import { PillMedia, PlayerPeek, PlayerPanel, useAccent } from "./Player";
+import { PillMedia, PlayerPeek, PlayerPanel } from "./Player";
 import { scrollsFurther } from "./wheel";
-import { Bell as BellIcon, Calendar as CalendarIcon, Camera as CameraIcon, ClipboardList, Grid2x2, Home as HomeIcon, Layers as LayersIcon, Notebook, Wrench, Cpu as CpuIcon, MessageCircle, Rocket, Users } from "lucide-react";
+import { Bell as BellIcon, Calendar as CalendarIcon, Camera as CameraIcon, ClipboardList, Grid2x2, Home as HomeIcon, Layers as LayersIcon, Notebook, NotebookPen, Wrench, Cpu as CpuIcon, MessageCircle, Rocket, Users } from "lucide-react";
 import { fmtCountdown, TIMER_NEAR_MS, useNoteAlert, useTimer } from "../../useNote";
 import { MediaSection } from "./MediaSection";
-import { TodaySection } from "./TodaySection";
 import { HomeTiles } from "./HomeTiles";
 import { Liquid } from "./Liquid";
 import { Eyes } from "./Eyes";
-import { TabBoundary } from "./TabBoundary";
 import { rowReversed } from "../../eyes";
 import { Palette } from "./Palette";
 import { TabBar } from "./TabBar";
 import { IdleHome } from "./IdleHome";
 import { isWideLayout } from "./layoutMode";
 import { clampPct, clockAbsStyle, clockFontSize, eyesAlignStyle, normClockPosition } from "./clockPlacement";
-import { Dock, SubTabs, groupIndexOf, pageGroups, targetTab } from "./Dock";
-import { AttentionSection } from "./AttentionSection";
+import { Dock, groupIndexOf, pageGroups, targetTab } from "./Dock";
 import { BatteryChip, BatterySection, hasBatteryContent } from "./BatterySection";
 import { useAttention } from "../../useAttention";
-import { SystemSection } from "./SystemSection";
-import { MeetingsTab } from "./MeetingsTab";
 import { useMeetings, useUpcomingMeeting } from "../../useMeetings";
 import { usePrivacy } from "../../useSystem";
 
@@ -80,34 +71,18 @@ function fmtTime(fmt: string): string {
 
 /** أيقونة كل تبويب (نمط icons في panelTabsStyle). */
 const TAB_ICONS: Record<string, React.ReactNode> = {
-  home: <HomeIcon size={15} />, clip: <ClipboardList size={15} />, shelf: <LayersIcon size={15} />, launcher: <Grid2x2 size={15} />, note: <Notebook size={15} />,
-  tools: <Wrench size={15} />, meetings: <Users size={15} />, system: <CpuIcon size={15} />, chat: <MessageCircle size={15} />,
+  home: <HomeIcon size={15} />, library: <Grid2x2 size={15} />, clip: <ClipboardList size={15} />, tools: <CameraIcon size={15} />,
 };
-void BellIcon; void CalendarIcon; void Rocket;
-
-/** تبويب المحادثة مخفي حتى يكتمل محتواه (S4)؛ اقلب القيمة لإعادته (لا يوجد ما يحفظ/يعيد تبويبًا نشطًا غيره، فالمعرّف المجهول يرجع للرئيسية). */
-const CHAT_TAB_ENABLED = false;
-
-/** التبويبات؛ الرفّ يظهر فقط إن كان moduleShelf مفعّلًا (غياب المفتاح = مفعّل) وعدّاده بجانب الاسم. */
-const tabDefs = (shelfOn: boolean, shelfCount: number, launcherOn: boolean, meetingsOn: boolean) => [
-  { id: "home", label: i("الرئيسية", "Home") },
-  { id: "clip", label: i("الحافظة", "Clipboard") },
-  ...(shelfOn ? [{ id: "shelf", label: shelfCount > 0 ? `${i("الرفّ", "Shelf")} (${shelfCount})` : i("الرفّ", "Shelf") }] : []),
-  ...(launcherOn ? [{ id: "launcher", label: i("اللانشر", "Launcher") }] : []),
-  { id: "note", label: i("ملاحظة", "Note") },
-  { id: "tools", label: i("الأدوات", "Tools") },
-  ...(meetingsOn ? [{ id: "meetings", label: i("الاجتماعات", "Meetings") }] : []),
-  { id: "system", label: i("النظام", "System") },
-  ...(CHAT_TAB_ENABLED ? [{ id: "chat", label: i("المحادثة", "Chat") }] : []),
+const tabDefs = (shelfOn: boolean, _shelfCount: number, launcherOn: boolean, _meetingsOn: boolean) => [
+  {id:"home",label:i("الرئيسية","Home")}, {id:"clip",label:i("الحافظة","Clipboard")},
+  ...(shelfOn || launcherOn ? [{id:"library",label:i("المكتبة","Library")}] : []),
+  {id:"tools",label:i("الالتقاط","Capture")},
 ];
-
-/** صفحات الدوك (مجموعات فوق التبويبات الدقيقة). «الالتقاط» = تبويب tools الحالي؛ «الأدوات» = الرف/ملاحظة/اجتماعات/النظام كتبويبات فرعية. */
 const PAGE_DEFS = [
-  { id: "home", members: ["home"], label: () => i("الرئيسية", "Home"), icon: <HomeIcon size={16} /> },
-  { id: "capture", members: ["tools"], label: () => i("الالتقاط", "Capture"), icon: <CameraIcon size={16} /> },
-  { id: "clip", members: ["clip"], label: () => i("الحافظة", "Clipboard"), icon: <ClipboardList size={16} /> },
-  { id: "apps", members: ["launcher"], label: () => i("التطبيقات", "Apps"), icon: <Grid2x2 size={16} /> },
-  { id: "work", members: ["shelf", "note", "meetings", "system"], label: () => i("الأدوات", "Tools"), icon: <Wrench size={16} /> },
+  {id:"home",members:["home"],label:()=>i("الرئيسية","Home"),icon:<HomeIcon size={16} />},
+  {id:"capture",members:["tools"],label:()=>i("الالتقاط","Capture"),icon:<CameraIcon size={16} />},
+  {id:"clip",members:["clip"],label:()=>i("الحافظة","Clipboard"),icon:<ClipboardList size={16} />},
+  {id:"library",members:["library"],label:()=>i("المكتبة","Library"),icon:<Grid2x2 size={16} />},
 ];
 
 /**
@@ -178,10 +153,22 @@ export function Pill() {
   const open = mode === "panel";
   const peek = mode === "peek";
   const [tabId, setTabId] = useState("home");
+  const [captureShot, setCaptureShot] = useState<CaptureShot | null>(null);
+  const closeCapture = useCallback(() => setCaptureShot(null), []);
+  useEffect(() => {
+    const un = listen<CaptureShot>("capture:saved", e => {
+      if (!e.payload?.path) return;
+      setCaptureShot(e.payload); setTabId("tools"); M.click();
+    });
+    return () => { un.then(f => f()); };
+  }, [M]);
   // تبويب الإطلالة مستقل عن تبويب اللوحة ويعود للرئيسية عند الانكماش للحبة (فلا تفتح كل إطلالة لاحقة على حقل بحث/قائمة)؛ الضغط على خلفية الإطلالة ينقله للوحة.
   const [peekTab, setPeekTab] = useState("home");
-  const [NoteTab, setNoteTab] = useState(makeNoteTab);
-  const [retryN, setRetryN] = useState(0);
+  const [quickNoteRequest, setQuickNoteRequest] = useState(0);
+  const openDestination = (id: string) => {
+    if (id === "note") { setTabId("tools"); setQuickNoteRequest(n => n + 1); }
+    else setTabId(id);
+  };
   // آخر تبويب بدأ دخوله فعلًا + حقبة AnimatePresence: حارس يكسر الاعتماد على اكتمال حركة الخروج (انظر أسفل).
   const shownTab = useRef("home");
   const [presenceEpoch, setPresenceEpoch] = useState(0);
@@ -193,7 +180,7 @@ export function Pill() {
   const moduleMedia = settings.moduleMedia ?? true;
   const media = useMedia(moduleMedia);
   const trackKey = `${media.info.source}|${media.info.title}|${media.info.artist}|${media.info.album}`;
-  const accent = useAccent(media.cover, trackKey, settings);
+  const accent = "var(--accent)";
   const reduceUI = motion_level !== "full" || resolveReduce(settings.reduceMotion, false);
   // mediaPill: "off"/"clock" = الساعة؛ جلسة الميديا تبقى في الحبة عند الإيقاف المؤقت كي لا تختفي أزرار استئنافها أثناء الهوفر.
   const pillTitle =
@@ -272,7 +259,7 @@ export function Pill() {
   // مقياس اللوحة (themeTune.panelScale): ضمن النافذة الثابتة 800×500 (مع هامش المنطقة)
   const aSc = settings.fx?.scale.panel ?? 1;
   const panel = { w: Math.min(760, Math.round(clampN(settings.panelWidth, 420, 720, 520) * aSc)), h: Math.min(470, Math.round(clampN(settings.panelHeight, 220, 420, 290) * aSc)) };
-  // ترتيب العجلة/الصفحات يطابق الدوك تمامًا (الرئيسية · الالتقاط · الحافظة · التطبيقات · الأدوات[الرف · ملاحظة · اجتماعات · النظام]) — بلا قفز بين الصفحات.
+  // الصفحات النهائية: الرئيسية · الالتقاط · الحافظة · المكتبة؛ عددها مشتق من الوحدات المتاحة.
   const tabsRaw = tabDefs(shelfOn, shelf.items.length, launcherOn, meetingsOn);
   const dockOrder = PAGE_DEFS.flatMap((d) => d.members);
   const dockRank = (id: string) => { const n = dockOrder.indexOf(id); return n < 0 ? 99 : n; };
@@ -388,7 +375,7 @@ export function Pill() {
   dnd.current.enter = () => {
     if (!shelfOn || paletteRef.current) return;
     window.clearTimeout(collapseT.current);
-    setTabId("shelf");
+    setTabId("library");
     setDragging(true);
     if (!open) expand();
   };
@@ -423,7 +410,7 @@ export function Pill() {
   const onLeave = () => {
     hoverRef.current = false;
     setHover(false);
-    if (paletteRef.current) return;
+    if (paletteRef.current || captureShot) return;
     M.leave(); // إغلاق بعد 300ms (لمحة) / 500ms (لوحة)؛ العودة تلغيه
   };
 
@@ -475,7 +462,7 @@ export function Pill() {
   // الشفافية من الإعدادات؛ autoHide يخفي الحبة في الراحة (النافذة تبقى تستقبل المرور فتظهر عند الهوفر).
   const rest = (settings.opacityRest ?? 100) / 100;
   const opened = (settings.opacityOpen ?? 100) / 100;
-  const opacity = hidden ? 0 : palette ? 1 : open ? opened : settings.autoHide && !hover ? 0 : rest;
+  const opacity = hidden ? 0 : captureShot || palette ? 1 : open ? opened : settings.autoHide && !hover ? 0 : rest;
 
   // كبسولة كاملة الاستدارة؛ مرسيّة في شريط المتصفح: زوايا علوية مدوّرة وقاع مسطّح (هيئة تبويب).
   // ملتصقة بالحافة العليا (islandDocking=attached): زاويتا الأعلى مسطّحتان (هندسة نوتش)، والأسفل دائري؛ العائمة كما هي.
@@ -503,14 +490,14 @@ export function Pill() {
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
-  const cf = crossfade(speed, reduceUI);
-  const referenceHome = dockStyle && !wide && curTab === "home";
+  const cf = crossfade(speed, reduceUI || settings.islandAnimation === false);
+  const referenceHome = dockStyle && curTab === "home";
   // reduced لا يذكر filter/transform؛ امسح قيم الحالة المخفية السابقة كي تبقى الرئيسية المرجعية حادّة بعد تحميل الإعدادات.
-  const homeCf = referenceHome && reduceUI ? {
+  const homeCf = reduceUI || settings.islandAnimation === false ? {
     hidden: { ...cf.hidden, filter: "none", y: 0, scale: 1 },
     shown: { ...cf.shown, filter: "none", y: 0, scale: 1 },
   } : cf;
-  const hoverCf = mediaHover && reduceUI ? {
+  const hoverCf = reduceUI || settings.islandAnimation === false ? {
     hidden: { ...cf.hidden, filter: "none", y: 0, scale: 1 },
     shown: { ...cf.shown, filter: "none", y: 0, scale: 1 },
   } : cf;
@@ -519,7 +506,7 @@ export function Pill() {
   const prevMode = useRef<"pill" | "peek" | "panel">("pill");
   const kind = palette ? "open" : rank[mode] > rank[prevMode.current] ? (mode === "panel" ? "panel" : "open") : rank[mode] < rank[prevMode.current] ? "close" : "open";
   useEffect(() => { prevMode.current = mode; }, [mode]);
-  const sizeSpring = mediaHover && !open && !palette ? pillHoverSpring(kind === "close") : kind === "close" ? islandSpring.close : kind === "panel" ? islandSpring.panel : islandSpring.open;
+  const sizeSpring = settings.islandAnimation === false ? { duration: 0 } : mediaHover && !open && !palette ? pillHoverSpring(kind === "close") : kind === "close" ? islandSpring.close : kind === "panel" ? islandSpring.panel : islandSpring.open;
   M.setPages(tabs.length); M.page = tab; // الصفحة = التبويب الحالي (العجلة في اللوحة)
   // حارس التبديل: AnimatePresence(mode="wait") لا يركّب التبويب الجديد إلا بعد اكتمال حركة خروج القديم؛ إن لم تكتمل (إطارات متوقفة/نافذة
   // مخنوقة) بقي العرض القديم رغم تحديد التبويب الجديد. بعد tabSwitchGuard نعيد تركيب AnimatePresence فيُسقَط الخارج ويُركَّب الجديد.
@@ -561,7 +548,7 @@ export function Pill() {
           ) : moduleMedia && media.info.session ? (
             <PlayerPanel media={media} s={settings} accent={accent} reduce={reduceUI} visible={open} />
           ) : (
-            <IdleHome settings={settings} attention={attention} time={time} onOpenTab={setTabId}>
+            <IdleHome settings={settings} attention={attention} time={time} onOpenTab={openDestination}>
               <HomeTiles settings={settings} meetings={meetings.snap.items} battery={battery} liveShown={shownPanel} reference="idle" />
             </IdleHome>
           )}
@@ -570,13 +557,13 @@ export function Pill() {
       ) : (
       // بطاقة النشاط الحي الأعلى أولوية تتصدّر الرئيسية (أو حالة الميديا الفارغة)؛ تحتها صف بلاطات «لمحة» الشرطية. لا شيء آخر.
       // الرئيسية: عمود يمرّر داخليًا إن لم يتّسع المحتوى (لا تداخل أبدًا): بطاقة النشاط/المشغّل بحدّ أدنى لمحتواها، وتحتها البلاطات.
-      <div data-layout={wide ? "wide" : "tall"} className={`flex min-h-0 flex-1 overflow-y-auto overflow-x-hidden ${wide ? "flex-row items-stretch" : "flex-col"}`} style={{ gap: "var(--island-section-gap)", ...(dockStyle ? { WebkitMaskImage: "linear-gradient(to bottom, #000 calc(100% - 16px), transparent)", maskImage: "linear-gradient(to bottom, #000 calc(100% - 16px), transparent)" } : {}) }}>
+      <div data-layout={wide ? "wide" : "tall"} className={`flex min-h-0 flex-1 overflow-y-auto overflow-x-hidden ${wide ? "wide-home flex-col" : "flex-col"}`} style={{ gap: "var(--island-section-gap)", ...(dockStyle ? { WebkitMaskImage: "linear-gradient(to bottom, #000 calc(100% - 16px), transparent)", maskImage: "linear-gradient(to bottom, #000 calc(100% - 16px), transparent)" } : {}) }}>
         {(shownPanel || moduleMedia) && (
-          <motion.div custom={0} variants={sectionVariants} initial="initial" animate="animate" className="min-w-0 flex-1 shrink-0 [min-height:min-content]">
-            {shownPanel ? (
+          <motion.div custom={0} variants={sectionVariants} initial="initial" animate="animate" className={`min-w-0 shrink-0 [min-height:min-content] ${wide ? "" : "flex-1"}`}>
+            {shownPanel && !(wide && shownPanel === "media") ? (
               <ActivityStack kinds={panelKinds} shown={shownPanel} onPin={setPinPanel} data={liveDataW} />
             ) : dockStyle && !media.info.session ? (
-              <IdleHome settings={settings} attention={attention} onOpenTab={setTabId} />
+              <IdleHome settings={settings} attention={attention} onOpenTab={openDestination} />
             ) : (
               <PlayerPanel media={media} s={settings} accent={accent} reduce={reduceUI} visible={open} wide={wide} />
             )}
@@ -586,36 +573,9 @@ export function Pill() {
       </div>
       )
     )}
-    {id === "note" && (
-      <div className="min-h-0 flex-1">
-        <TabBoundary key={retryN} onRetry={(e) => {
-          // المتصفح يخزّن فشل الاستيراد الديناميكي لنفس العنوان طوال عمر الصفحة: لا تنفع إعادة المحاولة هنا إلا بإعادة تحميل الصفحة.
-          if (/dynamically imported module|Importing a module script failed|Failed to fetch/i.test(String(e?.message))) window.location.reload();
-          else { setNoteTab(makeNoteTab()); setRetryN((n) => n + 1); }
-        }}>
-          <Suspense fallback={null}>
-            <NoteTab timer={timer} />
-          </Suspense>
-        </TabBoundary>
-      </div>
-    )}
     {id === "tools" && (
       <div className="min-h-0 flex-1">
-        <ToolsTab settings={settings} wide={wide} onOpenTab={dockStyle ? setTabId : undefined} />
-      </div>
-    )}
-    {id === "meetings" && (
-      <div className="min-h-0 flex-1">
-        <MeetingsTab snap={meetings.snap} refresh={meetings.refresh} loading={meetings.loading} />
-      </div>
-    )}
-    {id === "system" && (
-      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
-        <SystemSection showVolume={settings.showVolume ?? true} />
-        {/* ما خرج من الرئيسية يعيش هنا: يومي الكامل (قائمة الصلوات…)، البطارية التفصيلية، «وقتي اليوم». */}
-        {(settings.showToday ?? true) && <TodaySection settings={settings} />}
-        {showBat && <BatterySection b={battery} tip={settings.batteryTip ?? true} btOn={btOn} />}
-        {attentionOn && <AttentionSection snap={attention} />}
+        <ToolsTab settings={settings} wide={wide} quickNoteRequest={quickNoteRequest} onPreview={shot => {setCaptureShot(shot); M.click();}} />
       </div>
     )}
     {id === "clip" && (
@@ -623,15 +583,8 @@ export function Pill() {
         <ClipboardTab />
       </div>
     )}
-    {id === "launcher" && (
-      <div className="min-h-0 flex-1">
-        <LauncherTab launcher={launcher} />
-      </div>
-    )}
-    {id === "shelf" && (
-      <div className="min-h-0 flex-1">
-        <ShelfTab items={shelf.items} dragging={dragging} reload={shelf.reload} />
-      </div>
+    {id === "library" && (
+      <LibraryTab launcher={launcher} items={shelf.items} dragging={dragging} reload={shelf.reload} shelfOn={shelfOn} launcherOn={launcherOn} wide={wide} />
     )}
     </>
   );
@@ -671,7 +624,7 @@ export function Pill() {
         data-mode={palette ? "palette" : mode}
         data-media-hover={mediaHover ? "true" : undefined}
         data-docking={attached ? "attached" : "floating"}
-        data-spring={JSON.stringify(kind === "close" ? islandSpring.close : kind === "panel" ? islandSpring.panel : islandSpring.open)}
+        data-spring={JSON.stringify(sizeSpring)}
         onWheel={(e) => {
           if (palette) return;
           if (peek && peekTabId !== "home") return; // تبويب غير الرئيسية في الإطلالة: العجلة تمرّر المحتوى نفسه (لا تبديل بطاقات)
@@ -702,7 +655,7 @@ export function Pill() {
             {privacy.mic && <span className="h-2 w-2 rounded-full bg-[var(--c-warning)] shadow-[0_0_6px_var(--c-warning)]" />}
           </div>
         )}
-        {media.cover && (settings.artworkBackdrop ?? true) && (settings.playerLayout ?? "compact") !== "minimal" && !(open && dockStyle && !wide && curTab === "home") && (
+        {media.cover && (settings.artworkBackdrop ?? true) && (settings.playerLayout ?? "compact") !== "minimal" && !(open && dockStyle && curTab === "home") && (
           <>
             <div aria-hidden data-testid="artwork-backdrop" style={{
               position: "absolute", inset: settings.fx?.hero ? "-24px -24px auto -24px" : -40, height: settings.fx?.hero ? "58%" : undefined, backgroundImage: `url(${media.cover})`, backgroundSize: "cover", backgroundPosition: "center", filter: `blur(${settings.fx?.hero ? 18 : 30}px) saturate(1.5)`, pointerEvents: "none",
@@ -745,8 +698,7 @@ export function Pill() {
                     variant="icons"
                     active={peekIdx}
                     onSelect={(n) => setPeekTab(tabs[n]?.id ?? "home")}
-                    onHint={(n) => { if (tabs[n]?.id === "note") void importNote().catch(() => {}); }}
-                  />
+                    />
                 </div>
               </div>
               </>}
@@ -870,10 +822,10 @@ export function Pill() {
         </AnimatePresence>
         <motion.div
           initial={false}
-          variants={homeCf}
+          variants={captureShot ? {hidden:{opacity:0,filter:"none"},shown:{opacity:1,filter:"none"}} : homeCf}
           animate={open ? "shown" : "hidden"}
           data-testid="panel-layer"
-          style={{ width: panel.w, height: panel.h, padding: "var(--island-pad)", pointerEvents: open ? "auto" : "none" }}
+          style={{ width: panel.w, height: panel.h, padding: captureShot ? 6 : "var(--island-pad)", pointerEvents: open ? "auto" : "none" }}
           className="absolute left-1/2 top-0 flex -translate-x-1/2 flex-col"
         >
           <div className={dockStyle ? "hidden" : "flex shrink-0 items-center gap-2"}>
@@ -883,7 +835,6 @@ export function Pill() {
               variant={(settings.panelTabsStyle === "dock" || !settings.panelTabsStyle ? "icons" : settings.panelTabsStyle) as "labels" | "icons" | "dots"}
               active={tab}
               onSelect={(n) => setTabId(tabs[n]?.id ?? "home")}
-              onHint={(n) => { if (tabs[n]?.id === "note") void importNote().catch(() => {}); }}
             /></div>}
             <motion.button
               aria-label={i("الإعدادات", "Settings")}
@@ -898,7 +849,7 @@ export function Pill() {
             </motion.button>
           </div>
           <AnimatePresence>
-            {open && alert && (
+            {open && !captureShot && alert && (
               <motion.button
                 key="alert-toast"
                 variants={swapVariants}
@@ -915,29 +866,22 @@ export function Pill() {
               </motion.button>
             )}
           </AnimatePresence>
-          <AnimatePresence key={presenceEpoch} mode="wait" initial={false}>
+          <AnimatePresence key={presenceEpoch} mode="popLayout" initial={false}>
             {open && (
               <motion.div
-                key={curTab}
+                key={captureShot ? "capture-preview" : curTab}
                 onAnimationStart={(def) => { if (def === "animate") shownTab.current = curTab; }}
-                variants={swapVariants}
+                variants={captureShot ? {initial:{opacity:1},animate:{opacity:1},exit:{opacity:1}} : pageSwap(M.dir, reduceUI)}
                 initial="initial"
                 animate="animate"
                 exit="exit"
-                className={`flex min-h-0 flex-1 flex-col ${referenceHome ? "pt-0" : "pt-3"}`}
+                className={`flex min-h-0 flex-1 flex-col ${referenceHome || curTab === "clip" || curTab === "tools" || curTab === "library" ? "pt-0" : "pt-3"}`}
               >
-                {dockStyle && groups[groupIdx]?.id === "work" && (
-                  <SubTabs
-                    items={groups[groupIdx].members.map((m) => ({ id: m, label: tabs.find((t) => t.id === m)?.label ?? m }))}
-                    active={curTab}
-                    onSelect={(id) => setTabId(id)}
-                  />
-                )}
-                {renderTab(curTab, "panel")}
+                {captureShot ? <CapturePreview key={captureShot.path} shot={captureShot} onClose={closeCapture} /> : renderTab(curTab, "panel")}
               </motion.div>
             )}
           </AnimatePresence>
-          {dockStyle && (
+          {dockStyle && !captureShot && (
             <div className="relative flex shrink-0 items-center justify-center pt-2">
               <Dock
                 groups={groups.map((g) => ({ id: g.id, label: g.label(), icon: g.icon, members: g.members }))}

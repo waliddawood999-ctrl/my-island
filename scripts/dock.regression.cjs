@@ -9,13 +9,13 @@ const open = async (browser, settings, media) => {
   const ctx = await browser.newContext({ viewport: { width: 800, height: 500 } });
   const page = await ctx.newPage();
   const errs = []; page.on("pageerror", (e) => errs.push(String(e)));
-  await page.addInitScript(bridge({ settings: { language: "en", eyesEnabled: false, settingsVersion: 3, hoverDelayMs: 0, ...settings }, media }));
+  await page.addInitScript(bridge({ settings: { language: "en", eyesEnabled: false, settingsVersion: 3, hoverDelayMs: 0, panelHeight: 360, ...settings }, media }));
   await page.goto(`${BASE}/index.html`); await page.waitForTimeout(800);
   await page.mouse.move(400, 10); await page.waitForTimeout(500); await page.click(".island-body", { position: { x: 8, y: 8 } }); await page.waitForTimeout(1600);
   return { ctx, page, errs };
 };
 (async () => {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
   let { ctx, page, errs } = await open(browser, { panelTabsStyle: "dock", hotkeyArea: "Ctrl+Alt+A", hotkeyRecord: "Ctrl+Alt+R" });
   const ids = () => page.evaluate(() => [...document.querySelectorAll('[data-testid^="dock-"]')].map((e) => e.dataset.testid.slice(5)));
   const activeId = () => page.evaluate(() => { const a = document.querySelector('[data-testid^="dock-"][aria-selected="true"]'); return a ? a.dataset.testid.slice(5) : null; });
@@ -79,25 +79,67 @@ const open = async (browser, settings, media) => {
   ok("the panel size itself is exactly the user's (hit-rect 720×260)", rects.some((r) => r.width === 720 && r.height === 260), JSON.stringify(rects.slice(-2)));
   await ctx.close();
   ({ ctx, page } = await open(browser, { panelTabsStyle: "dock" }));
-  ok("default panel size ⇒ tall layout", (await page.locator('[data-layout="tall"]').count()) === 1);
+  ok("explicit 360px panel ⇒ tall layout", (await page.locator('[data-layout="tall"]').count()) === 1);
   await ctx.close();
   // ميديا شغّالة ⇒ المشغّل لا الرئيسية الخاملة
   ({ ctx, page } = await open(browser, { panelTabsStyle: "dock" }, { session: true, source: "Spotify.exe", source_name: "Spotify", title: "Song A", artist: "B", album: "C", duration: 200, position: 10, playing: true, can_prev: true, can_next: true, can_seek: true, can_play: true, can_pause: true }));
   ok("tall panel ⇒ regular player layout (not the compact wide one)", (await page.locator('[data-testid="player-panel"][data-wide="true"]').count()) === 0);
   await ctx.close();
   ({ ctx, page } = await open(browser, { panelTabsStyle: "dock", panelWidth: 720, panelHeight: 260 }, { session: true, source: "Spotify.exe", source_name: "Spotify", title: "Song A", artist: "B", album: "C", duration: 200, position: 10, playing: true, can_prev: true, can_next: true, can_seek: true, can_play: true, can_pause: true }));
-  ok("wide panel + media ⇒ compact two-row player whose controls sit above the dock", await page.evaluate(() => { const pl = document.querySelector('[data-testid="player-panel"][data-wide="true"]'); const dk = document.querySelector('[data-testid="page-dock"]'); if (!pl || !dk) return false; const c = pl.querySelector("button:last-of-type") || pl; return pl.getBoundingClientRect().bottom <= dk.getBoundingClientRect().top + 1; }));
+  ok("wide panel + media ⇒ full-width compact player whose control sits above the dock", await page.evaluate(() => { const pl = document.querySelector('[data-testid="player-panel"][data-wide="true"]'); const dk = document.querySelector('[data-testid="page-dock"]'); if (!pl || !dk) return false; const c = pl.querySelector("button:last-of-type") || pl; return pl.getBoundingClientRect().bottom <= dk.getBoundingClientRect().top + 1; }));
   await ctx.close();
   ({ ctx, page } = await open(browser, { panelTabsStyle: "dock" }, { session: true, source: "Spotify.exe", source_name: "Spotify", title: "Song A", artist: "B", album: "C", duration: 200, position: 10, playing: true, can_prev: true, can_next: true, can_seek: true, can_play: true, can_pause: true }));
   ok("dock + media ⇒ the agreed player CARD (cover + title + seek + controls in one card)", (await page.locator('[data-testid="player-panel"][data-card="true"]').count()) === 1);
   await ctx.close();
   // مصغّرة المشغّل تتبع مقاس اللوحة (يضبطه المستخدم): لوحة أطول ⇒ مصغّرة أكبر
   const thumbH = async (panelHeight) => { const MED = { session: true, source: "Spotify.exe", source_name: "Spotify", title: "Song A", artist: "B", album: "C", duration: 200, position: 10, playing: true, can_prev: true, can_next: true, can_seek: true, can_play: true, can_pause: true }; const o = await open(browser, { panelTabsStyle: "dock", panelWidth: 520, panelHeight }, MED); const h = await o.page.evaluate(() => document.querySelector('[data-testid="player-panel"][data-card="true"] [data-testid="thumb"]')?.getBoundingClientRect().height ?? 0); await o.ctx.close(); return Math.round(h); };
-  const hShort = await thumbH(260), hTall = await thumbH(420);
-  ok("thumbnail grows with the island size the user chose", hTall > hShort + 40 && hShort >= 72, `${hShort} → ${hTall}`);
+  const hShort = await thumbH(340), hTall = await thumbH(420);
+  ok("thumbnail grows with the island size the user chose", hTall > hShort + 20 && hShort >= 72, `${hShort} → ${hTall}`);
   ({ ctx, page } = await open(browser, { panelTabsStyle: "dock" }, { session: true, source: "Spotify.exe", source_name: "Spotify", title: "Song A", artist: "B", album: "C", duration: 200, position: 10, playing: true, can_prev: true, can_next: true, can_seek: true, can_play: true, can_pause: true }));
   ok("media session ⇒ player shown, idle home hidden", (await page.getByTestId("idle-home").count()) === 0 && (await page.getByText("Song A").count()) >= 1);
   await ctx.close();
+  // المهمة 3: العتبة بحسب الارتفاع وحده، مع المحافظة على مقاس اللوحة.
+  for (const [w, h, expected] of [[720, 339, true], [520, 290, true], [720, 340, false], [720, 341, false]]) {
+    ({ ctx, page } = await open(browser, { panelTabsStyle: "dock", panelWidth: w, panelHeight: h }));
+    ok(`height boundary ${w}×${h}`, await page.locator('[data-layout="wide"]').count() === Number(expected));
+    await ctx.close();
+  }
+  const { mkdirSync } = require("node:fs");
+  const out = process.env.ARTIFACT_DIR || "/tmp/my-island-task3-shots"; mkdirSync(out, { recursive: true });
+  for (const pack of ["noir-gold", "ivory", "nebula-mesh"]) for (const language of ["ar", "en"]) {
+    const now = Date.now();
+    ctx = await browser.newContext({ viewport: { width: 800, height: 500 } }); page = await ctx.newPage();
+    const errors = []; page.on("pageerror", e => errors.push(String(e)));
+    const media = { session: true, kind: "gsmtc", source: "YouTube", source_name: "YouTube", title: "سورة الكهف", artist: "مشاري راشد العفاسي", album: "", duration: 2530, position: 760, playing: true, can_seek: true, can_prev: true, can_next: true };
+    const cover = `data:image/svg+xml;base64,${Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><rect width="320" height="180" fill="#124b3b"/></svg>').toString("base64")}`;
+    await page.addInitScript(bridge({ media, cover, settings: { language, settingsVersion: 4, panelTabsStyle: "dock", panelWidth: 720, panelHeight: 270, eyesEnabled: false, hoverDelayMs: 0, motionLevel: "off", themeMode: pack === "ivory" ? "light" : "dark", themePack: pack, themePackLight: pack, themePackDark: pack, themeMaterial: "solid", showToday: true, showWeather: true, showBattery: true, showMeetings: true, updateAutoCheck: false }, extra: {
+      today_get: { city: { id: "riyadh", ar: "الرياض", en: "Riyadh" }, prayers: [{ id: "asr", at: now + 42 * 60000 }], next_day_at: now + 86400000 },
+      weather_get: { enabled: true, offline: false, temp: 26, feels: 26, humidity: 30, wind: 5, code: 0, is_day: true, units: "c", city: "Riyadh", fetched_at: now },
+      meetings_list: { items: [{ id: "fixture", title: "Meeting", start: now + 600000, end: now + 1200000 }], error: null },
+    } }));
+    await page.goto(`${BASE}/index.html`); await page.waitForFunction(id => document.documentElement.dataset.pack === id, pack);
+    await page.waitForTimeout(650);
+    const pill = await page.locator('.island-body').boundingBox(); await page.mouse.move(pill.x + pill.width / 2, pill.y + 2); await page.waitForTimeout(350);
+    const peek = await page.locator('.island-body').boundingBox(); await page.mouse.click(peek.x + peek.width / 2, peek.y + 2);
+    await page.getByTestId("tile-weather").waitFor(); await page.evaluate(() => document.fonts.ready); await page.waitForTimeout(900);
+    const geometry = await page.evaluate(() => {
+      const r = sel => { const e = document.querySelector(sel); const b = e.getBoundingClientRect(); return { x: b.x, y: b.y, w: b.width, h: b.height, right: b.right, bottom: b.bottom }; };
+      return { body: r('.island-body'), home: r('[data-layout="wide"]'), player: r('[data-testid="player-panel"]'), thumb: r('[data-testid="wide-thumb"]'), tiles: r('[data-testid="home-tiles"]'), dock: r('[data-testid="page-dock"]'), cells: [...document.querySelectorAll('[data-testid="home-tiles"] [data-testid^="tile-"]')].map(e => ({ id: e.dataset.testid, y: e.getBoundingClientRect().y })), filter: getComputedStyle(document.querySelector('[data-layout="wide"]')).filter };
+    });
+    const g = geometry; const label = `${pack}/${language}`;
+    ok(`${label}: exact user size 720×270`, g.body.w === 720 && g.body.h === 270, JSON.stringify(g));
+    ok(`${label}: full-width player then tiles then dock`, Math.abs(g.player.w - g.home.w) < 2 && g.player.bottom <= g.tiles.y + 1 && g.tiles.bottom <= g.dock.y + 1, JSON.stringify(g));
+    ok(`${label}: thumbnail 96×54`, g.thumb.w === 96 && g.thumb.h === 54);
+    ok(`${label}: one row prayer/weather/battery, no alternate meeting`, JSON.stringify(g.cells.map(c => c.id)) === JSON.stringify(["tile-prayer", "tile-weather", "tile-battery"]) && g.cells.every(c => Math.abs(c.y - g.cells[0].y) < 1), JSON.stringify(g.cells));
+    ok(`${label}: one play control`, await page.getByTestId("player-controls").locator("button").count() === 1);
+    ok(`${label}: no page errors`, errors.length === 0, errors.join("|"));
+    await page.getByTestId("player-controls").locator("button").click();
+    ok(`${label}: play dispatches toggle`, await page.evaluate(() => window.__calls.some(c => c[0] === "media_control" && c[1].action === "toggle")));
+    const slider = await page.getByRole("slider").boundingBox(); await page.mouse.click(slider.x + slider.width / 2, slider.y + slider.height / 2);
+    ok(`${label}: seek remains interactive`, await page.evaluate(() => window.__calls.some(c => c[0] === "media_seek")));
+    await page.locator('.island-body').screenshot({ path: `${out}/${pack}-${language}.png` });
+    await ctx.close();
+  }
   await browser.close();
   console.log(fails ? `${fails} FAILED` : "all passed"); process.exit(fails ? 1 : 0);
 })();

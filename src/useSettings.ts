@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { DEFAULTS, type Settings } from "./settings";
+import { DEFAULTS, progressStyle, type Settings } from "./settings";
 import { setLang } from "./i18n";
 import { setMotionTuning, setPressTap, useMotionSync, useEco } from "./motion";
 import { PRESS, normTune } from "./themeTune";
 import { appearanceVars, deriveFor, effectiveMotion, fxFor, glassAllowed, migrateSettings, resolveTheme, type Env, type Fx } from "./appearance";
-import { resolvePack } from "./themePacks";
+import { PACKS, resolvePack } from "./themePacks";
 import { extractSwatches, type ArtSwatches } from "./artwork";
 
 /** glassTint صالح 0..80 (غير ذلك ⇒ الافتراضي 45). */
@@ -134,12 +134,14 @@ function useEnv(s: Partial<Settings>): Env {
 /** يطبّق المظهر كله على <html> (data-* + متغيرات CSS من tokens.css) حيًّا بلا إعادة تحميل. */
 function useAppearance(s: Partial<Settings>, env: Env) {
   const { attrs, vars } = appearanceVars(s, env);
-  const key = JSON.stringify([attrs, vars]);
+  const pstyle = progressStyle(s.progressStyle);
+  const key = JSON.stringify([attrs, vars, pstyle]);
   useEffect(() => {
     const root = document.documentElement;
     for (const [k, v] of Object.entries(attrs)) { if (v) root.dataset[k] = v; else delete root.dataset[k]; }
     for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
     root.dataset.glassStyle = attrs.glass;
+    root.dataset.pstyle = pstyle;
   }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
@@ -159,7 +161,13 @@ let migrated = false;
 /** يعكس إعدادات الخلفية (settings_get) ويتحدّث عند settings:changed. الخلفية مصدر الحقيقة.
  *  اللغة: تُطبَّق على i18n أثناء الرسم نفسه، فكل نافذة تعيد رسم نفسها عند تغيّر language عبر الحدث. */
 export function useSettings(): Partial<Settings> & { loaded?: boolean; /** تأثيرات الحزمة غير اللونية (شكل/بطل غلاف) */ fx?: Fx } {
-  const [s, setS] = useState<Partial<Settings> & { loaded?: boolean }>(DEFAULTS);
+  const [stored, setS] = useState<Partial<Settings> & { loaded?: boolean }>(DEFAULTS);
+  // Presentation policy: preserve legacy settings on disk, expose the factory references and the user’s stored themes.
+  const s = useMemo(() => {
+    const allowed = [...PACKS.map(pack => pack.id), "custom", ...(Array.isArray(stored.myThemes) ? stored.myThemes.flatMap(t => t && typeof t.id === "string" ? [t.id] : []) : [])];
+    const valid = (id: unknown, fallback: string) => typeof id === "string" && allowed.includes(id) ? id : fallback;
+    return { ...stored, themePack: valid(stored.themePack, "noir-gold"), themePackLight: valid(stored.themePackLight, "ivory"), themePackDark: valid(stored.themePackDark, "noir-gold"), glassStyle: "clear", glassTint: stored.glassStyle === "crystal" ? 25 : stored.glassTint, artworkBackdrop: false, accentMode: "fixed" } as typeof stored;
+  }, [stored]);
   useEffect(() => {
     let alive = true;
     invoke<Partial<Settings>>("settings_get")

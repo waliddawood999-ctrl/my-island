@@ -29,8 +29,10 @@ ok("reduceMotion/OS ⇒ reduced; off stays off", a.effectiveMotion({ reduceMotio
 // لون التمييز
 ok("accent invalid ⇒ default; fg readable", (() => { const x = a.accentVars("zzz", "dark"); return x.accent === "#4fd1c5" && ["#ffffff", "#06080c"].includes(x.accentFg); })());
 ok("light accent darkened to ≥3:1 on light surface", (() => { const x = a.accentVars("#ffb224", "light"); const c = [1, 3, 5].map((i) => parseInt(x.accent.slice(i, i + 2), 16)); return a.contrast(c, [236, 239, 244]) >= 3; })());
+ok("island animation resets and imports independently of theme wash", a.resetPatch(a.SECTION_KEYS.appearance).islandAnimation === true && a.parseThemeImport(JSON.stringify({ app:"myisland-theme",theme:{ islandAnimation:false,themeAnim:true }})).islandAnimation === false);
+ok("disabling island animation leaves animated wash independent", a.appearanceVars({themePack:"nebula-mesh",islandAnimation:false,themeAnim:true},env).attrs.washAnim === "on" && a.appearanceVars({themePack:"nebula-mesh",islandAnimation:true,themeAnim:false},env).attrs.washAnim === "");
 // إعدادات مسبقة
-ok("4 presets with expected ids", a.STYLE_PRESETS.map((p) => p.id).join() === "frosted,smoked,clear,minimal");
+ok("two material presets without theme overrides", a.STYLE_PRESETS.map((p) => p.id).join() === "frosted,solid" && a.STYLE_PRESETS.every(p => !("themeMode" in p.values) && !("accentColor" in p.values)));
 ok("presets never set blur/saturation", a.STYLE_PRESETS.every((p) => !("glassBlur" in p.values) && !("glassSaturation" in p.values)));
 // ترحيل
 ok("migrate v0: shrunken pill reset, crystal added, version 2", (() => { const m = a.migrateSettings({ pillWidth: 180, pillHeight: 30 }); return m.pillWidth === 220 && m.pillHeight === 34 && m.glassStyle === "crystal" && m.settingsVersion === 4; })());
@@ -46,8 +48,7 @@ ok("no key in two sections", (() => { const all = Object.values(a.SECTION_KEYS).
 ok("resetPatch gives a value for every section key", Object.values(a.SECTION_KEYS).flat().every((k) => k in a.resetPatch([k]) && a.resetPatch([k])[k] !== undefined), Object.values(a.SECTION_KEYS).flat().filter((k) => a.resetPatch([k])[k] === undefined).join());
 // تباين الزجاج المُحاكى WCAG: النص فوق السطح المركّب = لون الحجاب (glassSurface) بعتمته glassAlpha فوق الخلفية.
 //  لا تمويه ⇒ ما خلف الحجاب يظهر بحدّته، فنقيس الحالات: أسوأ خلفية (أبيض نقيّ في الداكن / أسود نقيّ في الفاتح) وخلفية متوسطة.
-//  · Frosted (45) وSmoked (68): ≥ 4.5 فوق أسوأ خلفية وفوق المتوسط.
-//  · Clear (25): حجاب أخفّ مقصود ⇒ ≥ 4.5 فوق خلفية متوسطة؛ الأسوأ يُقاس للتقرير فقط (بلا ادّعاء AA عليه).
+//  · المادة المثلّجة عند45/68، وclear القديم عند25 يُحسب مثلّجًا مع حفظ صبغة المستخدم.
 const TEXT = { dark: [255, 255, 255], light: [13, 16, 23] };
 const worst = { dark: [255, 255, 255], light: [0, 0, 0] };
 const mid = [128, 128, 128];
@@ -60,10 +61,10 @@ for (const theme of ["dark", "light"]) for (const [style, tint] of cases) {
   if (style === "crystal") ok(`contrast frosted/${theme}/tint${tint}: worst backdrop ${cw.toFixed(2)} ≥ 4.5, mid ${cm.toFixed(2)}`, cw >= 4.5 && cm >= 4.5);
   else ok(`contrast clear/${theme}/tint${tint}: mid backdrop ${cm.toFixed(2)} ≥ 4.5 (extreme worst case ${cw.toFixed(2)} reported, not claimed)`, cm >= 4.5);
 }
-ok("glassAlpha anchors: crystal 45 = .78/.82 (±.005), clear 25 = .60/.64", [a.glassAlpha("crystal", false, 45) - 0.78, a.glassAlpha("crystal", true, 45) - 0.82, a.glassAlpha("clear", false, 25) - 0.6, a.glassAlpha("clear", true, 25) - 0.64].every((d) => Math.abs(d) < 0.005));
-ok("glassAlpha monotonic in tint, clear < crystal, cap .97, density scales, garbage safe", (() => {
+ok("glassAlpha anchors: frosted 45 = .78/.82; legacy clear aliases frosted at the same tint", [a.glassAlpha("crystal", false, 45) - 0.78, a.glassAlpha("crystal", true, 45) - 0.82].every((d) => Math.abs(d) < 0.005) && a.glassAlpha("clear", false, 25) === a.glassAlpha("crystal", false, 25) && a.glassAlpha("clear", true, 25) === a.glassAlpha("crystal", true, 25));
+ok("glassAlpha monotonic in tint, clear = crystal, cap .97, density scales, garbage safe", (() => {
   for (const style of ["crystal", "clear"]) for (const light of [false, true]) { let prev = -1; for (let t = 0; t <= 80; t++) { const v = a.glassAlpha(style, light, t); if (!(v >= prev) || v > 0.97) return false; prev = v; } }
-  return a.glassAlpha("clear", false, 45) < a.glassAlpha("crystal", false, 45) && a.glassAlpha("crystal", false, 45, 0.5) < a.glassAlpha("crystal", false, 45) * 0.55 && Number.isFinite(a.glassAlpha("crystal", false, NaN, "x"));
+  return a.glassAlpha("clear", false, 45) === a.glassAlpha("crystal", false, 45) && a.glassAlpha("crystal", false, 45, 0.5) < a.glassAlpha("crystal", false, 45) * 0.55 && Number.isFinite(a.glassAlpha("crystal", false, NaN, "x"));
 })());
 ok("appearanceVars exposes --glass-a (and no --glass-blur/saturate)", (() => { const v = a.appearanceVars({ glassTint: 45 }, a.ENV_DEFAULT).vars; return Math.abs(Number(v["--glass-a"]) - 0.779) < 0.002 && !("--glass-blur" in v) && !("--glass-saturate" in v); })());
 ok("Windows transparency off ⇒ solid fallback (opaque surface)", (() => { const r = a.appearanceVars({}, { ...a.ENV_DEFAULT, transparency: false }); return r.attrs.fallback === "solid" && r.attrs.material === "solid"; })());
@@ -98,5 +99,8 @@ ok("theme export→import round trip keeps pack, tune and shelf", (() => { const
 ok("theme import is strict: wrong app, garbage, empty, unknown packs, out-of-range numbers, >24 shelf entries", (() => { const mk = (t) => JSON.stringify({ app: "myisland-theme", theme: t }); const big = Array.from({ length: 40 }, (_, n) => ({ id: `u:${n.toString(36).padStart(4, "0")}`, name: "x" })); return a.parseThemeImport("{}") === null && a.parseThemeImport("nope") === null && a.parseThemeImport(mk({})) === null && a.parseThemeImport(JSON.stringify({ app: "myisland", theme: { themePack: "aurora" } })) === null && !("themePack" in a.parseThemeImport(mk({ themePack: "no-such-pack", themeMode: "dark" }))) && a.parseThemeImport(mk({ artBloom: 9999 })).artBloom === 200 && a.parseThemeImport(mk({ myThemes: big })).myThemes.length === a.MAX_SHELF; })());
 ok("shelf: shelfEntry copies the effective pack as a user theme; ids are unique u:xxxxxx", (() => { const e = a.shelfEntry(a.resolvePack("aurora"), "u:q1w2e3", "Mine"); const mine = [{ id: "u:q1w2e3" }]; const id = a.newShelfId(mine, () => 0); return e.base === "aurora" && e.name === "Mine" && e.accent === "#4fe3b0" && /^u:[a-z0-9]{6}$/.test(id) && id !== "u:q1w2e3" || /^u:[a-z0-9]{6,8}$/.test(id); })());
 ok("shelfEntry of a custom/user pack keeps the factory base (never the u:/custom id)", (() => { const c = a.resolvePack("custom", { base: "ember", accent: "#112233" }); const e = a.shelfEntry(c, "u:aaaaaa", "Copy"); return e.base === "ember" && e.accent === "#112233"; })());
+
+for (const id of ["noir-gold", "ivory", "nebula-mesh"]) ok(`gallery selection applies ${id} to all three stored keys`, JSON.stringify(a.themeSelection(id)) === JSON.stringify({themePack:id,themePackLight:id,themePackDark:id}));
+
 console.log(fail ? `FAILED ${fail}` : "ALL PASSED");
 process.exit(fail ? 1 : 0);
